@@ -1,0 +1,22 @@
+Pure Simulation Mode B Revision
+
+This revision removes image dependencies from the universe and route presentation layers.
+
+Added modules:
+- lib/renderEngine.js
+- lib/gravityEngine.js
+- lib/shipEngine.js
+- lib/proceduralUniverse.js
+- lib/eventHorizonShader.js
+- components/ProceduralRoutePreview.js
+
+Key updates:
+- Procedural route previews replace static image cards.
+- Universe graph is enriched procedurally for maximum-realism rendering.
+- Blackholes use deeper event-horizon parameters and denser debris belts.
+- Render tier now biases toward heavier stars/sparkles/meteors.
+- CSS cosmic backgrounds now use gradients rather than external images.
+- Public image dependencies removed from the project tree.
+
+Runtime note:
+- The container used for this pass does not expose a working local Next runtime, so the final packaging is based on code-level integration and syntax-safe patching rather than a verified next build in-container.

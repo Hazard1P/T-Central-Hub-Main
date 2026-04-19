@@ -1,0 +1,1 @@
+Restored missing files:\napp/api/auth/steam/login/route.js\napp/api/auth/steam/callback/route.js\napp/api/auth/steam/session/route.js\napp/api/auth/steam/logout/route.js\napp/api/support/link/route.js\napp/api/support/session/route.js\n.env.example\nUpdated: package.json, app/page.js, README.md\n

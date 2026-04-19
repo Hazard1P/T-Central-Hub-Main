@@ -1,0 +1,4 @@
+Deep-space blackhole now reuses existing project assets for the map and anchor.
+Map asset: /public/cosmic-map.jpg
+Anchor asset: /public/blackhole-anchor.jpg
+Removed duplicate standalone asset copies for a lighter package and cleaner deployment.

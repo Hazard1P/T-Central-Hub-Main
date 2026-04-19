@@ -1,0 +1,26 @@
+Quantum 12D Simulation Pass
+==========================
+
+What was added:
+- lib/mathEngine.js
+  - clamp, lerp, smoothstep, gaussian, inverse-square falloff
+  - RK4 vector integrator for browser-safe ship simulation
+- lib/physicsEngine.js
+  - gravity source generation
+  - inverse-square gravity field sampling
+  - event horizon metrics
+  - ship state stepping with drag, thrust, and escape velocity telemetry
+- lib/quantumFieldEngine.js
+  - 12-dimensional state-space model for pilot/world coupling
+  - coherence, entropy, probability density, signature, dominant dimension
+- components/StableSystemWorld.js
+  - Flight rig now uses mathematical integration instead of simple additive drift
+  - telemetry HUD added for Q12D + physics observance
+  - guest/logged-in state affects coherence target and signature behavior
+- lib/universeEngine.js
+  - nodes now expose mass/curvature/anchor metadata for simulation use
+
+Important implementation note:
+This is a mathematically grounded browser simulation and a quantum-inspired state model.
+It is not a literal full quantum field theory solver, which would be far beyond practical
+real-time web execution. The code is structured so more exact models can be layered in later.
