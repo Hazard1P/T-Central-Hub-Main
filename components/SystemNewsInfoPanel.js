@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { getSystemNewsItems } from '@/lib/siteContent';
 
 export default function SystemNewsInfoPanel({ lobbyMode = 'hub', selected = null }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
 
   const items = useMemo(() => {
     const selectedItem = selected?.route && !selected?.external

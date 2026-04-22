@@ -23,6 +23,7 @@ import { subscribeToMultiplayerRoom } from '@/lib/multiplayerRealtimeClient';
 import { resolveMultiplayerIdentity } from '@/lib/multiplayerSyncEngine';
 import { buildAccountSnapshot, defaultProgressState, deriveProgression, getAccountStorageKey, normalizeProgressState } from '@/lib/accountProgression';
 import AccountProgressPanel from '@/components/AccountProgressPanel';
+import ExpandableDock from '@/components/ExpandableDock';
 
 function useDeviceTier() {
   const [tier, setTier] = useState({ isMobile: false, dpr: [1, 1.6], stars: 7600, sparkles: 220, meteors: 18 });
@@ -1242,19 +1243,22 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       <div className="stable-system-backdrop" />
       <div className="stable-system-veil" />
 
-      <div className="stable-system-hud">
-        <OperationsDirectorPanel operations={operations} lobbyMode={lobbyMode} />
-        <AccountProgressPanel profile={{ ...accountProfile, progression: accountProgression, progress }} lobbyMode={lobbyMode} />
-        <EntropyMissionPanel
-          lobbyMode={lobbyMode}
-          activeNode={activeNode}
-          progress={progress}
-          operations={operations}
-          onMineEntropy={handleMineEntropy}
-          onResolveEntropy={handleResolveEntropy}
-          onOpenExchange={openMatrixRoute}
-        />
+      <div className="stable-system-hud dock-stack stable-dock-grid">
+        <ExpandableDock title="Mission & progression" kicker="Pilot systems" summary="Objectives, profile, and route earnings" defaultOpen={false} className="stable-hud-dock">
+          <OperationsDirectorPanel operations={operations} lobbyMode={lobbyMode} />
+          <AccountProgressPanel profile={{ ...accountProfile, progression: accountProgression, progress }} lobbyMode={lobbyMode} />
+          <EntropyMissionPanel
+            lobbyMode={lobbyMode}
+            activeNode={activeNode}
+            progress={progress}
+            operations={operations}
+            onMineEntropy={handleMineEntropy}
+            onResolveEntropy={handleResolveEntropy}
+            onOpenExchange={openMatrixRoute}
+          />
+        </ExpandableDock>
 
+        <ExpandableDock title={activeNode?.label || 'Deep Space Blackhole'} kicker="Active route" summary="Current shell focus and travel state" defaultOpen={true} className="stable-hud-dock">
         <div className="content-card stable-card intro stable-card-layer primary-layer">
           <p className="eyebrow">Stability layer</p>
           <h3>{lobbyMode === 'hub' ? 'Shared Hub shell' : 'Private Universe shell'}</h3>
@@ -1305,6 +1309,9 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           {activeNode?.key === 'csis' ? <p className="stable-flight-note">CSIS ring I runs network linkage while ring II spins as a foundation firewall inside the game space. This sphere is sealed to players, does not accept build-ins or request spam, and remains a system-owned defense anchor. Linked anchors: {graph.csisState?.linkedNodeKeys?.length || 0} · quarantined relays: {graph.csisState?.quarantinedNodeKeys?.length || 0}.</p> : null}
         </div>
 
+        </ExpandableDock>
+
+        <ExpandableDock title="Universe identity" kicker="World state" summary="Private asset, pilot, and matrix visibility" defaultOpen={false} className="stable-hud-dock">
         {privateWorldAsset ? (
           <div className="content-card stable-card observer stable-card-layer observer-layer">
             <p className="eyebrow">Private map asset</p>
@@ -1318,6 +1325,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
               <span>Steam-linked private mesh</span>
               <span>Epoch {privateWorldAsset.unixEpoch}</span>
               <span>Window {privateWorldAsset.epochWindow}</span>
+              <span>Host {privateWorldAsset.serverAnchor?.host || 'local-host'}</span>
               <span>Nested blackhole core</span>
             </div>
           </div>
@@ -1367,6 +1375,9 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
         </div>
 
 
+        </ExpandableDock>
+
+        <ExpandableDock title="Engine telemetry" kicker="Systems" summary="Defense anchors, engines, physics, and combat state" defaultOpen={false} className="stable-hud-dock stable-floating-dock">
         <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
           <p className="eyebrow">CSIS lattice / firewall state</p>
           <h3>{(graph.csisState?.ringOneLabel || 'Network linkage')} + {(graph.csisState?.ringTwoLabel || 'Foundation firewall')}</h3>
@@ -1382,7 +1393,6 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             <span>Player access {graph.csisState?.playerAccess || 'sealed'}</span>
           </div>
         </div>
-
 
         <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
           <p className="eyebrow">Engine stack / singularity equation</p>
@@ -1427,73 +1437,73 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             <span>Seeds {universe?.prayerSeeds?.total ?? 0}</span>
           </div>
         </div>
-      </div>
 
+        <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
+          <p className="eyebrow">Authoritative multiplayer state</p>
+          <h3>{serverStatus.label}</h3>
+          <p className="muted">The multiplayer hub now maintains server-side player transforms, projectile state, contested nodes, and combat heat so the shared multiverse is more than just presence sync.</p>
+          <div className="focus-meta">
+            <span>Room {serverSession?.room || (process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main')}</span>
+            <span>Tick {serverStatus.tick}</span>
+          </div>
+          <div className="stable-chip-row alt">
+            <span>Pilots {authoritativeState.playerCount || 0}</span>
+            <span>Projectiles {projectiles.length}</span>
+            <span>Combat heat {authoritativeState.world?.combatHeat || 0}%</span>
+          </div>
+          <div className="stable-chip-row alt">
+            <span>Contested {(authoritativeState.world?.contestedNodes || []).map((node) => node.key).join(' · ') || 'none'}</span>
+            <span>Anomaly {Math.round((authoritativeState.world?.anomalyPhase || 0) * 100)}%</span>
+          </div>
+        </div>
 
-      <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
-        <p className="eyebrow">Authoritative multiplayer state</p>
-        <h3>{serverStatus.label}</h3>
-        <p className="muted">The multiplayer hub now maintains server-side player transforms, projectile state, contested nodes, and combat heat so the shared multiverse is more than just presence sync.</p>
-        <div className="focus-meta">
-          <span>Room {serverSession?.room || (process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main')}</span>
-          <span>Tick {serverStatus.tick}</span>
+        <div className="content-card stable-card observer flight-command-card stable-card-layer telemetry-layer">
+          <p className="eyebrow">Flight command deck</p>
+          <h3>Spaceship + control rebuild</h3>
+          <p className="muted">
+            Route-flight now uses a rebuilt command hull with singularity-aware traversal, boost-assisted vectoring, and damped control for clearer multiplayer and singleplayer piloting.
+          </p>
+          <div className="focus-meta">
+            <span>Speed {telemetry.speed}</span>
+            <span>Position {telemetry.position.map((value) => value.toFixed ? value.toFixed(1) : value).join(' / ')}</span>
+          </div>
+          <div className="stable-chip-row alt">
+            <span>Math engine live</span>
+            <span>Physics engine live</span>
+            <span>Entropic engine live</span>
+            <span>Quantum engine live</span>
+            <span>Singularity engine live</span>
+            <span>Dynamic engine live</span>
+          </div>
+          <div className="stable-chip-row alt">
+            <button className={`stable-route-button compact ${flightConfig.inertialDampers ? 'is-live' : ''}`} onClick={() => setFlightConfig((current) => ({ ...current, inertialDampers: !current.inertialDampers }))}>
+              {flightConfig.inertialDampers ? 'Dampers online' : 'Dampers offline'}
+            </button>
+            <button className={`stable-route-button compact ${flightConfig.routeAssist ? 'is-live' : ''}`} onClick={() => setFlightConfig((current) => ({ ...current, routeAssist: !current.routeAssist }))}>
+              {flightConfig.routeAssist ? 'Route assist on' : 'Route assist off'}
+            </button>
+          </div>
+          <div className="flight-slider-grid">
+            <label>
+              <span>Thrust bias</span>
+              <input type="range" min="0.65" max="1.8" step="0.05" value={flightConfig.thrustScale} onChange={(event) => setFlightConfig((current) => ({ ...current, thrustScale: Number(event.target.value) }))} />
+            </label>
+            <label>
+              <span>Chase zoom</span>
+              <input type="range" min="0.8" max="1.4" step="0.05" value={flightConfig.chaseZoom} onChange={(event) => setFlightConfig((current) => ({ ...current, chaseZoom: Number(event.target.value) }))} />
+            </label>
+          </div>
+          <p className="stable-flight-note">
+            Controls: WASD / arrows to vector, Space / Shift to climb and dive, hold Control to boost, tap Q or F to fire, and keep the active route centered for auto-assist capture.
+          </p>
+          <div className="stable-chip-row alt">
+            <button className="stable-route-button compact" onClick={() => handleCombatAction({ type: 'fire' })} disabled={lobbyMode !== 'hub' || !serverSession?.token}>
+              Fire pulse
+            </button>
+            <span>{lobbyMode === 'hub' ? 'Shared combat lane' : 'Combat disabled in private world'}</span>
+          </div>
         </div>
-        <div className="stable-chip-row alt">
-          <span>Pilots {authoritativeState.playerCount || 0}</span>
-          <span>Projectiles {projectiles.length}</span>
-          <span>Combat heat {authoritativeState.world?.combatHeat || 0}%</span>
-        </div>
-        <div className="stable-chip-row alt">
-          <span>Contested {(authoritativeState.world?.contestedNodes || []).map((node) => node.key).join(' · ') || 'none'}</span>
-          <span>Anomaly {Math.round((authoritativeState.world?.anomalyPhase || 0) * 100)}%</span>
-        </div>
-      </div>
-
-      <div className="content-card stable-card observer flight-command-card stable-card-layer telemetry-layer">
-        <p className="eyebrow">Flight command deck</p>
-        <h3>Spaceship + control rebuild</h3>
-        <p className="muted">
-          Route-flight now uses a rebuilt command hull with singularity-aware traversal, boost-assisted vectoring, and damped control for clearer multiplayer and singleplayer piloting.
-        </p>
-        <div className="focus-meta">
-          <span>Speed {telemetry.speed}</span>
-          <span>Position {telemetry.position.map((value) => value.toFixed ? value.toFixed(1) : value).join(' / ')}</span>
-        </div>
-        <div className="stable-chip-row alt">
-          <span>Math engine live</span>
-          <span>Physics engine live</span>
-          <span>Entropic engine live</span>
-          <span>Quantum engine live</span>
-          <span>Singularity engine live</span>
-          <span>Dynamic engine live</span>
-        </div>
-        <div className="stable-chip-row alt">
-          <button className={`stable-route-button compact ${flightConfig.inertialDampers ? 'is-live' : ''}`} onClick={() => setFlightConfig((current) => ({ ...current, inertialDampers: !current.inertialDampers }))}>
-            {flightConfig.inertialDampers ? 'Dampers online' : 'Dampers offline'}
-          </button>
-          <button className={`stable-route-button compact ${flightConfig.routeAssist ? 'is-live' : ''}`} onClick={() => setFlightConfig((current) => ({ ...current, routeAssist: !current.routeAssist }))}>
-            {flightConfig.routeAssist ? 'Route assist on' : 'Route assist off'}
-          </button>
-        </div>
-        <div className="flight-slider-grid">
-          <label>
-            <span>Thrust bias</span>
-            <input type="range" min="0.65" max="1.8" step="0.05" value={flightConfig.thrustScale} onChange={(event) => setFlightConfig((current) => ({ ...current, thrustScale: Number(event.target.value) }))} />
-          </label>
-          <label>
-            <span>Chase zoom</span>
-            <input type="range" min="0.8" max="1.4" step="0.05" value={flightConfig.chaseZoom} onChange={(event) => setFlightConfig((current) => ({ ...current, chaseZoom: Number(event.target.value) }))} />
-          </label>
-        </div>
-        <p className="stable-flight-note">
-          Controls: WASD / arrows to vector, Space / Shift to climb and dive, hold Control to boost, tap Q or F to fire, and keep the active route centered for auto-assist capture.
-        </p>
-        <div className="stable-chip-row alt">
-          <button className="stable-route-button compact" onClick={() => handleCombatAction({ type: 'fire' })} disabled={lobbyMode !== 'hub' || !serverSession?.token}>
-            Fire pulse
-          </button>
-          <span>{lobbyMode === 'hub' ? 'Shared combat lane' : 'Combat disabled in private world'}</span>
-        </div>
+        </ExpandableDock>
       </div>
 
       <div className="stable-world-canvas polished-canvas cinematic-polished-canvas">
@@ -1516,7 +1526,8 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
         </Canvas>
       </div>
 
-      <div className="stable-layer-dock">
+      <ExpandableDock title="System object layering" kicker="Render stack" summary="See how the shell layers are arranged" defaultOpen={false} className="stable-floating-dock">
+        <div className="stable-layer-dock">
         <div className="stable-layer-dock-head">
           <strong>System object layering</strong>
           <span className="eyebrow">Defined render stack</span>
@@ -1530,7 +1541,8 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             </article>
           ))}
         </div>
-      </div>
+        </div>
+      </ExpandableDock>
 
       {deviceTier.isMobile ? <TouchFlightPad onInputChange={setTouchInput} /> : null}
     </div>
