@@ -5496,3 +5496,132 @@ button { font: inherit; }
   color: rgba(206, 223, 245, 0.7);
   font-size: 0.84rem;
 }
+
+
+.expandable-dock {
+  width: min(360px, calc(100vw - 24px));
+  backdrop-filter: blur(16px);
+}
+
+.expandable-dock-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(151, 236, 255, 0.28);
+  background: linear-gradient(180deg, rgba(8, 20, 36, 0.88), rgba(8, 16, 28, 0.76));
+  color: #effcff;
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.32);
+}
+
+.expandable-dock-heading {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+}
+
+.expandable-dock-heading strong {
+  font-size: 0.98rem;
+}
+
+.expandable-dock-heading small,
+.expandable-dock-kicker {
+  color: rgba(214, 242, 255, 0.75);
+}
+
+.expandable-dock-kicker {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.7rem;
+}
+
+.expandable-dock-indicator {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.expandable-dock-body {
+  margin-top: 10px;
+  display: grid;
+  gap: 12px;
+}
+
+.system-top-docks,
+.dock-stack,
+.stable-dock-grid {
+  position: fixed;
+  z-index: 34;
+  display: grid;
+  gap: 10px;
+}
+
+.system-top-docks {
+  top: 86px;
+  left: 16px;
+}
+
+.system-shell-control-layer.dock-stack {
+  top: 86px;
+  right: 16px;
+  width: min(360px, calc(100vw - 24px));
+}
+
+.stable-dock-grid {
+  left: 16px;
+  bottom: 18px;
+  width: min(360px, calc(100vw - 24px));
+  max-height: calc(100vh - 210px);
+  overflow: auto;
+  padding-right: 6px;
+}
+
+.stable-floating-dock {
+  position: fixed;
+  right: 16px;
+  bottom: 18px;
+  z-index: 34;
+  width: min(360px, calc(100vw - 24px));
+}
+
+.stable-hud-dock .content-card,
+.stable-floating-dock .content-card,
+.expandable-dock .content-card {
+  margin: 0;
+}
+
+.support-mini-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.support-mini-card {
+  background: linear-gradient(180deg, rgba(7, 18, 30, 0.88), rgba(7, 14, 24, 0.74));
+}
+
+@media (max-width: 960px) {
+  .system-top-docks,
+  .system-shell-control-layer.dock-stack,
+  .stable-dock-grid,
+  .stable-floating-dock {
+    position: static;
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .stable-system-page {
+    padding-top: 92px;
+  }
+
+  .stable-system-hud {
+    display: grid;
+    gap: 10px;
+    padding: 0 12px;
+  }
+}
