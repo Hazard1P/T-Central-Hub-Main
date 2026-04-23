@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { joinAuthoritativeRoom, pruneAuthoritativeRooms } from '@/lib/authoritativeMultiplayerStore';
 import { hasDurableMultiplayer, joinDurableRoom } from '@/lib/durableMultiplayerStore';
 import { decryptJson } from '@/lib/security';
+import { SESSION_MODES, buildRingAdjustmentOutputs, normalizeSessionMode, transitionSessionMode } from '@/lib/sessionModeEngine';
 
 const ROOM_NAME_PATTERN = /^[a-zA-Z0-9_-]{1,64}$/;
 const GUEST_ID_PATTERN = /^[a-zA-Z0-9_-]{3,64}$/;
@@ -60,6 +61,26 @@ function resolveIdentity(body = {}, steamUser = null) {
   };
 }
 
+
+function resolveRequestedMode(body = {}) {
+  return normalizeSessionMode(body?.mode || body?.lobbyMode, SESSION_MODES.MULTI_PLAYER);
+}
+
+function withModePayload(payload = {}, { roomName, mode, source, playerCount = 0, eventThroughput = 0, combatHeat = 0 } = {}) {
+  const modeState = transitionSessionMode({ roomName, to: mode, source });
+  const ringAdjustments = buildRingAdjustmentOutputs({ roomName, mode: modeState.mode, playerCount, eventThroughput, combatHeat });
+
+  return {
+    ...payload,
+    mode: modeState.mode,
+    modeTransition: modeState.transition,
+    ringAdjustments,
+    server: payload?.server
+      ? { ...payload.server, mode: modeState.mode, modeTransition: modeState.transition }
+      : payload?.server,
+  };
+}
+
 export async function POST(request) {
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
@@ -73,6 +94,7 @@ export async function POST(request) {
 
   const steamUser = readSteamSession();
   const identity = resolveIdentity(body, steamUser);
+  const mode = resolveRequestedMode(body);
 
   if (hasDurableMultiplayer()) {
     const result = await joinDurableRoom({
@@ -80,7 +102,7 @@ export async function POST(request) {
       identity,
       steamUser: identity.steamUser,
     });
-    return NextResponse.json(result, { status: result.status || 200 });
+    return NextResponse.json(withModePayload(result, { roomName, mode, source: 'connect', playerCount: 1 }), { status: result.status || 200 });
   }
 
   pruneAuthoritativeRooms();
@@ -89,5 +111,5 @@ export async function POST(request) {
     identity,
     steamUser: identity.steamUser,
   });
-  return NextResponse.json({ ...result, durable: false });
+  return NextResponse.json(withModePayload({ ...result, durable: false }, { roomName, mode, source: 'connect', playerCount: 1 }));
 }

@@ -26,6 +26,7 @@ import { resolveMultiplayerIdentity } from '@/lib/multiplayerSyncEngine';
 import { buildAccountSnapshot, defaultProgressState, deriveProgression, getAccountStorageKey, normalizeProgressState } from '@/lib/accountProgression';
 import AccountProgressPanel from '@/components/AccountProgressPanel';
 import { HYPERSPACE_DIMENSION_COUNT, HYPERSPACE_SIGNATURE_PREFIX } from '@/lib/simulationConfig';
+import { SESSION_MODES } from '@/lib/sessionModeEngine';
 
 function useDeviceTier() {
   const [tier, setTier] = useState({ isMobile: false, dpr: [1, 1.6], stars: 7600, sparkles: 220, meteors: 18 });
@@ -47,6 +48,13 @@ function useDeviceTier() {
   }, []);
 
   return tier;
+}
+
+function resolveClientSessionMode(lobbyMode, authoritativeMode) {
+  if (authoritativeMode === SESSION_MODES.IDLE || authoritativeMode === SESSION_MODES.SINGLE_PLAYER || authoritativeMode === SESSION_MODES.MULTI_PLAYER) {
+    return authoritativeMode;
+  }
+  return lobbyMode === 'hub' ? SESSION_MODES.MULTI_PLAYER : SESSION_MODES.SINGLE_PLAYER;
 }
 
 function RouteBeam({ from, to, color = '#67dfff', arc = 1.8, opacity = 0.18, radius = 0.04 }) {
@@ -335,7 +343,7 @@ function CsisFirewallShell({ sweep = 0 }) {
   );
 }
 
-function DysonSphereStructure({ node }) {
+function DysonSphereStructure({ node, sessionMode = SESSION_MODES.IDLE, ringAdjustments = null }) {
   const coreRef = useRef(null);
   const segmentRef = useRef(null);
   const ringOneRef = useRef(null);
@@ -345,6 +353,9 @@ function DysonSphereStructure({ node }) {
   const csisState = node.csisState || {};
   const dysonState = node.dysonState || {};
   const isSynaptics = profile === 'synaptics' || node.key === 'ss';
+  const ringThreeSpinRef = useRef(0);
+  const ringThreePulseRef = useRef(0.12);
+  const resolvedRingAdjustments = ringAdjustments || node?.dysonState?.ringAdjustments || {};
 
   useFrame(({ clock }, delta) => {
     if (coreRef.current) coreRef.current.rotation.y += delta * (isSynaptics ? 0.24 : 0.18);
@@ -352,8 +363,16 @@ function DysonSphereStructure({ node }) {
     if (ringOneRef.current) ringOneRef.current.rotation.z += delta * (profile === 'csis' ? 0.68 : isSynaptics ? 0.56 : 0.44);
     if (ringTwoRef.current) ringTwoRef.current.rotation.x -= delta * (profile === 'csis' ? 1.12 : isSynaptics ? 0.33 : 0.28);
     if (ringThreeRef.current) {
-      ringThreeRef.current.rotation.y += delta * (isSynaptics ? 0.92 : 0.21);
-      const pulse = 1 + Math.sin(clock.elapsedTime * 2.8 + (dysonState.latticePhase || 0)) * 0.035;
+      const baseSpin = isSynaptics ? 0.92 : 0.21;
+      const requestedSpin = sessionMode === SESSION_MODES.MULTI_PLAYER
+        ? baseSpin * (0.1 + (resolvedRingAdjustments.ringThreeSpinIntensity || 0))
+        : 0;
+      ringThreeSpinRef.current += (requestedSpin - ringThreeSpinRef.current) * 0.12;
+      ringThreeRef.current.rotation.y += delta * ringThreeSpinRef.current;
+
+      const requestedPulse = 0.02 + ((resolvedRingAdjustments.ringThreePulse || 0.12) * 0.08);
+      ringThreePulseRef.current += (requestedPulse - ringThreePulseRef.current) * 0.1;
+      const pulse = 1 + Math.sin(clock.elapsedTime * 2.8 + (dysonState.latticePhase || 0)) * ringThreePulseRef.current;
       ringThreeRef.current.scale.setScalar(pulse);
     }
     if (profile === 'csis' && ringTwoRef.current) {
@@ -494,7 +513,7 @@ function SolarSubSystem({ node }) {
   );
 }
 
-function NodeVisual({ node, onSelect, selectedKey, graphNode, condensedLabels = false }) {
+function NodeVisual({ node, onSelect, selectedKey, graphNode, condensedLabels = false, sessionMode = SESSION_MODES.IDLE, ringAdjustments = null }) {
   const isBlackhole = node.kind === 'blackhole';
   const isDyson = node.kind === 'dyson';
   const isSolar = node.kind === 'solar';
@@ -532,7 +551,7 @@ function NodeVisual({ node, onSelect, selectedKey, graphNode, condensedLabels = 
           </>
         ) : isDyson ? (
           <group onClick={() => onSelect(node)}>
-            <DysonSphereStructure node={node} />
+            <DysonSphereStructure node={node} sessionMode={sessionMode} ringAdjustments={ringAdjustments} />
           </group>
         ) : isMapAsset ? (
           <group onClick={() => onSelect(node)}>
@@ -862,7 +881,7 @@ function ProjectileSwarm({ projectiles = [] }) {
   );
 }
 
-function StableSceneContent({ graph, displayNodes, onSelect, selectedKey, onAutoFocus, onTelemetryChange, onCombatAction, touchInput, deviceTier, authenticated = false, flightConfig = null, remotePilots = [], projectiles = [], presentationMode = true, multiplayerMode = false, simulationSeed = 'tcentral-main', simulationGravitySources = [], onSimulationFrame = null, correctionState = null }) {
+function StableSceneContent({ graph, displayNodes, onSelect, selectedKey, onAutoFocus, onTelemetryChange, onCombatAction, touchInput, deviceTier, authenticated = false, flightConfig = null, remotePilots = [], projectiles = [], presentationMode = true, multiplayerMode = false, simulationSeed = 'tcentral-main', simulationGravitySources = [], onSimulationFrame = null, correctionState = null, sessionMode = SESSION_MODES.IDLE, ringAdjustments = null }) {
   const epochSummary = useMemo(() => summarizeEpochRelativity(graph.epochAnchor), [graph]);
   const graphByKey = useMemo(() => Object.fromEntries(graph.nodes.map((node) => [node.key, node])), [graph]);
   const positions = useMemo(() => getNodePositionMap(graph), [graph]);
@@ -916,7 +935,7 @@ function StableSceneContent({ graph, displayNodes, onSelect, selectedKey, onAuto
       })}
 
       {displayNodes.map((node) => (
-        <NodeVisual key={node.key} node={node} graphNode={graphByKey[node.key]} onSelect={onSelect} selectedKey={selectedKey} condensedLabels={presentationMode} />
+        <NodeVisual key={node.key} node={node} graphNode={graphByKey[node.key]} onSelect={onSelect} selectedKey={selectedKey} condensedLabels={presentationMode} sessionMode={sessionMode} ringAdjustments={ringAdjustments} />
       ))}
 
       <ProjectileSwarm projectiles={projectiles} />
@@ -1059,6 +1078,8 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   const projectiles = useMemo(() => authoritativeState.projectiles || [], [authoritativeState.projectiles]);
   const simulationSeed = authoritativeState?.simulation?.seed || serverSession?.room || (process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main');
   const simulationGravitySources = useMemo(() => buildGravitySourcesFromSeed(simulationSeed), [simulationSeed]);
+  const sessionMode = resolveClientSessionMode(lobbyMode, authoritativeState?.mode);
+  const ringAdjustments = authoritativeState?.ringAdjustments || { ringThreeSpinIntensity: 0, ringThreePulse: 0.12, intensity: 0 };
 
   const handleCombatAction = useCallback(async (action) => {
     if (lobbyMode !== 'hub' || !serverSession?.token) return;
@@ -1066,7 +1087,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       const response = await fetch('/api/multiplayer/action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomName: serverSession.room, id: serverSession.id, token: serverSession.token, action }),
+        body: JSON.stringify({ roomName: serverSession.room, id: serverSession.id, token: serverSession.token, mode: SESSION_MODES.MULTI_PLAYER, action }),
       });
       const data = await response.json().catch(() => null);
       if (response.ok && data?.state) {
@@ -1097,7 +1118,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
         void disconnectMultiplayerSession(previousSession);
       }
       setServerSession(null);
-      setAuthoritativeState({ authoritative: false, players: [], projectiles: [], world: { contestedNodes: [], combatHeat: 0, anomalyPhase: 0 }, playerCount: 0 });
+      setAuthoritativeState({ authoritative: false, players: [], projectiles: [], world: { contestedNodes: [], combatHeat: 0, anomalyPhase: 0 }, playerCount: 0, mode: SESSION_MODES.SINGLE_PLAYER, modeTransition: { from: SESSION_MODES.MULTI_PLAYER, to: SESSION_MODES.SINGLE_PLAYER, changedAt: Date.now(), source: 'lobby' }, ringAdjustments: { ringThreeSpinIntensity: 0, ringThreePulse: 0.12, intensity: 0 } });
       setServerStatus({ connected: false, label: 'Private universe isolated', tick: 0 });
       return () => { active = false; };
     }
@@ -1108,7 +1129,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
         const response = await fetch('/api/multiplayer/connect', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identity, steamUser, roomName: process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main' }),
+          body: JSON.stringify({ identity, steamUser, roomName: process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main', mode: SESSION_MODES.MULTI_PLAYER }),
         });
         const data = await response.json().catch(() => null);
         if (!active || !response.ok || !data?.ok) return;
@@ -1148,7 +1169,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
         const response = await fetch('/api/multiplayer/state', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ roomName: serverSession.room, id: serverSession.id, token: serverSession.token, snapshot }),
+          body: JSON.stringify({ roomName: serverSession.room, id: serverSession.id, token: serverSession.token, mode: SESSION_MODES.MULTI_PLAYER, snapshot }),
         });
         const data = await response.json().catch(() => null);
         if (cancelled) return;
@@ -1732,6 +1753,8 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             simulationGravitySources={simulationGravitySources}
             onSimulationFrame={handleSimulationFrame}
             correctionState={correctionState}
+            sessionMode={sessionMode}
+            ringAdjustments={ringAdjustments}
           />
         </Canvas>
       </div>

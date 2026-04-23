@@ -8,6 +8,9 @@ const defaultAuthoritativeState = {
   projectiles: [],
   world: { contestedNodes: [], combatHeat: 0, anomalyPhase: 0 },
   playerCount: 0,
+  mode: 'idle',
+  modeTransition: { from: 'idle', to: 'idle', changedAt: 0, source: 'init' },
+  ringAdjustments: { ringThreeSpinIntensity: 0, ringThreePulse: 0.12, intensity: 0 },
 };
 
 const defaultServerStatus = { connected: false, label: 'Offline', tick: 0 };
