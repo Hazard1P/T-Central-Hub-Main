@@ -3,14 +3,15 @@
 import { useSteamSession } from '@/components/SteamSessionProvider';
 
 export default function SteamLoginHud() {
-  const { steamUser: session, support, universe, loading, presence } = useSteamSession();
+  const { steamUser: session, googleUser, support, universe, loading, presence } = useSteamSession();
 
   return (
     <div className="steam-login-hud">
       <div className="steam-login-card">
         <div className="steam-login-topline">
           <span className="steam-kicker">Steam Access</span>
-          {session ? <span className="steam-status online">Linked</span> : <span className="steam-status">Guest</span>}
+          {session ? <span className="steam-status online">Steam linked</span> : <span className="steam-status">Steam guest</span>}
+          {googleUser ? <span className="steam-status online">Google linked</span> : <span className="steam-status">Google guest</span>}
           {support ? <span className="steam-status support">Supporter</span> : null}
         </div>
 
@@ -48,7 +49,7 @@ export default function SteamLoginHud() {
         <div className="steam-login-actions">
           {universe?.prayerSeeds?.total ? <span className="steam-mini-link">Seeds {universe.prayerSeeds.total}</span> : null}
           {presence?.length ? <span className="steam-mini-link">Pilots {presence.length}</span> : null}
-          {session ? (
+          {session || googleUser ? (
             <>
               {session.profileurl ? (
                 <a className="steam-mini-link" href={session.profileurl} target="_blank" rel="noreferrer">
@@ -58,14 +59,18 @@ export default function SteamLoginHud() {
               <a className="steam-mini-link" href="/report-player">
                 Report player
               </a>
-              <a className="steam-mini-link" href="/api/auth/steam/logout">
-                Sign out
-              </a>
+              {session ? <a className="steam-mini-link" href="/api/auth/steam/logout">Sign out Steam</a> : null}
+              {googleUser ? <a className="steam-mini-link" href="/api/auth/google/logout">Sign out Google</a> : null}
             </>
           ) : (
-            <a className="steam-login-button" href="/api/auth/steam/login">
-              Continue with Steam
-            </a>
+            <>
+              <a className="steam-login-button" href="/api/auth/steam/login?redirectTo=/system">
+                Continue with Steam
+              </a>
+              <a className="steam-login-button" href="/api/auth/google/login?redirectTo=/system">
+                Continue with Google
+              </a>
+            </>
           )}
         </div>
       </div>

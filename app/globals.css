@@ -5517,3 +5517,33 @@ button { font: inherit; }
   color: rgba(206, 223, 245, 0.7);
   font-size: 0.84rem;
 }
+
+/* System layering hotfix: keep 3D canvas beneath interactive HUD layers. */
+.stable-system-page {
+  position: relative;
+  isolation: isolate;
+}
+
+.stable-world-canvas,
+.stable-world-canvas.polished-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+}
+
+.stable-system-veil,
+.system-status-strip,
+.system-news-panel,
+.system-shell-control-layer,
+.steam-login-hud,
+.multiplayer-hud {
+  position: fixed;
+}
+
+.system-status-strip,
+.system-news-panel,
+.system-shell-control-layer,
+.steam-login-hud,
+.multiplayer-hud {
+  z-index: 60;
+}

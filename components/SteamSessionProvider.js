@@ -13,6 +13,7 @@ function clearPresenceIsolation() {
 
 const SteamSessionContext = createContext({
   steamUser: null,
+  googleUser: null,
   support: null,
   universe: null,
   loading: true,
@@ -27,6 +28,7 @@ const SteamSessionContext = createContext({
 export function SteamSessionProvider({ children }) {
   const [steamUser, setSteamUser] = useState(null);
   const [support, setSupport] = useState(null);
+  const [googleUser, setGoogleUser] = useState(null);
   const [universe, setUniverse] = useState(null);
   const [presence, setPresence] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,17 +37,20 @@ export function SteamSessionProvider({ children }) {
 
   const refresh = useCallback(async () => {
     try {
-      const [steamRes, supportRes, universeRes] = await Promise.all([
+      const [steamRes, googleRes, supportRes, universeRes] = await Promise.all([
         fetch('/api/auth/steam/session', { cache: 'no-store' }),
+        fetch('/api/auth/google/session', { cache: 'no-store' }),
         fetch('/api/support/session', { cache: 'no-store' }),
         fetch(`/api/universe/session?lobbyMode=${encodeURIComponent(lobbyMode)}`, { cache: 'no-store' }),
       ]);
 
       const steamData = await steamRes.json().catch(() => null);
+      const googleData = await googleRes.json().catch(() => null);
       const supportData = await supportRes.json().catch(() => null);
       const universeData = await universeRes.json().catch(() => null);
 
       setSteamUser(steamData?.authenticated ? steamData.user : null);
+      setGoogleUser(googleData?.authenticated ? googleData.user : null);
       setSupport(supportData?.linked ? supportData.support : null);
 
       if (universeData?.ok || universeData?.unavailable) {
@@ -63,6 +68,7 @@ export function SteamSessionProvider({ children }) {
     } catch {
       setSteamUser(null);
       setSupport(null);
+      setGoogleUser(null);
       setUniverse({
         ok: false,
         unavailable: true,
@@ -161,6 +167,7 @@ export function SteamSessionProvider({ children }) {
 
   const value = useMemo(() => ({
     steamUser,
+    googleUser,
     support,
     universe,
     presence,
@@ -169,8 +176,8 @@ export function SteamSessionProvider({ children }) {
     updatePresence,
     lobbyMode,
     setLobbyMode,
-    authenticated: Boolean(steamUser?.steamid),
-  }), [steamUser, support, universe, presence, loading, refresh, updatePresence, lobbyMode]);
+    authenticated: Boolean(steamUser?.steamid || googleUser?.sub),
+  }), [steamUser, googleUser, support, universe, presence, loading, refresh, updatePresence, lobbyMode]);
 
   return <SteamSessionContext.Provider value={value}>{children}</SteamSessionContext.Provider>;
 }
