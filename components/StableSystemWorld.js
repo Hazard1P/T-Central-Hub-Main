@@ -589,9 +589,11 @@ function FlightRig({ gravitySources, onNearestChange, onTelemetryChange, onComba
 
   const quantumRef = useRef(createQuantumState(12));
   const fireLatch = useRef(false);
+  const frameCounter = useRef(0);
 
   useFrame((state, delta) => {
     if (!groupRef.current) return;
+    frameCounter.current += 1;
     const rawMove = new THREE.Vector3(
       (keys.current.KeyD || keys.current.ArrowRight ? 1 : 0) - (keys.current.KeyA || keys.current.ArrowLeft ? 1 : 0) + (touchInput.x || 0),
       (keys.current.Space ? 1 : 0) - (keys.current.ShiftLeft || keys.current.ShiftRight ? 1 : 0) + (touchInput.y || 0),
@@ -602,7 +604,7 @@ function FlightRig({ gravitySources, onNearestChange, onTelemetryChange, onComba
     const fireActive = Boolean(keys.current.KeyQ || keys.current.KeyF);
     if (fireActive && !fireLatch.current) {
       fireLatch.current = true;
-      onCombatAction?.({ type: 'fire' });
+      onCombatAction?.({ type: 'fire', frameIndex: frameCounter.current, tick: Date.now() });
     } else if (!fireActive) {
       fireLatch.current = false;
     }
@@ -678,6 +680,8 @@ function FlightRig({ gravitySources, onNearestChange, onTelemetryChange, onComba
       epoch: epochSummary,
       boosting: boostActive,
       firing: fireActive,
+      frameIndex: frameCounter.current,
+      tick: Date.now(),
       position: [
         Number(groupRef.current.position.x.toFixed(2)),
         Number(groupRef.current.position.y.toFixed(2)),
@@ -1071,6 +1075,8 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           direction: telemetry.direction,
           nearest: telemetry.nearest,
           speed: telemetry.speed,
+          frameIndex: telemetry.frameIndex,
+          tick: telemetry.tick,
           quantumSignature: telemetry.quantum?.signature,
           firing: telemetry.firing,
         };
@@ -1101,6 +1107,44 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       window.clearInterval(id);
     };
   }, [lobbyMode, serverSession, telemetry, serverStatus.label, setAuthoritativeState, setServerSession, setServerStatus]);
+
+  useEffect(() => {
+    if (lobbyMode !== 'hub' || !serverSession?.room) {
+      setValidatorSummary(null);
+      return;
+    }
+
+    let cancelled = false;
+    let intervalId = null;
+    const refreshValidator = async () => {
+      try {
+        const params = new URLSearchParams({
+          roomName: serverSession.room,
+          strictMode: 'true',
+          minCoverage: '0.9',
+          limit: '300',
+        });
+        const response = await fetch(`/api/multiplayer/symmetry-validator?${params.toString()}`, { cache: 'no-store' });
+        const data = await response.json().catch(() => null);
+        if (cancelled || !response.ok || !data?.ok) return;
+        setValidatorSummary({
+          checked: data?.checked || 0,
+          confidence: data?.report?.confidence || 'low',
+          driftCount: data?.report?.summary?.driftCount || 0,
+          gapCount: data?.report?.summary?.gapCount || 0,
+          coverage: data?.report?.summary?.coverage || 0,
+          strictCoverageFailed: Boolean(data?.report?.summary?.strictCoverageFailed),
+        });
+      } catch {}
+    };
+
+    void refreshValidator();
+    intervalId = window.setInterval(() => { void refreshValidator(); }, 12000);
+    return () => {
+      cancelled = true;
+      if (intervalId) window.clearInterval(intervalId);
+    };
+  }, [lobbyMode, serverSession?.room]);
 
 
   useEffect(() => {
@@ -1315,7 +1359,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       <div className="stable-system-veil" />
 
       <div className="stable-system-hud">
-        <OperationsDirectorPanel operations={operations} lobbyMode={lobbyMode} />
+        <OperationsDirectorPanel operations={operations} lobbyMode={lobbyMode} validationSummary={validatorSummary} />
         <AccountProgressPanel profile={{ ...accountProfile, progression: accountProgression, progress }} lobbyMode={lobbyMode} />
         <EntropyMissionPanel
           lobbyMode={lobbyMode}

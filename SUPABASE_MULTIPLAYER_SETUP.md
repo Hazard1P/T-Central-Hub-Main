@@ -30,6 +30,9 @@ Set the values from `.env.example`:
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `NEXT_PUBLIC_MULTIPLAYER_ROOM`
 - `NEXT_PUBLIC_MULTIPLAYER_MAX_SLOTS`
+- `SIM_EVENT_VALIDATION_MODE` (`true` to force 100% simulation event capture for targeted validation sessions)
+- `SIM_EVENT_VALIDATION_ROOMS` (comma-separated room names or `*`)
+- `SIM_EVENT_VALIDATION_SESSIONS` (comma-separated session tokens or `*`)
 - `CRON_SECRET`
 
 ## 3) Deploy
