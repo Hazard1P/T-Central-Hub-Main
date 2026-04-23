@@ -20,10 +20,12 @@ import { resolveStarSingularity } from '@/lib/singularityEngine';
 import { buildDynamicEngineState } from '@/lib/dynamicEngine';
 import OperationsDirectorPanel from '@/components/OperationsDirectorPanel';
 import EntropyMissionPanel from '@/components/EntropyMissionPanel';
+import { useMultiplayerSession } from '@/components/MultiplayerSessionProvider';
 import { subscribeToMultiplayerRoom } from '@/lib/multiplayerRealtimeClient';
 import { resolveMultiplayerIdentity } from '@/lib/multiplayerSyncEngine';
 import { buildAccountSnapshot, defaultProgressState, deriveProgression, getAccountStorageKey, normalizeProgressState } from '@/lib/accountProgression';
 import AccountProgressPanel from '@/components/AccountProgressPanel';
+import { HYPERSPACE_DIMENSION_COUNT, HYPERSPACE_SIGNATURE_PREFIX } from '@/lib/simulationConfig';
 
 function useDeviceTier() {
   const [tier, setTier] = useState({ isMobile: false, dpr: [1, 1.6], stars: 7600, sparkles: 220, meteors: 18 });
@@ -588,19 +590,11 @@ function FlightRig({ gravitySources, onNearestChange, onTelemetryChange, onComba
 
   const quantumRef = useRef(createQuantumState(12));
   const fireLatch = useRef(false);
-  const frameRef = useRef(0);
-  const correctionTargetRef = useRef(null);
-
-  useEffect(() => {
-    if (!correctionState?.position || !correctionState?.velocity) return;
-    correctionTargetRef.current = {
-      position: new THREE.Vector3(...correctionState.position),
-      velocity: new THREE.Vector3(...correctionState.velocity),
-    };
-  }, [correctionState]);
+  const frameCounter = useRef(0);
 
   useFrame((state, delta) => {
     if (!groupRef.current) return;
+    frameCounter.current += 1;
     const rawMove = new THREE.Vector3(
       (keys.current.KeyD || keys.current.ArrowRight ? 1 : 0) - (keys.current.KeyA || keys.current.ArrowLeft ? 1 : 0) + (touchInput.x || 0),
       (keys.current.Space ? 1 : 0) - (keys.current.ShiftLeft || keys.current.ShiftRight ? 1 : 0) + (touchInput.y || 0),
@@ -611,7 +605,7 @@ function FlightRig({ gravitySources, onNearestChange, onTelemetryChange, onComba
     const fireActive = Boolean(keys.current.KeyQ || keys.current.KeyF);
     if (fireActive && !fireLatch.current) {
       fireLatch.current = true;
-      onCombatAction?.({ type: 'fire' });
+      onCombatAction?.({ type: 'fire', frameIndex: frameCounter.current, tick: Date.now() });
     } else if (!fireActive) {
       fireLatch.current = false;
     }
@@ -721,6 +715,8 @@ function FlightRig({ gravitySources, onNearestChange, onTelemetryChange, onComba
       epoch: epochSummary,
       boosting: boostActive,
       firing: fireActive,
+      frameIndex: frameCounter.current,
+      tick: Date.now(),
       position: [
         Number(groupRef.current.position.x.toFixed(2)),
         Number(groupRef.current.position.y.toFixed(2)),
@@ -994,12 +990,15 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   const identity = useMemo(() => resolveMultiplayerIdentity(steamUser), [steamUser]);
   const [progress, setProgress] = useState(defaultProgressState());
   const [accountProfile, setAccountProfile] = useState(() => buildAccountSnapshot({ identity: { id: 'boot', displayName: 'Boot Pilot', kind: 'guest', authenticated: false }, progress: defaultProgressState() }));
-  const [serverSession, setServerSession] = useState(null);
-  const [authoritativeState, setAuthoritativeState] = useState({ authoritative: false, players: [], projectiles: [], world: { contestedNodes: [], combatHeat: 0, anomalyPhase: 0 }, playerCount: 0 });
-  const [serverStatus, setServerStatus] = useState({ connected: false, label: 'Offline', tick: 0 });
-  const predictionHistoryRef = useRef([]);
-  const latestSimulationFrameRef = useRef({ frameIndex: 0, controlVector: [0, 0, 0], dt: 1 / 30, simulationSeed: 'tcentral-main' });
-  const [correctionState, setCorrectionState] = useState(null);
+  const {
+    session: serverSession,
+    authoritativeState,
+    serverStatus,
+    setSession: setServerSession,
+    setAuthoritativeState,
+    setServerStatus,
+    resetSessionState,
+  } = useMultiplayerSession();
 
   const privateWorldAsset = useMemo(() => createPrivateWorldAsset({ steamUser, lobbyMode, identity }), [steamUser, lobbyMode, identity]);
   const graph = useMemo(() => buildUniverseGraph(Date.now(), { lobbyMode, roomName: process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main', extraNodes: privateWorldAsset?.nodes || [], extraRouteLinks: privateWorldAsset?.routeLinks || [] }), [privateWorldAsset, lobbyMode]);
@@ -1123,7 +1122,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
 
     connect();
     return () => { active = false; };
-  }, [lobbyMode, steamUser, serverSession]);
+  }, [lobbyMode, steamUser, serverSession, setAuthoritativeState, setServerSession, setServerStatus]);
 
   useEffect(() => {
     if (lobbyMode !== 'hub' || !serverSession?.token) return;
@@ -1137,6 +1136,8 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           direction: telemetry.direction,
           nearest: telemetry.nearest,
           speed: telemetry.speed,
+          frameIndex: telemetry.frameIndex,
+          tick: telemetry.tick,
           quantumSignature: telemetry.quantum?.signature,
           firing: telemetry.firing,
           frameIndex: latestSimulationFrameRef.current.frameIndex,
@@ -1197,7 +1198,45 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       stopRealtime();
       window.clearInterval(id);
     };
-  }, [lobbyMode, serverSession, telemetry, serverStatus.label, simulationSeed, simulationGravitySources]);
+  }, [lobbyMode, serverSession, telemetry, serverStatus.label, setAuthoritativeState, setServerSession, setServerStatus]);
+
+  useEffect(() => {
+    if (lobbyMode !== 'hub' || !serverSession?.room) {
+      setValidatorSummary(null);
+      return;
+    }
+
+    let cancelled = false;
+    let intervalId = null;
+    const refreshValidator = async () => {
+      try {
+        const params = new URLSearchParams({
+          roomName: serverSession.room,
+          strictMode: 'true',
+          minCoverage: '0.9',
+          limit: '300',
+        });
+        const response = await fetch(`/api/multiplayer/symmetry-validator?${params.toString()}`, { cache: 'no-store' });
+        const data = await response.json().catch(() => null);
+        if (cancelled || !response.ok || !data?.ok) return;
+        setValidatorSummary({
+          checked: data?.checked || 0,
+          confidence: data?.report?.confidence || 'low',
+          driftCount: data?.report?.summary?.driftCount || 0,
+          gapCount: data?.report?.summary?.gapCount || 0,
+          coverage: data?.report?.summary?.coverage || 0,
+          strictCoverageFailed: Boolean(data?.report?.summary?.strictCoverageFailed),
+        });
+      } catch {}
+    };
+
+    void refreshValidator();
+    intervalId = window.setInterval(() => { void refreshValidator(); }, 12000);
+    return () => {
+      cancelled = true;
+      if (intervalId) window.clearInterval(intervalId);
+    };
+  }, [lobbyMode, serverSession?.room]);
 
 
   useEffect(() => {
@@ -1210,6 +1249,10 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       window.removeEventListener('beforeunload', onUnload);
     };
   }, [lobbyMode, serverSession]);
+
+  useEffect(() => () => {
+    resetSessionState();
+  }, [resetSessionState]);
 
   const handlePrayerSeed = async () => {
     const body = window.prompt('Plant a private Prayer Seed into the Solar System vault:', activeNode?.label ? `${activeNode.label} / ` : '');
@@ -1408,7 +1451,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       <div className="stable-system-veil" />
 
       <div className="stable-system-hud">
-        <OperationsDirectorPanel operations={operations} lobbyMode={lobbyMode} />
+        <OperationsDirectorPanel operations={operations} lobbyMode={lobbyMode} validationSummary={validatorSummary} />
         <AccountProgressPanel profile={{ ...accountProfile, progression: accountProgression, progress }} lobbyMode={lobbyMode} />
         <EntropyMissionPanel
           lobbyMode={lobbyMode}
@@ -1433,7 +1476,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           <div className="stable-chip-row">
             <span>Gravity flight</span>
             <span>{steamUser?.steamid ? 'Steam-linked shell' : 'Guest shell sync'}</span>
-            <span>Q12D state-space</span>
+            <span>{`${HYPERSPACE_SIGNATURE_PREFIX} state-space`}</span>
             <span>{universe?.privacy?.privacyTier || 'guest-public'}</span>
             <span>{lobbyMode === 'hub' ? 'Hub star sync' : '9-planet private system'}</span>
             <span>Epoch {(privateWorldAsset?.epochWindow ?? epochSummary.unix)}</span>
@@ -1577,9 +1620,9 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
         </div> : null}
 
         <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
-          <p className="eyebrow">Q12D / Physics telemetry</p>
+          <p className="eyebrow">{`${HYPERSPACE_SIGNATURE_PREFIX} / Physics telemetry`}</p>
           <h3>{telemetry.quantum.signature}</h3>
-          <p className="muted">Mathematical flight now resolves a live singularity window using RK4 integration, inverse-square gravity, event-horizon stress, entropic containment, and a 12-dimensional state-space that reacts to your motion and the nearest anchor.</p>
+          <p className="muted">{`Mathematical flight now resolves a live singularity window using RK4 integration, inverse-square gravity, event-horizon stress, entropic containment, and a ${HYPERSPACE_DIMENSION_COUNT}-dimensional state-space that reacts to your motion and the nearest anchor.`}</p>
           <div className="focus-meta">
             <span>Speed {telemetry.speed}</span>
             <span>Gravity {telemetry.gravity}</span>
