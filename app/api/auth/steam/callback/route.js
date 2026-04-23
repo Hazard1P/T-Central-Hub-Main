@@ -1,6 +1,14 @@
+import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { encryptJson } from '@/lib/security';
 import { getSteamAuthBaseUrl, shouldUseSecureSteamCookie } from '@/lib/steamAuthUrl';
+
+function normalizeRedirectPath(value) {
+  const raw = String(value || '').trim();
+  if (!raw.startsWith('/')) return '/';
+  if (raw.startsWith('//')) return '/';
+  return raw;
+}
 
 export async function GET(request) {
   let baseUrl;
@@ -30,11 +38,23 @@ export async function GET(request) {
   const verifyText = await verifyRes.text();
   const valid = verifyRes.ok && verifyText.includes('is_valid:true');
 
-  const redirectUrl = new URL(baseUrl);
+  const cookieStore = cookies();
+  const returnPath = normalizeRedirectPath(cookieStore.get('steam_auth_return_to')?.value);
+  const redirectUrl = new URL(returnPath, baseUrl);
 
   if (!valid) {
     redirectUrl.searchParams.set('steam', 'invalid');
-    return NextResponse.redirect(redirectUrl);
+    const response = NextResponse.redirect(redirectUrl);
+    response.cookies.set({
+      name: 'steam_auth_return_to',
+      value: '',
+      httpOnly: true,
+      secure: shouldUseSecureSteamCookie(baseUrl),
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 0,
+    });
+    return response;
   }
 
   const claimedId = params.get('openid.claimed_id') || '';
@@ -43,7 +63,17 @@ export async function GET(request) {
 
   if (!steamid) {
     redirectUrl.searchParams.set('steam', 'missing');
-    return NextResponse.redirect(redirectUrl);
+    const response = NextResponse.redirect(redirectUrl);
+    response.cookies.set({
+      name: 'steam_auth_return_to',
+      value: '',
+      httpOnly: true,
+      secure: shouldUseSecureSteamCookie(baseUrl),
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 0,
+    });
+    return response;
   }
 
   let user = { steamid };
@@ -72,15 +102,26 @@ export async function GET(request) {
     }
   }
 
+  redirectUrl.searchParams.set('steam', 'linked');
   const response = NextResponse.redirect(redirectUrl);
+  const secure = shouldUseSecureSteamCookie(baseUrl);
   response.cookies.set({
     name: 'steam_session',
     value: encryptJson(user),
     httpOnly: true,
-    secure: shouldUseSecureSteamCookie(baseUrl),
+    secure,
     sameSite: 'lax',
     path: '/',
     maxAge: 60 * 60 * 24 * 7,
+  });
+  response.cookies.set({
+    name: 'steam_auth_return_to',
+    value: '',
+    httpOnly: true,
+    secure,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 0,
   });
   return response;
 }
