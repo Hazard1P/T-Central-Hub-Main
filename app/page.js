@@ -76,6 +76,16 @@ export default function HomePage() {
             </p>
             <a className="button secondary" href="/donate">Open donation page</a>
           </article>
+          <article className="content-card entry-panel polished minimal-route-card">
+            <span className="entry-panel-kicker">External Route</span>
+            <strong>Matrixcoinexchange</strong>
+            <p>
+              Open the Matrixcoinexchange hotlink directly from the home launch surface, alongside donation and server route entries.
+            </p>
+            <a className="button secondary" href="https://matrixcoinexchange.com" target="_blank" rel="noreferrer">
+              Open Matrixcoinexchange
+            </a>
+          </article>
         </div>
       </section>
     </main>
