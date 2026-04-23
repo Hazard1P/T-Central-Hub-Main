@@ -2,13 +2,9 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { decryptJson, encryptJson, signValue } from '@/lib/security';
 import { shouldUseSecureCookies } from '@/lib/runtimeConfig';
-import {
-  persistDonationLedger,
-  readDonationLedger,
-  summarizeDonationLedger,
-  upsertDonationRecord,
-} from '@/lib/donationLedger';
-import { capturePayPalOrder, getPayPalCurrency, isPayPalConfigured } from '@/lib/paypal';
+import { persistDonationLedger, readDonationLedger, summarizeDonationLedger, upsertDonationRecord } from '@/lib/donationLedger';
+import { confirmDonationCapture, getDonationsBySteamId } from '@/lib/server/donationStore';
+import { capturePayPalOrder, isPayPalConfigured } from '@/lib/paypal';
 
 function readSteamSession() {
   const cookieStore = cookies();
@@ -28,6 +24,15 @@ function normalizeOrderId(value) {
   return orderId;
 }
 
+function normalizeIdempotencyKey(value) {
+  const key = String(value || '').trim();
+  if (!key) return '';
+  if (!/^[a-zA-Z0-9:_-]{8,128}$/.test(key)) {
+    throw new Error('Invalid idempotency key format');
+  }
+  return key;
+}
+
 export async function POST(request) {
   if (!isPayPalConfigured()) {
     return NextResponse.json({ ok: false, error: 'PayPal is not configured' }, { status: 503 });
@@ -45,74 +50,58 @@ export async function POST(request) {
 
   try {
     const orderId = normalizeOrderId(body.orderId);
-    const captureOrder = await capturePayPalOrder(orderId);
+    const idempotencyKey = normalizeIdempotencyKey(body.idempotencyKey || request.headers.get('x-idempotency-key'));
 
+    const captureOrder = await capturePayPalOrder(orderId);
     const unit = captureOrder?.purchase_units?.[0];
     const capture = unit?.payments?.captures?.[0];
-    const amountValue = Number(capture?.amount?.value || 0);
-    const amount = Number.isFinite(amountValue) && amountValue > 0 ? amountValue.toFixed(2) : '0.00';
-    const currency = String(capture?.amount?.currency_code || getPayPalCurrency()).toUpperCase();
 
-    const current = readDonationLedger();
-    const priorRecord = current.find((entry) => entry?.orderId === orderId && entry?.steamid === steamUser.steamid);
-
-    const finalStatus = capture?.status === 'COMPLETED' ? 'CONFIRMED' : captureOrder?.status || 'CAPTURED';
-    const nextLedger = upsertDonationRecord(current, {
-      ...priorRecord,
+    const { record, idempotentReplay } = await confirmDonationCapture({
       orderId,
-      steamid: steamUser.steamid,
-      personaname: steamUser.personaname || null,
-      amount,
-      currency,
-      anchorSlug: priorRecord?.anchorSlug || 'deep_blackhole',
-      solarSystemKey: priorRecord?.solarSystemKey || 'solar_system',
-      status: finalStatus,
-      captureId: capture?.id || null,
-      capturedAt: capture?.create_time || new Date().toISOString(),
-      paypalStatus: captureOrder?.status || null,
-      verification: {
-        provider: 'paypal',
-        identifierType: 'capture',
-        identifier: capture?.id || orderId,
-        state: finalStatus,
-        verifiedAt: capture?.create_time || new Date().toISOString(),
-        source: 'capture_order',
-      },
+      steamUser,
+      capture,
+      captureOrder,
+      idempotencyKey: idempotencyKey || `capture:${orderId}`,
     });
 
-    const summary = summarizeDonationLedger(nextLedger.filter((entry) => entry?.steamid === steamUser.steamid));
+    const { summary } = await getDonationsBySteamId(steamUser.steamid);
+
+    const nextLedger = upsertDonationRecord(readDonationLedger(), record);
+    const cacheSummary = summarizeDonationLedger(nextLedger.filter((entry) => entry?.steamid === steamUser.steamid));
+
     const response = NextResponse.json({
       ok: true,
       orderId,
       capture: {
-        id: capture?.id || null,
-        status: capture?.status || captureOrder?.status || null,
-        amount,
-        currency,
+        id: record.captureId,
+        status: record.captureStatus || record.paypalStatus || record.status,
+        amount: record.captureAmount || record.amount,
+        currency: record.captureCurrency || record.currency,
       },
-      ledger: summary,
       summary,
-      supportLinked: finalStatus === 'CONFIRMED',
+      cacheSummary,
+      supportLinked: record.status === 'CONFIRMED',
+      idempotentReplay,
     });
 
-    if (finalStatus === 'CONFIRMED') {
+    if (record.status === 'CONFIRMED') {
       const supportPayload = {
         provider: 'paypal',
         planId: null,
-        identifier: capture?.id || orderId,
-        identifierType: capture?.id ? 'capture' : 'order',
+        identifier: record.captureId || orderId,
+        identifierType: record.captureId ? 'capture' : 'order',
         steamid: steamUser.steamid,
         personaname: steamUser.personaname || null,
         linkedAt: new Date().toISOString(),
         verification: {
           provider: 'paypal',
-          identifierType: capture?.id ? 'capture' : 'order',
-          identifier: capture?.id || orderId,
+          identifierType: record.captureId ? 'capture' : 'order',
+          identifier: record.captureId || orderId,
           state: 'COMPLETED',
-          verifiedAt: capture?.create_time || new Date().toISOString(),
+          verifiedAt: record.capturedAt || new Date().toISOString(),
           source: 'capture_order',
         },
-        reference: signValue(`paypal:${capture?.id || orderId}:${steamUser.steamid}`),
+        reference: signValue(`paypal:${record.captureId || orderId}:${steamUser.steamid}`),
       };
 
       response.cookies.set({

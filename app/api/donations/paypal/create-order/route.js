@@ -1,18 +1,9 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { decryptJson } from '@/lib/security';
-import {
-  createDonationIntent,
-  persistDonationLedger,
-  readDonationLedger,
-  summarizeDonationLedger,
-  upsertDonationRecord,
-} from '@/lib/donationLedger';
-import {
-  createPayPalOrder,
-  getPayPalCurrency,
-  isPayPalConfigured,
-} from '@/lib/paypal';
+import { persistDonationLedger, readDonationLedger, summarizeDonationLedger, upsertDonationRecord } from '@/lib/donationLedger';
+import { createDonationIntentRow } from '@/lib/server/donationStore';
+import { createPayPalOrder, getPayPalCurrency, isPayPalConfigured } from '@/lib/paypal';
 
 function normalizeDonationPayload(body = {}) {
   const rawAmount = String(body.amount ?? '').trim();
@@ -89,7 +80,7 @@ export async function POST(request) {
       throw new Error('PayPal order ID missing from response');
     }
 
-    const intent = createDonationIntent({
+    const intent = await createDonationIntentRow({
       steamUser,
       amount,
       currency,
