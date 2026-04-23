@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { applyAuthoritativeAction, pruneAuthoritativeRooms } from '@/lib/authoritativeMultiplayerStore';
 import { applyDurableAction, hasDurableMultiplayer } from '@/lib/durableMultiplayerStore';
 import { SESSION_MODES, buildRingAdjustmentOutputs, getSessionModeSnapshot, normalizeSessionMode, transitionSessionMode } from '@/lib/sessionModeEngine';
+import { trackServerEvent } from '@/lib/server/vercelTelemetry';
 
 
 function resolveRequestedMode(body = {}, fallback = SESSION_MODES.MULTI_PLAYER) {
@@ -47,7 +48,9 @@ export async function POST(request) {
       action: body?.action,
       captureSimulationEvent: body?.captureSimulationEvent !== false,
     });
-    return NextResponse.json(withModeState(result, { roomName, mode: requestedMode, source: 'action' }), { status: result.status || 200 });
+    const payload = withModeState(result, { roomName, mode: requestedMode, source: 'action' });
+    await trackServerEvent('api_multiplayer_action', { durable: true, status: result.status || 200 });
+    return NextResponse.json(payload, { status: result.status || 200 });
   }
 
   pruneAuthoritativeRooms();
@@ -57,5 +60,7 @@ export async function POST(request) {
     token: body?.token,
     action: body?.action,
   });
-  return NextResponse.json(withModeState({ ...result, durable: false }, { roomName, mode: requestedMode, source: 'action' }), { status: result.status || 200 });
+  const payload = withModeState({ ...result, durable: false }, { roomName, mode: requestedMode, source: 'action' });
+  await trackServerEvent('api_multiplayer_action', { durable: false, status: result.status || 200 });
+  return NextResponse.json(payload, { status: result.status || 200 });
 }
