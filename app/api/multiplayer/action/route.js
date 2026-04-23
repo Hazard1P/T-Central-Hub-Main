@@ -12,6 +12,7 @@ export async function POST(request) {
       id: body?.id,
       token: body?.token,
       action: body?.action,
+      captureSimulationEvent: body?.captureSimulationEvent !== false,
     });
     return NextResponse.json(result, { status: result.status || 200 });
   }
