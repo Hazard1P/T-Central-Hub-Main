@@ -1361,7 +1361,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           {activeNode?.key === 'entropic_node' ? <p className="stable-flight-note">Mine this seam only after switching to the multiplayer hub.</p> : null}
           {activeNode?.key === 'matrixcoinexchange' ? <p className="stable-flight-note">Return here with unresolved entropy to settle the cargo into {ENTROPIC_CURRENCY.shortLabel}.</p> : null}
           {activeNode?.key === 'ss_dock' ? <p className="stable-flight-note">Dock here in proximity to the Synaptics.Systems Dyson Sphere before and after long-range sorties.</p> : null}
-          {activeNode?.key === 'csis' ? <p className="stable-flight-note">CSIS ring I runs network linkage while ring II spins as a foundation firewall inside the game space. This sphere is sealed to players, does not accept build-ins or request spam, and remains a system-owned defense anchor. Linked anchors: {graph.csisState?.linkedNodeKeys?.length || 0} · quarantined relays: {graph.csisState?.quarantinedNodeKeys?.length || 0}.</p> : null}
+          {activeNode?.key === 'csis' ? <p className="stable-flight-note">CSIS ring I drives conscious intelligence and cyberfield production, ring II handles ingress/egress routes, and ring III performs encryption/firewall monitoring over rings I + II + III. Spin integers 1/2, 1/4, and 3/4 stay active at an astrological quantum tier with bidirectional API links. This sphere is sealed to players and remains a system-owned defense anchor. Linked anchors: {graph.csisState?.linkedNodeKeys?.length || 0} · quarantined relays: {graph.csisState?.quarantinedNodeKeys?.length || 0}.</p> : null}
         </div>
 
         {privateWorldAsset ? (
@@ -1428,8 +1428,8 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
 
         <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
           <p className="eyebrow">CSIS lattice / firewall state</p>
-          <h3>{(graph.csisState?.ringOneLabel || 'Network linkage')} + {(graph.csisState?.ringTwoLabel || 'Foundation firewall')}</h3>
-          <p className="muted">The first CSIS ring actively links foundation-built anchors while the second ring sweeps the local lattice and quarantines non-foundation relay objects inside the game space. The sphere is locked as a game-defense system and is not a player tool, request surface, or build target.</p>
+          <h3>{(graph.csisState?.ringOneLabel || 'Conscious intelligence / cyberfield production')} + {(graph.csisState?.ringTwoLabel || 'Ingress / egress')} + {(graph.csisState?.ringThreeLabel || 'Encryption / firewall monitoring')}</h3>
+          <p className="muted">The CSIS tri-ring lattice maps to ring I conscious intelligence + cyberfield production, ring II ingress/egress flow, and ring III encryption/firewall monitoring across all three rings. Spin integers {graph.csisState?.spinProfile?.join(' · ') || '1/2 · 1/4 · 3/4'} run in an astrological quantum tier with bidirectional API exchange while non-foundation relays stay quarantined inside game space.</p>
           <div className="focus-meta">
             <span>Linked anchors {graph.csisState?.linkedNodeKeys?.length || 0}</span>
             <span>Quarantined relays {graph.csisState?.quarantinedNodeKeys?.length || 0}</span>
@@ -1437,7 +1437,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           <div className="stable-chip-row alt">
             <span>Pulse {Math.round((graph.csisState?.linkagePulse || 0) * 100)}%</span>
             <span>Sweep {Math.round((((graph.csisState?.firewallSweep || 0) / (Math.PI * 2)) % 1) * 100)}%</span>
-            <span>Foundation mesh live</span>
+            <span>API flow {graph.csisState?.apiFlow || 'bidirectional'}</span>
             <span>Player access {graph.csisState?.playerAccess || 'sealed'}</span>
           </div>
         </div>
