@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { buildOperationsState } from '@/lib/missionFramework';
 import { reducePresenceSnapshots, resolveMultiplayerIdentity } from '@/lib/multiplayerSyncEngine';
-import { subscribeToMultiplayerRoom } from '@/lib/multiplayerRealtimeClient';
+import { useMultiplayerSession } from '@/components/MultiplayerSessionProvider';
 
 const ROOM_NAME = process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main';
 const MAX_SLOTS = Number(process.env.NEXT_PUBLIC_MULTIPLAYER_MAX_SLOTS || 100);
@@ -32,12 +32,18 @@ function syncLocalPresence(handle) {
 }
 
 export default function MultiplayerHud({ lobbyMode = 'hub', steamUser: externalSteamUser = null }) {
+  const { session, authoritativeState, serverStatus } = useMultiplayerSession();
   const [steamUser, setSteamUser] = useState(externalSteamUser || null);
   const [presenceUsers, setPresenceUsers] = useState([]);
-  const [connected, setConnected] = useState(false);
-  const [joined, setJoined] = useState(false);
-  const [serverMode, setServerMode] = useState('local');
-  const [authoritativeSummary, setAuthoritativeSummary] = useState({ tick: 0, combatHeat: 0, contestedNodes: [], durable: false });
+  const connected = Boolean(serverStatus?.connected);
+  const joined = Boolean(session?.token);
+  const serverMode = authoritativeState?.durable ? 'durable' : authoritativeState?.authoritative ? 'authoritative' : connected ? 'broadcast' : 'local';
+  const authoritativeSummary = {
+    tick: serverStatus?.tick || authoritativeState?.tick || 0,
+    combatHeat: authoritativeState?.world?.combatHeat || 0,
+    contestedNodes: authoritativeState?.world?.contestedNodes || [],
+    durable: Boolean(authoritativeState?.durable),
+  };
 
   const slotCount = presenceUsers.length;
   const slotsLeft = Math.max(0, MAX_SLOTS - slotCount);
@@ -78,96 +84,21 @@ export default function MultiplayerHud({ lobbyMode = 'hub', steamUser: externalS
 
   useEffect(() => {
     if (lobbyMode !== 'hub') {
-      setConnected(false);
-      setJoined(false);
       setPresenceUsers([]);
-      setServerMode('private');
-      setAuthoritativeSummary({ tick: 0, combatHeat: 0, contestedNodes: [], durable: false });
       return;
     }
 
-    const identity = resolveMultiplayerIdentity(steamUser);
     const stopLocalSync = syncLocalPresence((snapshot) => {
       setPresenceUsers((current) => reducePresenceSnapshots([snapshot, ...current], MAX_SLOTS));
     });
 
-    let cancelled = false;
-    let authorityInterval = null;
-    let stopRealtime = () => {};
-
-    const connect = async () => {
-      try {
-        const response = await fetch('/api/multiplayer/connect', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identity, steamUser, roomName: ROOM_NAME }),
-        });
-        const data = await response.json().catch(() => null);
-        if (cancelled || !response.ok || !data?.ok) throw new Error('authority-unavailable');
-
-        const session = { id: data.player?.id, token: data.token, room: data.room };
-        setConnected(true);
-        setJoined(true);
-        setServerMode(data?.server?.durable ? 'durable' : 'authoritative');
-
-        const tick = async () => {
-          const stateResponse = await fetch('/api/multiplayer/state', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              roomName: session.room,
-              id: session.id,
-              token: session.token,
-              snapshot: {
-                position: [0, 0, 0],
-                velocity: [0, 0, 0],
-                direction: [0, 0, -1],
-                nearest: 'hub_relay',
-                speed: 0,
-                quantumSignature: 'HUD',
-              },
-            }),
-          }).catch(() => null);
-          const state = await stateResponse?.json?.().catch?.(() => null);
-          if (cancelled || !state?.state) return;
-          setPresenceUsers(state.state.players || []);
-          setAuthoritativeSummary({
-            tick: state.tick || 0,
-            combatHeat: state.state.world?.combatHeat || 0,
-            contestedNodes: state.state.world?.contestedNodes || [],
-            durable: Boolean(state.state.durable || data?.server?.durable),
-          });
-        };
-
-        await tick();
-        stopRealtime = subscribeToMultiplayerRoom({ roomName: session.room, onSignal: () => { void tick(); } });
-        authorityInterval = window.setInterval(tick, data?.server?.durable ? 1600 : 900);
-      } catch {
-        if (cancelled) return;
-        setConnected(true);
-        setJoined(true);
-        setServerMode('broadcast');
-        setPresenceUsers((current) => reducePresenceSnapshots([{
-          id: identity.id,
-          displayName: identity.displayName,
-          avatar: steamUser?.avatar || null,
-          identityKind: identity.kind,
-          updatedAt: new Date().toISOString(),
-        }, ...current], MAX_SLOTS));
-      }
-    };
-
-    connect();
+    const players = authoritativeState?.players || [];
+    if (players.length) setPresenceUsers(players.slice(0, MAX_SLOTS));
 
     return () => {
-      cancelled = true;
-      if (authorityInterval) window.clearInterval(authorityInterval);
-      stopRealtime();
       stopLocalSync();
-      setConnected(false);
-      setJoined(false);
     };
-  }, [steamUser, lobbyMode, externalSteamUser]);
+  }, [lobbyMode, authoritativeState?.players]);
 
   return (
     <div className="multiplayer-hud">
