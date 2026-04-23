@@ -1,39 +1,35 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { decryptJson } from '@/lib/security';
 import { createEpochAnchor, summarizeEpochRelativity } from '@/lib/epochDysonEngine';
 import { createPrivacySummary } from '@/lib/universePrivacyEngine';
 import { summarizePrayerSeeds } from '@/lib/prayerSeedEngine';
 import { readDonationLedger, summarizeDonationLedger } from '@/lib/donationLedger';
+import { resolveGameAuthContext } from '@/lib/auth/resolveGameAuthContext';
 
 function resolveLobbyMode(value) {
   return value === 'private' ? 'private' : 'hub';
 }
 
-function readSteamUser(cookieStore) {
-  const rawSteamSession = cookieStore.get('steam_session')?.value;
-
-  try {
-    const user = rawSteamSession ? decryptJson(rawSteamSession) : null;
-    return user && typeof user === 'object' ? user : null;
-  } catch {
-    return null;
-  }
-}
-
 export async function GET(request) {
   const cookieStore = cookies();
-  const steamUser = readSteamUser(cookieStore);
+  const authContext = resolveGameAuthContext(cookieStore);
 
   const { searchParams } = new URL(request.url);
   const lobbyMode = resolveLobbyMode(searchParams.get('lobbyMode'));
 
-  const privacy = createPrivacySummary({ steamUser, lobbyMode });
+  const privacy = createPrivacySummary({ steamUser: authContext.steamUser, lobbyMode });
   const epochAnchor = createEpochAnchor();
 
   return NextResponse.json({
     ok: true,
-    authenticated: Boolean(steamUser?.steamid),
+    authenticated: authContext.authenticated,
+    authContext: {
+      authenticated: authContext.authenticated,
+      provider: authContext.provider,
+      accountId: authContext.accountId,
+      displayName: authContext.displayName,
+      identityKind: authContext.identityKind,
+    },
     lobbyMode,
     privacy,
     epoch: summarizeEpochRelativity(epochAnchor),
@@ -42,3 +38,4 @@ export async function GET(request) {
     generatedAt: new Date().toISOString(),
   });
 }
+export const dynamic = 'force-dynamic';

@@ -1,20 +1,19 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { decryptJson } from '@/lib/security';
+import { resolveGameAuthContext } from '@/lib/auth/resolveGameAuthContext';
 
 export async function GET() {
-  const cookieStore = cookies();
-  const raw = cookieStore.get('google_session')?.value;
-
-  let user = null;
-  try {
-    user = raw ? decryptJson(raw) : null;
-  } catch {
-    user = null;
-  }
+  const authContext = resolveGameAuthContext(cookies());
 
   return NextResponse.json({
-    authenticated: Boolean(user),
-    user: user || null,
+    authenticated: authContext.provider === 'google',
+    authContext: {
+      authenticated: authContext.authenticated,
+      provider: authContext.provider,
+      accountId: authContext.accountId,
+      displayName: authContext.displayName,
+      identityKind: authContext.identityKind,
+    },
+    user: authContext.googleUser || null,
   });
 }

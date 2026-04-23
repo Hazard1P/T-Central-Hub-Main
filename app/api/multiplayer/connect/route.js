@@ -1,22 +1,11 @@
-export const dynamic = 'force-dynamic';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { joinAuthoritativeRoom, pruneAuthoritativeRooms } from '@/lib/authoritativeMultiplayerStore';
 import { hasDurableMultiplayer, joinDurableRoom } from '@/lib/durableMultiplayerStore';
-import { decryptJson } from '@/lib/security';
+import { resolveGameAuthContext } from '@/lib/auth/resolveGameAuthContext';
 
 const ROOM_NAME_PATTERN = /^[a-zA-Z0-9_-]{1,64}$/;
 const GUEST_ID_PATTERN = /^[a-zA-Z0-9_-]{3,64}$/;
-
-function readSteamSession() {
-  const cookieStore = cookies();
-  const rawSteam = cookieStore.get('steam_session')?.value;
-  try {
-    return rawSteam ? decryptJson(rawSteam) : null;
-  } catch {
-    return null;
-  }
-}
 
 function sanitizeRoomName(value) {
   const roomName = String(value ?? '').trim();
@@ -33,14 +22,24 @@ function sanitizeDisplayName(value, fallback = 'Pilot') {
   return normalized || fallback;
 }
 
-function resolveIdentity(body = {}, steamUser = null) {
-  if (steamUser?.steamid) {
+function toApiAuthContext(authContext) {
+  return {
+    authenticated: authContext.authenticated,
+    provider: authContext.provider,
+    accountId: authContext.accountId,
+    displayName: authContext.displayName,
+    identityKind: authContext.identityKind,
+  };
+}
+
+function resolveIdentity(body = {}, authContext) {
+  if (authContext?.authenticated && authContext?.accountId) {
     return {
-      id: String(steamUser.steamid),
-      displayName: sanitizeDisplayName(steamUser.personaname, 'Pilot'),
-      identityKind: 'steam',
+      id: String(authContext.accountId),
+      displayName: sanitizeDisplayName(authContext.displayName, 'Pilot'),
+      identityKind: authContext.identityKind || authContext.provider || 'member',
       authenticated: true,
-      steamUser,
+      steamUser: authContext.steamUser,
     };
   }
 
@@ -71,8 +70,9 @@ export async function POST(request) {
     return NextResponse.json({ ok: false, error: 'Invalid roomName' }, { status: 400 });
   }
 
-  const steamUser = readSteamSession();
-  const identity = resolveIdentity(body, steamUser);
+  const authContext = resolveGameAuthContext(cookies());
+  const identity = resolveIdentity(body, authContext);
+  const responseAuthContext = toApiAuthContext(authContext);
 
   if (hasDurableMultiplayer()) {
     const result = await joinDurableRoom({
@@ -80,7 +80,7 @@ export async function POST(request) {
       identity,
       steamUser: identity.steamUser,
     });
-    return NextResponse.json(result, { status: result.status || 200 });
+    return NextResponse.json({ ...result, authContext: responseAuthContext }, { status: result.status || 200 });
   }
 
   pruneAuthoritativeRooms();
@@ -89,5 +89,5 @@ export async function POST(request) {
     identity,
     steamUser: identity.steamUser,
   });
-  return NextResponse.json({ ...result, durable: false });
+  return NextResponse.json({ ...result, durable: false, authContext: responseAuthContext });
 }
