@@ -19,6 +19,7 @@ import { resolveStarSingularity } from '@/lib/singularityEngine';
 import { buildDynamicEngineState } from '@/lib/dynamicEngine';
 import OperationsDirectorPanel from '@/components/OperationsDirectorPanel';
 import EntropyMissionPanel from '@/components/EntropyMissionPanel';
+import { useMultiplayerSession } from '@/components/MultiplayerSessionProvider';
 import { subscribeToMultiplayerRoom } from '@/lib/multiplayerRealtimeClient';
 import { resolveMultiplayerIdentity } from '@/lib/multiplayerSyncEngine';
 import { buildAccountSnapshot, defaultProgressState, deriveProgression, getAccountStorageKey, normalizeProgressState } from '@/lib/accountProgression';
@@ -931,9 +932,15 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   const identity = useMemo(() => resolveMultiplayerIdentity(steamUser), [steamUser]);
   const [progress, setProgress] = useState(defaultProgressState());
   const [accountProfile, setAccountProfile] = useState(() => buildAccountSnapshot({ identity: { id: 'boot', displayName: 'Boot Pilot', kind: 'guest', authenticated: false }, progress: defaultProgressState() }));
-  const [serverSession, setServerSession] = useState(null);
-  const [authoritativeState, setAuthoritativeState] = useState({ authoritative: false, players: [], projectiles: [], world: { contestedNodes: [], combatHeat: 0, anomalyPhase: 0 }, playerCount: 0 });
-  const [serverStatus, setServerStatus] = useState({ connected: false, label: 'Offline', tick: 0 });
+  const {
+    session: serverSession,
+    authoritativeState,
+    serverStatus,
+    setSession: setServerSession,
+    setAuthoritativeState,
+    setServerStatus,
+    resetSessionState,
+  } = useMultiplayerSession();
 
   const privateWorldAsset = useMemo(() => createPrivateWorldAsset({ steamUser, lobbyMode, identity }), [steamUser, lobbyMode, identity]);
   const graph = useMemo(() => buildUniverseGraph(Date.now(), { lobbyMode, roomName: process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main', extraNodes: privateWorldAsset?.nodes || [], extraRouteLinks: privateWorldAsset?.routeLinks || [] }), [privateWorldAsset, lobbyMode]);
@@ -1050,7 +1057,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
 
     connect();
     return () => { active = false; };
-  }, [lobbyMode, steamUser, serverSession]);
+  }, [lobbyMode, steamUser, serverSession, setAuthoritativeState, setServerSession, setServerStatus]);
 
   useEffect(() => {
     if (lobbyMode !== 'hub' || !serverSession?.token) return;
@@ -1093,7 +1100,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       stopRealtime();
       window.clearInterval(id);
     };
-  }, [lobbyMode, serverSession, telemetry, serverStatus.label]);
+  }, [lobbyMode, serverSession, telemetry, serverStatus.label, setAuthoritativeState, setServerSession, setServerStatus]);
 
 
   useEffect(() => {
@@ -1106,6 +1113,10 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       window.removeEventListener('beforeunload', onUnload);
     };
   }, [lobbyMode, serverSession]);
+
+  useEffect(() => () => {
+    resetSessionState();
+  }, [resetSessionState]);
 
   const handlePrayerSeed = async () => {
     const body = window.prompt('Plant a private Prayer Seed into the Solar System vault:', activeNode?.label ? `${activeNode.label} / ` : '');
