@@ -3,6 +3,7 @@ import { SteamSessionProvider } from '@/components/SteamSessionProvider';
 import ConsentGate from '@/components/ConsentGate';
 import GlobalFooter from '@/components/GlobalFooter';
 import { getSiteUrl } from '@/lib/runtimeConfig';
+import { Analytics } from '@vercel/analytics/next';
 
 const siteUrl = getSiteUrl();
 
@@ -31,6 +32,7 @@ export default function RootLayout({ children }) {
           {children}
           <GlobalFooter />
         </SteamSessionProvider>
+        <Analytics />
       </body>
     </html>
   );
