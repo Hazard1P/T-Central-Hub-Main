@@ -7,6 +7,7 @@ import {
   getPayPalOrderDetails,
   getPayPalCaptureDetails,
 } from '@/lib/paypal';
+import { findPayPalWebhookRecord } from '@/lib/paypalWebhookStore';
 
 const ALLOWED_PROVIDER = 'paypal';
 const VERIFIABLE_IDENTIFIER_TYPES = new Set(['subscription', 'order', 'capture']);
@@ -42,6 +43,11 @@ function readSupportVerifications() {
 }
 
 function findPriorVerification({ steamid, identifier, identifierType }) {
+  const durableRecord = findPayPalWebhookRecord({ identifierType, identifier });
+  if (durableRecord?.steamid && String(durableRecord.steamid) === String(steamid)) {
+    return durableRecord;
+  }
+
   const ledger = readSupportVerifications();
   const verifiedStatuses = new Set(['VERIFIED', 'CONFIRMED', 'COMPLETED']);
 
