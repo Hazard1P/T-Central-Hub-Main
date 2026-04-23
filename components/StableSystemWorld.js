@@ -23,7 +23,6 @@ import { subscribeToMultiplayerRoom } from '@/lib/multiplayerRealtimeClient';
 import { resolveMultiplayerIdentity } from '@/lib/multiplayerSyncEngine';
 import { buildAccountSnapshot, defaultProgressState, deriveProgression, getAccountStorageKey, normalizeProgressState } from '@/lib/accountProgression';
 import AccountProgressPanel from '@/components/AccountProgressPanel';
-import ExpandableDock from '@/components/ExpandableDock';
 
 function useDeviceTier() {
   const [tier, setTier] = useState({ isMobile: false, dpr: [1, 1.6], stars: 7600, sparkles: 220, meteors: 18 });
@@ -338,14 +337,22 @@ function DysonSphereStructure({ node }) {
   const segmentRef = useRef(null);
   const ringOneRef = useRef(null);
   const ringTwoRef = useRef(null);
+  const ringThreeRef = useRef(null);
   const profile = node.dysonProfile || 'default';
   const csisState = node.csisState || {};
+  const dysonState = node.dysonState || {};
+  const isSynaptics = profile === 'synaptics' || node.key === 'ss';
 
   useFrame(({ clock }, delta) => {
-    if (coreRef.current) coreRef.current.rotation.y += delta * 0.18;
-    if (segmentRef.current) segmentRef.current.rotation.y += delta * (profile === 'ss' ? 0.36 : 0.24);
-    if (ringOneRef.current) ringOneRef.current.rotation.z += delta * (profile === 'csis' ? 0.68 : 0.44);
-    if (ringTwoRef.current) ringTwoRef.current.rotation.x -= delta * (profile === 'csis' ? 1.12 : 0.28);
+    if (coreRef.current) coreRef.current.rotation.y += delta * (isSynaptics ? 0.24 : 0.18);
+    if (segmentRef.current) segmentRef.current.rotation.y += delta * (profile === 'synaptics' ? 0.42 : profile === 'ss' ? 0.36 : 0.24);
+    if (ringOneRef.current) ringOneRef.current.rotation.z += delta * (profile === 'csis' ? 0.68 : isSynaptics ? 0.56 : 0.44);
+    if (ringTwoRef.current) ringTwoRef.current.rotation.x -= delta * (profile === 'csis' ? 1.12 : isSynaptics ? 0.33 : 0.28);
+    if (ringThreeRef.current) {
+      ringThreeRef.current.rotation.y += delta * (isSynaptics ? 0.92 : 0.21);
+      const pulse = 1 + Math.sin(clock.elapsedTime * 2.8 + (dysonState.latticePhase || 0)) * 0.035;
+      ringThreeRef.current.scale.setScalar(pulse);
+    }
     if (profile === 'csis' && ringTwoRef.current) {
       ringTwoRef.current.scale.setScalar(1 + Math.sin(clock.elapsedTime * 2.2) * 0.04);
     }
@@ -353,30 +360,54 @@ function DysonSphereStructure({ node }) {
 
   return (
     <group>
+      {isSynaptics ? (
+        <mesh scale={1.32}>
+          <sphereGeometry args={[1, 24, 24]} />
+          <meshBasicMaterial color="#ffdca3" transparent opacity={0.08} depthWrite={false} />
+        </mesh>
+      ) : null}
       <mesh ref={coreRef}>
-        <icosahedronGeometry args={[0.94, 1]} />
-        <meshStandardMaterial color={node.color || '#9fdcff'} emissive={node.color || '#9fdcff'} emissiveIntensity={0.42} metalness={0.8} roughness={0.18} />
+        <icosahedronGeometry args={[isSynaptics ? 1.02 : 0.94, 1]} />
+        <meshStandardMaterial color={isSynaptics ? '#fff0c4' : node.color || '#9fdcff'} emissive={isSynaptics ? '#ffbe63' : node.color || '#9fdcff'} emissiveIntensity={isSynaptics ? 0.62 : 0.42} metalness={0.8} roughness={0.18} />
       </mesh>
       <group ref={segmentRef}>
-        {Array.from({ length: 8 }, (_, index) => {
-          const angle = (Math.PI * 2 * index) / 8;
-          const radius = profile === 'ss' ? 1.55 : 1.42;
+        {Array.from({ length: isSynaptics ? 12 : 8 }, (_, index) => {
+          const total = isSynaptics ? 12 : 8;
+          const angle = (Math.PI * 2 * index) / total;
+          const radius = isSynaptics ? 1.74 : profile === 'ss' ? 1.55 : 1.42;
           return (
             <mesh key={`segment-${index}`} position={[Math.cos(angle) * radius, Math.sin(angle * 1.4) * 0.18, Math.sin(angle) * radius * 0.72]} rotation={[0.12, angle, 0]}>
-              <boxGeometry args={[0.5, 0.15, 0.24]} />
-              <meshStandardMaterial color={profile === 'ss' ? '#ffdf91' : '#9feeff'} metalness={0.86} roughness={0.16} emissive={profile === 'ss' ? '#ffb95a' : '#7fe7ff'} emissiveIntensity={0.22} />
+              <boxGeometry args={[isSynaptics ? 0.62 : 0.5, 0.15, isSynaptics ? 0.28 : 0.24]} />
+              <meshStandardMaterial color={isSynaptics ? '#ffe3a1' : profile === 'ss' ? '#ffdf91' : '#9feeff'} metalness={0.86} roughness={0.16} emissive={isSynaptics ? '#ffc461' : profile === 'ss' ? '#ffb95a' : '#7fe7ff'} emissiveIntensity={0.24} />
             </mesh>
           );
         })}
       </group>
       <mesh ref={ringOneRef} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[profile === 'ss' ? 1.88 : 1.78, profile === 'csis' ? 0.08 : 0.11, 20, 140]} />
-        <meshStandardMaterial color={profile === 'csis' ? '#7fe7ff' : '#ffe39f'} metalness={0.9} roughness={0.12} emissive={profile === 'csis' ? '#6befff' : '#ffd46b'} emissiveIntensity={0.26} />
+        <torusGeometry args={[isSynaptics ? 1.96 : profile === 'ss' ? 1.88 : 1.78, profile === 'csis' ? 0.08 : isSynaptics ? 0.1 : 0.11, 20, 140]} />
+        <meshStandardMaterial color={profile === 'csis' ? '#7fe7ff' : isSynaptics ? '#ffd980' : '#ffe39f'} metalness={0.9} roughness={0.12} emissive={profile === 'csis' ? '#6befff' : isSynaptics ? '#ffcc5f' : '#ffd46b'} emissiveIntensity={0.3} />
       </mesh>
       <mesh ref={ringTwoRef} rotation={[Math.PI / 2.4, Math.PI / 5, 0]}>
-        <torusGeometry args={[profile === 'csis' ? 2.34 : 2.18, profile === 'csis' ? 0.12 : 0.05, 18, 140]} />
-        <meshStandardMaterial color={profile === 'csis' ? '#c9f6ff' : '#dff8ff'} metalness={0.94} roughness={0.08} emissive={profile === 'csis' ? '#9feeff' : '#c9f6ff'} emissiveIntensity={profile === 'csis' ? 0.38 : 0.18} transparent opacity={profile === 'csis' ? 0.88 : 0.42} />
+        <torusGeometry args={[profile === 'csis' ? 2.34 : isSynaptics ? 2.42 : 2.18, profile === 'csis' ? 0.12 : isSynaptics ? 0.08 : 0.05, 18, 140]} />
+        <meshStandardMaterial color={profile === 'csis' ? '#c9f6ff' : isSynaptics ? '#ffeeba' : '#dff8ff'} metalness={0.94} roughness={0.08} emissive={profile === 'csis' ? '#9feeff' : isSynaptics ? '#ffe38d' : '#c9f6ff'} emissiveIntensity={profile === 'csis' ? 0.38 : isSynaptics ? 0.34 : 0.18} transparent opacity={profile === 'csis' ? 0.88 : isSynaptics ? 0.82 : 0.42} />
       </mesh>
+      {isSynaptics ? (
+        <group ref={ringThreeRef}>
+          <mesh rotation={[Math.PI / 2, 0, Math.PI / 6]}>
+            <torusGeometry args={[2.86, 0.05, 12, 160]} />
+            <meshStandardMaterial color="#a8f3ff" emissive="#7fe7ff" emissiveIntensity={0.72} metalness={0.92} roughness={0.08} transparent opacity={0.9} />
+          </mesh>
+          {Array.from({ length: 18 }, (_, index) => {
+            const angle = (Math.PI * 2 * index) / 18;
+            return (
+              <mesh key={`encrypt-${index}`} position={[Math.cos(angle) * 2.86, Math.sin(angle * 1.1) * 0.16, Math.sin(angle) * 2.18]} rotation={[0.28, angle, 0]}>
+                <boxGeometry args={[0.18, 0.04, 0.08]} />
+                <meshBasicMaterial color="#d9fbff" transparent opacity={0.72} depthWrite={false} />
+              </mesh>
+            );
+          })}
+        </group>
+      ) : null}
       {profile === 'csis' ? <CsisNetworkLinks pulse={csisState.linkagePulse || 0.5} /> : null}
       {profile === 'csis' ? <CsisFirewallShell sweep={csisState.firewallSweep || 0} /> : null}
       {profile === 'csis' ? (
@@ -387,6 +418,14 @@ function DysonSphereStructure({ node }) {
           </div>
         </Html>
       ) : null}
+      {isSynaptics ? (
+        <Html center distanceFactor={16} position={[0, 3.0, 0]}>
+          <div className="dyson-logic-tag">
+            <strong>Synaptics tri-ring</strong>
+            <span>{dysonState.ringOneLabel || 'Collector ring'} · {dysonState.ringTwoLabel || 'Habitat ring'} · {dysonState.ringThreeLabel || 'Encryption ring'}</span>
+          </div>
+        </Html>
+      ) : null}
     </group>
   );
 }
@@ -394,15 +433,24 @@ function DysonSphereStructure({ node }) {
 function SolarSubSystem({ node }) {
   const orbitRefs = useRef([]);
   const starRef = useRef(null);
+  const coronaRef = useRef(null);
+  const stellarProfile = node.stellarProfile || {};
+  const starColor = stellarProfile.color || node.color || '#ffd46b';
+  const luminosity = stellarProfile.luminositySolar || 1;
+  const radiusScale = 1 + Math.min((stellarProfile.radiusSolar || 1) * 0.12, 0.35);
 
   useFrame(({ clock }, delta) => {
     if (starRef.current) starRef.current.rotation.y += delta * (0.15 + (node.epochAnchor?.dysonAlignment || 0) * 0.08);
+    if (coronaRef.current) {
+      const pulse = 1 + Math.sin(clock.elapsedTime * (1.2 + luminosity * 0.05)) * 0.05;
+      coronaRef.current.scale.setScalar(pulse * radiusScale);
+    }
     node.orbiters?.forEach((orbit, index) => {
       const planet = orbitRefs.current[index];
       if (!planet) return;
       const angle = clock.elapsedTime * orbit.speed + orbit.seedAngle + (node.epochAnchor?.phase || 0) * Math.PI * 2;
       const semiMajor = orbit.radius;
-      const semiMinor = orbit.radius * Math.sqrt(Math.max(0.72, 1 - (orbit.eccentricity || 0) ** 2)) * 0.72;
+      const semiMinor = orbit.radius * Math.sqrt(Math.max(0.68, 1 - (orbit.eccentricity || 0) ** 2)) * 0.72;
       planet.position.set(
         Math.cos(angle) * semiMajor,
         Math.sin(angle * 0.5) * orbit.tilt,
@@ -413,26 +461,32 @@ function SolarSubSystem({ node }) {
 
   return (
     <group position={node.position}>
-      <mesh scale={2.8}>
+      <mesh ref={coronaRef} scale={2.8 * radiusScale}>
         <sphereGeometry args={[1, 28, 28]} />
-        <meshBasicMaterial color="#ffd46b" transparent opacity={0.08} depthWrite={false} />
+        <meshBasicMaterial color={starColor} transparent opacity={0.08 + Math.min(luminosity * 0.01, 0.06)} depthWrite={false} />
       </mesh>
-      <mesh ref={starRef}>
+      <mesh ref={starRef} scale={radiusScale}>
         <sphereGeometry args={[1.15, 32, 32]} />
-        <meshStandardMaterial color="#ffd46b" emissive="#ffbf54" emissiveIntensity={0.95} roughness={0.4} metalness={0.14} />
+        <meshStandardMaterial color={starColor} emissive={starColor} emissiveIntensity={0.72 + Math.min(luminosity * 0.03, 0.35)} roughness={0.38} metalness={0.12} />
       </mesh>
       {node.orbiters?.map((orbit, index) => (
         <group key={orbit.key}>
           <mesh rotation={[Math.PI / 2 + orbit.tilt, 0, 0]}>
             <torusGeometry args={[orbit.radius, 0.015, 8, 96]} />
-            <meshBasicMaterial color="#dff8ff" transparent opacity={0.14} depthWrite={false} />
+            <meshBasicMaterial color={orbit.zone === 'habitable' ? '#b2ffd9' : '#dff8ff'} transparent opacity={orbit.zone === 'habitable' ? 0.22 : 0.14} depthWrite={false} />
           </mesh>
           <mesh ref={(el) => { orbitRefs.current[index] = el; }}>
             <sphereGeometry args={[orbit.size, 14, 14]} />
-            <meshStandardMaterial color={orbit.color} emissive={orbit.color} emissiveIntensity={0.24} roughness={0.55} metalness={0.12} />
+            <meshStandardMaterial color={orbit.color} emissive={orbit.color} emissiveIntensity={orbit.zone === 'habitable' ? 0.3 : 0.24} roughness={0.55} metalness={0.12} />
           </mesh>
         </group>
       ))}
+      <Html center distanceFactor={18} position={[0, 2.8 * radiusScale, 0]}>
+        <div className="dyson-logic-tag">
+          <strong>{stellarProfile.spectralClass || 'G-class'} star</strong>
+          <span>{stellarProfile.temperatureK || 5778} K · L {stellarProfile.luminositySolar || 1}☉ · HZ {stellarProfile.habitableInnerAu || 0.95}-{stellarProfile.habitableOuterAu || 1.67} AU</span>
+        </div>
+      </Html>
     </group>
   );
 }
@@ -1243,22 +1297,19 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       <div className="stable-system-backdrop" />
       <div className="stable-system-veil" />
 
-      <div className="stable-system-hud dock-stack stable-dock-grid">
-        <ExpandableDock title="Mission & progression" kicker="Pilot systems" summary="Objectives, profile, and route earnings" defaultOpen={false} className="stable-hud-dock">
-          <OperationsDirectorPanel operations={operations} lobbyMode={lobbyMode} />
-          <AccountProgressPanel profile={{ ...accountProfile, progression: accountProgression, progress }} lobbyMode={lobbyMode} />
-          <EntropyMissionPanel
-            lobbyMode={lobbyMode}
-            activeNode={activeNode}
-            progress={progress}
-            operations={operations}
-            onMineEntropy={handleMineEntropy}
-            onResolveEntropy={handleResolveEntropy}
-            onOpenExchange={openMatrixRoute}
-          />
-        </ExpandableDock>
+      <div className="stable-system-hud">
+        <OperationsDirectorPanel operations={operations} lobbyMode={lobbyMode} />
+        <AccountProgressPanel profile={{ ...accountProfile, progression: accountProgression, progress }} lobbyMode={lobbyMode} />
+        <EntropyMissionPanel
+          lobbyMode={lobbyMode}
+          activeNode={activeNode}
+          progress={progress}
+          operations={operations}
+          onMineEntropy={handleMineEntropy}
+          onResolveEntropy={handleResolveEntropy}
+          onOpenExchange={openMatrixRoute}
+        />
 
-        <ExpandableDock title={activeNode?.label || 'Deep Space Blackhole'} kicker="Active route" summary="Current shell focus and travel state" defaultOpen={true} className="stable-hud-dock">
         <div className="content-card stable-card intro stable-card-layer primary-layer">
           <p className="eyebrow">Stability layer</p>
           <h3>{lobbyMode === 'hub' ? 'Shared Hub shell' : 'Private Universe shell'}</h3>
@@ -1305,13 +1356,10 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           ) : null}
           {activeNode?.key === 'entropic_node' ? <p className="stable-flight-note">Mine this seam only after switching to the multiplayer hub.</p> : null}
           {activeNode?.key === 'matrixcoinexchange' ? <p className="stable-flight-note">Return here with unresolved entropy to settle the cargo into {ENTROPIC_CURRENCY.shortLabel}.</p> : null}
-          {activeNode?.key === 'ss_dock' ? <p className="stable-flight-note">Dock here in proximity to the S.S Dyson Sphere before and after long-range sorties.</p> : null}
+          {activeNode?.key === 'ss_dock' ? <p className="stable-flight-note">Dock here in proximity to the Synaptics.Systems Dyson Sphere before and after long-range sorties.</p> : null}
           {activeNode?.key === 'csis' ? <p className="stable-flight-note">CSIS ring I runs network linkage while ring II spins as a foundation firewall inside the game space. This sphere is sealed to players, does not accept build-ins or request spam, and remains a system-owned defense anchor. Linked anchors: {graph.csisState?.linkedNodeKeys?.length || 0} · quarantined relays: {graph.csisState?.quarantinedNodeKeys?.length || 0}.</p> : null}
         </div>
 
-        </ExpandableDock>
-
-        <ExpandableDock title="Universe identity" kicker="World state" summary="Private asset, pilot, and matrix visibility" defaultOpen={false} className="stable-hud-dock">
         {privateWorldAsset ? (
           <div className="content-card stable-card observer stable-card-layer observer-layer">
             <p className="eyebrow">Private map asset</p>
@@ -1325,7 +1373,6 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
               <span>Steam-linked private mesh</span>
               <span>Epoch {privateWorldAsset.unixEpoch}</span>
               <span>Window {privateWorldAsset.epochWindow}</span>
-              <span>Host {privateWorldAsset.serverAnchor?.host || 'local-host'}</span>
               <span>Nested blackhole core</span>
             </div>
           </div>
@@ -1375,9 +1422,6 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
         </div>
 
 
-        </ExpandableDock>
-
-        <ExpandableDock title="Engine telemetry" kicker="Systems" summary="Defense anchors, engines, physics, and combat state" defaultOpen={false} className="stable-hud-dock stable-floating-dock">
         <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
           <p className="eyebrow">CSIS lattice / firewall state</p>
           <h3>{(graph.csisState?.ringOneLabel || 'Network linkage')} + {(graph.csisState?.ringTwoLabel || 'Foundation firewall')}</h3>
@@ -1393,6 +1437,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             <span>Player access {graph.csisState?.playerAccess || 'sealed'}</span>
           </div>
         </div>
+
 
         <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
           <p className="eyebrow">Engine stack / singularity equation</p>
@@ -1437,73 +1482,73 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             <span>Seeds {universe?.prayerSeeds?.total ?? 0}</span>
           </div>
         </div>
+      </div>
 
-        <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
-          <p className="eyebrow">Authoritative multiplayer state</p>
-          <h3>{serverStatus.label}</h3>
-          <p className="muted">The multiplayer hub now maintains server-side player transforms, projectile state, contested nodes, and combat heat so the shared multiverse is more than just presence sync.</p>
-          <div className="focus-meta">
-            <span>Room {serverSession?.room || (process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main')}</span>
-            <span>Tick {serverStatus.tick}</span>
-          </div>
-          <div className="stable-chip-row alt">
-            <span>Pilots {authoritativeState.playerCount || 0}</span>
-            <span>Projectiles {projectiles.length}</span>
-            <span>Combat heat {authoritativeState.world?.combatHeat || 0}%</span>
-          </div>
-          <div className="stable-chip-row alt">
-            <span>Contested {(authoritativeState.world?.contestedNodes || []).map((node) => node.key).join(' · ') || 'none'}</span>
-            <span>Anomaly {Math.round((authoritativeState.world?.anomalyPhase || 0) * 100)}%</span>
-          </div>
-        </div>
 
-        <div className="content-card stable-card observer flight-command-card stable-card-layer telemetry-layer">
-          <p className="eyebrow">Flight command deck</p>
-          <h3>Spaceship + control rebuild</h3>
-          <p className="muted">
-            Route-flight now uses a rebuilt command hull with singularity-aware traversal, boost-assisted vectoring, and damped control for clearer multiplayer and singleplayer piloting.
-          </p>
-          <div className="focus-meta">
-            <span>Speed {telemetry.speed}</span>
-            <span>Position {telemetry.position.map((value) => value.toFixed ? value.toFixed(1) : value).join(' / ')}</span>
-          </div>
-          <div className="stable-chip-row alt">
-            <span>Math engine live</span>
-            <span>Physics engine live</span>
-            <span>Entropic engine live</span>
-            <span>Quantum engine live</span>
-            <span>Singularity engine live</span>
-            <span>Dynamic engine live</span>
-          </div>
-          <div className="stable-chip-row alt">
-            <button className={`stable-route-button compact ${flightConfig.inertialDampers ? 'is-live' : ''}`} onClick={() => setFlightConfig((current) => ({ ...current, inertialDampers: !current.inertialDampers }))}>
-              {flightConfig.inertialDampers ? 'Dampers online' : 'Dampers offline'}
-            </button>
-            <button className={`stable-route-button compact ${flightConfig.routeAssist ? 'is-live' : ''}`} onClick={() => setFlightConfig((current) => ({ ...current, routeAssist: !current.routeAssist }))}>
-              {flightConfig.routeAssist ? 'Route assist on' : 'Route assist off'}
-            </button>
-          </div>
-          <div className="flight-slider-grid">
-            <label>
-              <span>Thrust bias</span>
-              <input type="range" min="0.65" max="1.8" step="0.05" value={flightConfig.thrustScale} onChange={(event) => setFlightConfig((current) => ({ ...current, thrustScale: Number(event.target.value) }))} />
-            </label>
-            <label>
-              <span>Chase zoom</span>
-              <input type="range" min="0.8" max="1.4" step="0.05" value={flightConfig.chaseZoom} onChange={(event) => setFlightConfig((current) => ({ ...current, chaseZoom: Number(event.target.value) }))} />
-            </label>
-          </div>
-          <p className="stable-flight-note">
-            Controls: WASD / arrows to vector, Space / Shift to climb and dive, hold Control to boost, tap Q or F to fire, and keep the active route centered for auto-assist capture.
-          </p>
-          <div className="stable-chip-row alt">
-            <button className="stable-route-button compact" onClick={() => handleCombatAction({ type: 'fire' })} disabled={lobbyMode !== 'hub' || !serverSession?.token}>
-              Fire pulse
-            </button>
-            <span>{lobbyMode === 'hub' ? 'Shared combat lane' : 'Combat disabled in private world'}</span>
-          </div>
+      <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
+        <p className="eyebrow">Authoritative multiplayer state</p>
+        <h3>{serverStatus.label}</h3>
+        <p className="muted">The multiplayer hub now maintains server-side player transforms, projectile state, contested nodes, and combat heat so the shared multiverse is more than just presence sync.</p>
+        <div className="focus-meta">
+          <span>Room {serverSession?.room || (process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main')}</span>
+          <span>Tick {serverStatus.tick}</span>
         </div>
-        </ExpandableDock>
+        <div className="stable-chip-row alt">
+          <span>Pilots {authoritativeState.playerCount || 0}</span>
+          <span>Projectiles {projectiles.length}</span>
+          <span>Combat heat {authoritativeState.world?.combatHeat || 0}%</span>
+        </div>
+        <div className="stable-chip-row alt">
+          <span>Contested {(authoritativeState.world?.contestedNodes || []).map((node) => node.key).join(' · ') || 'none'}</span>
+          <span>Anomaly {Math.round((authoritativeState.world?.anomalyPhase || 0) * 100)}%</span>
+        </div>
+      </div>
+
+      <div className="content-card stable-card observer flight-command-card stable-card-layer telemetry-layer">
+        <p className="eyebrow">Flight command deck</p>
+        <h3>Spaceship + control rebuild</h3>
+        <p className="muted">
+          Route-flight now uses a rebuilt command hull with singularity-aware traversal, boost-assisted vectoring, and damped control for clearer multiplayer and singleplayer piloting.
+        </p>
+        <div className="focus-meta">
+          <span>Speed {telemetry.speed}</span>
+          <span>Position {telemetry.position.map((value) => value.toFixed ? value.toFixed(1) : value).join(' / ')}</span>
+        </div>
+        <div className="stable-chip-row alt">
+          <span>Math engine live</span>
+          <span>Physics engine live</span>
+          <span>Entropic engine live</span>
+          <span>Quantum engine live</span>
+          <span>Singularity engine live</span>
+          <span>Dynamic engine live</span>
+        </div>
+        <div className="stable-chip-row alt">
+          <button className={`stable-route-button compact ${flightConfig.inertialDampers ? 'is-live' : ''}`} onClick={() => setFlightConfig((current) => ({ ...current, inertialDampers: !current.inertialDampers }))}>
+            {flightConfig.inertialDampers ? 'Dampers online' : 'Dampers offline'}
+          </button>
+          <button className={`stable-route-button compact ${flightConfig.routeAssist ? 'is-live' : ''}`} onClick={() => setFlightConfig((current) => ({ ...current, routeAssist: !current.routeAssist }))}>
+            {flightConfig.routeAssist ? 'Route assist on' : 'Route assist off'}
+          </button>
+        </div>
+        <div className="flight-slider-grid">
+          <label>
+            <span>Thrust bias</span>
+            <input type="range" min="0.65" max="1.8" step="0.05" value={flightConfig.thrustScale} onChange={(event) => setFlightConfig((current) => ({ ...current, thrustScale: Number(event.target.value) }))} />
+          </label>
+          <label>
+            <span>Chase zoom</span>
+            <input type="range" min="0.8" max="1.4" step="0.05" value={flightConfig.chaseZoom} onChange={(event) => setFlightConfig((current) => ({ ...current, chaseZoom: Number(event.target.value) }))} />
+          </label>
+        </div>
+        <p className="stable-flight-note">
+          Controls: WASD / arrows to vector, Space / Shift to climb and dive, hold Control to boost, tap Q or F to fire, and keep the active route centered for auto-assist capture.
+        </p>
+        <div className="stable-chip-row alt">
+          <button className="stable-route-button compact" onClick={() => handleCombatAction({ type: 'fire' })} disabled={lobbyMode !== 'hub' || !serverSession?.token}>
+            Fire pulse
+          </button>
+          <span>{lobbyMode === 'hub' ? 'Shared combat lane' : 'Combat disabled in private world'}</span>
+        </div>
       </div>
 
       <div className="stable-world-canvas polished-canvas cinematic-polished-canvas">
@@ -1526,8 +1571,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
         </Canvas>
       </div>
 
-      <ExpandableDock title="System object layering" kicker="Render stack" summary="See how the shell layers are arranged" defaultOpen={false} className="stable-floating-dock">
-        <div className="stable-layer-dock">
+      <div className="stable-layer-dock">
         <div className="stable-layer-dock-head">
           <strong>System object layering</strong>
           <span className="eyebrow">Defined render stack</span>
@@ -1541,8 +1585,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             </article>
           ))}
         </div>
-        </div>
-      </ExpandableDock>
+      </div>
 
       {deviceTier.isMobile ? <TouchFlightPad onInputChange={setTouchInput} /> : null}
     </div>

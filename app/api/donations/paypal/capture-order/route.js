@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { decryptJson } from '@/lib/security';
+import { decryptJson, encryptJson, signValue } from '@/lib/security';
+import { shouldUseSecureCookies } from '@/lib/runtimeConfig';
 import {
   persistDonationLedger,
   readDonationLedger,
@@ -55,6 +56,7 @@ export async function POST(request) {
     const current = readDonationLedger();
     const priorRecord = current.find((entry) => entry?.orderId === orderId && entry?.steamid === steamUser.steamid);
 
+    const finalStatus = capture?.status === 'COMPLETED' ? 'CONFIRMED' : captureOrder?.status || 'CAPTURED';
     const nextLedger = upsertDonationRecord(current, {
       ...priorRecord,
       orderId,
@@ -64,10 +66,18 @@ export async function POST(request) {
       currency,
       anchorSlug: priorRecord?.anchorSlug || 'deep_blackhole',
       solarSystemKey: priorRecord?.solarSystemKey || 'solar_system',
-      status: capture?.status === 'COMPLETED' ? 'CONFIRMED' : captureOrder?.status || 'CAPTURED',
+      status: finalStatus,
       captureId: capture?.id || null,
       capturedAt: capture?.create_time || new Date().toISOString(),
       paypalStatus: captureOrder?.status || null,
+      verification: {
+        provider: 'paypal',
+        identifierType: 'capture',
+        identifier: capture?.id || orderId,
+        state: finalStatus,
+        verifiedAt: capture?.create_time || new Date().toISOString(),
+        source: 'capture_order',
+      },
     });
 
     const summary = summarizeDonationLedger(nextLedger.filter((entry) => entry?.steamid === steamUser.steamid));
@@ -82,7 +92,39 @@ export async function POST(request) {
       },
       ledger: summary,
       summary,
+      supportLinked: finalStatus === 'CONFIRMED',
     });
+
+    if (finalStatus === 'CONFIRMED') {
+      const supportPayload = {
+        provider: 'paypal',
+        planId: null,
+        identifier: capture?.id || orderId,
+        identifierType: capture?.id ? 'capture' : 'order',
+        steamid: steamUser.steamid,
+        personaname: steamUser.personaname || null,
+        linkedAt: new Date().toISOString(),
+        verification: {
+          provider: 'paypal',
+          identifierType: capture?.id ? 'capture' : 'order',
+          identifier: capture?.id || orderId,
+          state: 'COMPLETED',
+          verifiedAt: capture?.create_time || new Date().toISOString(),
+          source: 'capture_order',
+        },
+        reference: signValue(`paypal:${capture?.id || orderId}:${steamUser.steamid}`),
+      };
+
+      response.cookies.set({
+        name: 'support_receipt',
+        value: encryptJson(supportPayload),
+        httpOnly: true,
+        secure: shouldUseSecureCookies(request),
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 90,
+      });
+    }
 
     return persistDonationLedger(response, request, nextLedger);
   } catch (error) {

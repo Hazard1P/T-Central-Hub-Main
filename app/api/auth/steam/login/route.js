@@ -1,7 +1,14 @@
 import { NextResponse } from 'next/server';
-import { getSteamAuthBaseUrl } from '@/lib/steamAuthUrl';
+import { getSteamAuthBaseUrl, shouldUseSecureSteamCookie } from '@/lib/steamAuthUrl';
 
-export async function GET() {
+function normalizeRedirectPath(value) {
+  const raw = String(value || '').trim();
+  if (!raw.startsWith('/')) return '/';
+  if (raw.startsWith('//')) return '/';
+  return raw;
+}
+
+export async function GET(request) {
   let baseUrl;
 
   try {
@@ -10,6 +17,8 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  const requestUrl = new URL(request.url);
+  const redirectPath = normalizeRedirectPath(requestUrl.searchParams.get('redirectTo'));
   const returnTo = `${baseUrl}/api/auth/steam/callback`;
 
   const params = new URLSearchParams({
@@ -21,5 +30,16 @@ export async function GET() {
     'openid.claimed_id': 'http://specs.openid.net/auth/2.0/identifier_select',
   });
 
-  return NextResponse.redirect(`https://steamcommunity.com/openid/login?${params.toString()}`);
+  const response = NextResponse.redirect(`https://steamcommunity.com/openid/login?${params.toString()}`);
+  response.cookies.set({
+    name: 'steam_auth_return_to',
+    value: redirectPath,
+    httpOnly: true,
+    secure: shouldUseSecureSteamCookie(baseUrl),
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 60 * 10,
+  });
+
+  return response;
 }
