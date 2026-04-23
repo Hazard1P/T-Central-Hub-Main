@@ -9,7 +9,6 @@ import SystemErrorBoundary from '@/components/SystemErrorBoundary';
 import StableSystemWorld from '@/components/StableSystemWorld';
 import SystemNewsInfoPanel from '@/components/SystemNewsInfoPanel';
 import SystemShellControlLayer from '@/components/SystemShellControlLayer';
-import ExpandableDock from '@/components/ExpandableDock';
 import { useSteamSession } from '@/components/SteamSessionProvider';
 
 export default function SystemEntryClient() {
@@ -25,17 +24,7 @@ export default function SystemEntryClient() {
       {entered ? (
         <SystemErrorBoundary>
           <>
-            <div className="system-top-docks">
-              <ExpandableDock
-                title={lobbyMode === 'hub' ? 'Shared Hub mode' : 'Private Universe mode'}
-                kicker="Mode"
-                summary="Switch between isolated and shared play"
-                defaultOpen={false}
-                className="system-mode-dock"
-              >
-                <LobbyModePanel lobbyMode={lobbyMode} onChange={setLobbyMode} steamUser={steamUser} universe={universe} />
-              </ExpandableDock>
-            </div>
+            <LobbyModePanel lobbyMode={lobbyMode} onChange={setLobbyMode} steamUser={steamUser} universe={universe} />
             <SystemShellControlLayer steamUser={steamUser} lobbyMode={lobbyMode} onChange={setLobbyMode} activeNode={selectedNode} />
             <StableSystemWorld lobbyMode={lobbyMode} steamUser={steamUser} onSelectionChange={setSelectedNode} />
           </>

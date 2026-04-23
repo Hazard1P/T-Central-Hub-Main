@@ -1,15 +1,12 @@
 [
   {
-    "identity_id": "guest-16b9y-ohaey1t1",
-    "display_name": "Guest Pilot 1T1",
-    "identity_kind": "guest",
-    "authenticated": false,
+    "identity_id": "76561198031864868",
+    "display_name": "Steam Pilot",
+    "identity_kind": "steam",
+    "authenticated": true,
     "progress": {
       "visitedNodes": [
-        "deep_blackhole",
-        "entropic_node",
-        "arma3",
-        "matrixcoinexchange"
+        "deep_blackhole"
       ],
       "routeTrips": 0,
       "seedCount": 0,
@@ -20,14 +17,14 @@
     },
     "progression": {
       "version": 1,
-      "xp": 56,
-      "level": 2,
-      "title": "Navigator",
-      "nextLevelXp": 176,
-      "previousLevelXp": 44,
-      "progressToNext": 0.09090909090909091,
+      "xp": 14,
+      "level": 1,
+      "title": "Cadet",
+      "nextLevelXp": 44,
+      "previousLevelXp": 0,
+      "progressToNext": 0.3181818181818182,
       "stats": {
-        "explorationXp": 56,
+        "explorationXp": 14,
         "routingXp": 0,
         "seedXp": 0,
         "miningXp": 0,
@@ -36,7 +33,43 @@
         "sharedHubBonus": 0
       }
     },
-    "saved_at": "2026-04-22T21:07:25.209Z"
+    "saved_at": "2026-04-21T05:36:19.109Z"
+  },
+  {
+    "identity_id": "guest-16b9y-ohaey1t1",
+    "display_name": "Guest Pilot 1T1",
+    "identity_kind": "guest",
+    "authenticated": false,
+    "progress": {
+      "visitedNodes": [
+        "deep_blackhole"
+      ],
+      "routeTrips": 0,
+      "seedCount": 0,
+      "entropyMined": 0,
+      "entropyResolved": 0,
+      "credits": 0,
+      "multiplayerJumped": false
+    },
+    "progression": {
+      "version": 1,
+      "xp": 14,
+      "level": 1,
+      "title": "Cadet",
+      "nextLevelXp": 44,
+      "previousLevelXp": 0,
+      "progressToNext": 0.3181818181818182,
+      "stats": {
+        "explorationXp": 14,
+        "routingXp": 0,
+        "seedXp": 0,
+        "miningXp": 0,
+        "settlementXp": 0,
+        "scalarXp": 0,
+        "sharedHubBonus": 0
+      }
+    },
+    "saved_at": "2026-04-21T05:35:28.391Z"
   },
   {
     "identity_id": "guest-server",
@@ -72,6 +105,6 @@
         "sharedHubBonus": 0
       }
     },
-    "saved_at": "2026-04-22T21:07:25.195Z"
+    "saved_at": "2026-04-21T05:35:28.279Z"
   }
 ]
