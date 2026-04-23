@@ -491,7 +491,7 @@ function SolarSubSystem({ node }) {
   );
 }
 
-function NodeVisual({ node, onSelect, selectedKey, graphNode }) {
+function NodeVisual({ node, onSelect, selectedKey, graphNode, condensedLabels = false }) {
   const isBlackhole = node.kind === 'blackhole';
   const isDyson = node.kind === 'dyson';
   const isSolar = node.kind === 'solar';
@@ -550,7 +550,7 @@ function NodeVisual({ node, onSelect, selectedKey, graphNode }) {
       {isBlackhole || isSolar || isMapAsset ? <GravityFieldRings position={[0, 0, 0]} color={node.color || '#9fdcff'} /> : null}
       {node.key === 'deep_blackhole' ? <MeteorSwarm count={12} radius={8.6} /> : null}
 
-      {!node.generated || isBlackhole ? (
+      {(!node.generated || isBlackhole) && (!condensedLabels || selectedKey === node.key || isBlackhole) ? (
         <Html center distanceFactor={14} position={[0, isSolar ? 2.25 : 1.65, 0]}>
           <button className={`stable-node-label polished ${selectedKey === node.key ? 'is-selected' : ''}`} onClick={() => onSelect(node)}>
             <strong>{node.label}</strong>
@@ -817,7 +817,7 @@ function ProjectileSwarm({ projectiles = [] }) {
   );
 }
 
-function StableSceneContent({ graph, displayNodes, onSelect, selectedKey, onAutoFocus, onTelemetryChange, onCombatAction, touchInput, deviceTier, authenticated = false, flightConfig = null, remotePilots = [], projectiles = [] }) {
+function StableSceneContent({ graph, displayNodes, onSelect, selectedKey, onAutoFocus, onTelemetryChange, onCombatAction, touchInput, deviceTier, authenticated = false, flightConfig = null, remotePilots = [], projectiles = [], presentationMode = true }) {
   const epochSummary = useMemo(() => summarizeEpochRelativity(graph.epochAnchor), [graph]);
   const graphByKey = useMemo(() => Object.fromEntries(graph.nodes.map((node) => [node.key, node])), [graph]);
   const positions = useMemo(() => getNodePositionMap(graph), [graph]);
@@ -835,9 +835,9 @@ function StableSceneContent({ graph, displayNodes, onSelect, selectedKey, onAuto
       <directionalLight position={[8, 10, 6]} intensity={1.15} color="#dff8ff" />
       <pointLight position={[-10, 6, 10]} intensity={1.28} color="#9f7cff" />
       <pointLight position={[12, -2, 6]} intensity={1.12} color="#6dffb5" />
-      <Stars radius={140} depth={72} count={deviceTier.stars} factor={5.8} saturation={0} fade speed={1.1} />
-      <Sparkles count={deviceTier.sparkles} scale={[60, 34, 44]} size={3.0} speed={0.25} opacity={0.7} />
-      <MeteorSwarm count={deviceTier.meteors} radius={26} />
+      <Stars radius={140} depth={72} count={presentationMode ? Math.round(deviceTier.stars * 0.58) : deviceTier.stars} factor={5.8} saturation={0} fade speed={1.1} />
+      <Sparkles count={presentationMode ? Math.round(deviceTier.sparkles * 0.45) : deviceTier.sparkles} scale={[60, 34, 44]} size={3.0} speed={0.25} opacity={0.7} />
+      <MeteorSwarm count={presentationMode ? Math.max(4, Math.round(deviceTier.meteors * 0.5)) : deviceTier.meteors} radius={26} />
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -14, 0]}>
         <circleGeometry args={[62, 72]} />
@@ -871,7 +871,7 @@ function StableSceneContent({ graph, displayNodes, onSelect, selectedKey, onAuto
       })}
 
       {displayNodes.map((node) => (
-        <NodeVisual key={node.key} node={node} graphNode={graphByKey[node.key]} onSelect={onSelect} selectedKey={selectedKey} />
+        <NodeVisual key={node.key} node={node} graphNode={graphByKey[node.key]} onSelect={onSelect} selectedKey={selectedKey} condensedLabels={presentationMode} />
       ))}
 
       <ProjectileSwarm projectiles={projectiles} />
@@ -913,6 +913,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   const [selected, setSelected] = useState(null);
   const [touchInput, setTouchInput] = useState({ x: 0, y: 0, z: 0, boost: 0 });
   const [flightConfig, setFlightConfig] = useState({ thrustScale: 1, inertialDampers: true, chaseZoom: 1, routeAssist: true });
+  const [presentationMode, setPresentationMode] = useState(true);
   const lastPresenceBroadcast = useRef(0);
   const [telemetry, setTelemetry] = useState({
     speed: 0,
@@ -1318,7 +1319,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           <p className="eyebrow">Stability layer</p>
           <h3>{lobbyMode === 'hub' ? 'Shared Hub shell' : 'Private Universe shell'}</h3>
           <p className="muted">
-            Clean observer panels stay on top while the deeper system layer keeps blackholes, event horizons, meteor belts, solar systems, and gravity wells active beneath them.
+            Built for focus view: fewer overlays, clearer object visibility, and direct access to full diagnostics when needed.
           </p>
           <div className="focus-meta">
             <span>{lobbyMode === 'hub' ? 'Shared route layer · discrepant hub star online' : privateWorldAsset?.privateScope || getPrivateWorldKey(steamUser?.steamid)}</span>
@@ -1332,6 +1333,12 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             <span>{lobbyMode === 'hub' ? 'Hub star sync' : '9-planet private system'}</span>
             <span>Epoch {(privateWorldAsset?.epochWindow ?? epochSummary.unix)}</span>
             <span>Ops {operations.completionPercent}%</span>
+          </div>
+          <div className="stable-chip-row alt">
+            <button className={`stable-route-button compact ${presentationMode ? 'is-live' : ''}`} onClick={() => setPresentationMode((current) => !current)}>
+              {presentationMode ? 'Presentation mode on' : 'Presentation mode off'}
+            </button>
+            <span>{presentationMode ? 'Condensed HUD + cleaner scene' : 'Full HUD + full telemetry cards'}</span>
           </div>
         </div>
 
@@ -1364,7 +1371,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           {activeNode?.key === 'csis' ? <p className="stable-flight-note">CSIS ring I drives conscious intelligence and cyberfield production, ring II handles ingress/egress routes, and ring III performs encryption/firewall monitoring over rings I + II + III. Spin integers 1/2, 1/4, and 3/4 stay active at an astrological quantum tier with bidirectional API links. This sphere is sealed to players and remains a system-owned defense anchor. Linked anchors: {graph.csisState?.linkedNodeKeys?.length || 0} · quarantined relays: {graph.csisState?.quarantinedNodeKeys?.length || 0}.</p> : null}
         </div>
 
-        {privateWorldAsset ? (
+        {!presentationMode && privateWorldAsset ? (
           <div className="content-card stable-card observer stable-card-layer observer-layer">
             <p className="eyebrow">Private map asset</p>
             <h3>{privateWorldAsset.label}</h3>
@@ -1410,7 +1417,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
         </div>
 
 
-        <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
+        {!presentationMode ? <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
           <p className="eyebrow">Private universe matrix</p>
           <h3>{universe?.privacy?.observanceScope || 'hub:public'}</h3>
           <p className="muted">Prayer Seeds stay bound to the private universe vault while the Solar System remains anchored to Unix epoch timing and Dyson-sphere relativity.</p>
@@ -1423,10 +1430,10 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             <span>Seeds {universe?.prayerSeeds?.total ?? 0}</span>
             <span>Pilots {authoritativeState.playerCount || presence.length}</span>
           </div>
-        </div>
+        </div> : null}
 
 
-        <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
+        {!presentationMode ? <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
           <p className="eyebrow">CSIS lattice / firewall state</p>
           <h3>{(graph.csisState?.ringOneLabel || 'Conscious intelligence / cyberfield production')} + {(graph.csisState?.ringTwoLabel || 'Ingress / egress')} + {(graph.csisState?.ringThreeLabel || 'Encryption / firewall monitoring')}</h3>
           <p className="muted">The CSIS tri-ring lattice maps to ring I conscious intelligence + cyberfield production, ring II ingress/egress flow, and ring III encryption/firewall monitoring across all three rings. Spin integers {graph.csisState?.spinProfile?.join(' · ') || '1/2 · 1/4 · 3/4'} run in an astrological quantum tier with bidirectional API exchange while non-foundation relays stay quarantined inside game space.</p>
@@ -1440,10 +1447,10 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             <span>API flow {graph.csisState?.apiFlow || 'bidirectional'}</span>
             <span>Player access {graph.csisState?.playerAccess || 'sealed'}</span>
           </div>
-        </div>
+        </div> : null}
 
 
-        <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
+        {!presentationMode ? <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
           <p className="eyebrow">Engine stack / singularity equation</p>
           <h3>{singularityState.stateLabel}</h3>
           <p className="muted">The multiplayer realm now resolves a stellar singularity window before entropy is stabilized. The engine stack blends mathematical, physical, entropic, quantum, singularity, and dynamic states into one route outcome.</p>
@@ -1462,7 +1469,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             <span>Dynamic balance {Math.round(dynamicState.dynamicBalance * 100)}%</span>
           </div>
           <p className="stable-flight-note">Resolved scalar balance: {entropicEconomy.scalarCredits.toFixed(2)} {ENTROPIC_CURRENCY.shortLabel} · unresolved cargo {entropicEconomy.unresolved}</p>
-        </div>
+        </div> : null}
 
         <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
           <p className="eyebrow">Q12D / Physics telemetry</p>
@@ -1489,7 +1496,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       </div>
 
 
-      <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
+      {!presentationMode ? <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
         <p className="eyebrow">Authoritative multiplayer state</p>
         <h3>{serverStatus.label}</h3>
         <p className="muted">The multiplayer hub now maintains server-side player transforms, projectile state, contested nodes, and combat heat so the shared multiverse is more than just presence sync.</p>
@@ -1506,7 +1513,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           <span>Contested {(authoritativeState.world?.contestedNodes || []).map((node) => node.key).join(' · ') || 'none'}</span>
           <span>Anomaly {Math.round((authoritativeState.world?.anomalyPhase || 0) * 100)}%</span>
         </div>
-      </div>
+      </div> : null}
 
       <div className="content-card stable-card observer flight-command-card stable-card-layer telemetry-layer">
         <p className="eyebrow">Flight command deck</p>
@@ -1556,7 +1563,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       </div>
 
       <div className="stable-world-canvas polished-canvas cinematic-polished-canvas">
-        <Canvas camera={{ position: [0, 8, 26], fov: deviceTier.isMobile ? 52 : 46 }} dpr={deviceTier.dpr} gl={{ antialias: !deviceTier.isMobile }}>
+        <Canvas camera={{ position: [0, 8, 26], fov: deviceTier.isMobile ? 52 : (presentationMode ? 49 : 46) }} dpr={deviceTier.dpr} gl={{ antialias: !deviceTier.isMobile }}>
           <StableSceneContent
             graph={graph}
             displayNodes={displayNodes}
@@ -1571,11 +1578,12 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             flightConfig={flightConfig}
             remotePilots={remotePilots}
             projectiles={projectiles}
+            presentationMode={presentationMode}
           />
         </Canvas>
       </div>
 
-      <div className="stable-layer-dock">
+      {!presentationMode ? <div className="stable-layer-dock">
         <div className="stable-layer-dock-head">
           <strong>System object layering</strong>
           <span className="eyebrow">Defined render stack</span>
@@ -1589,7 +1597,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             </article>
           ))}
         </div>
-      </div>
+      </div> : null}
 
       {deviceTier.isMobile ? <TouchFlightPad onInputChange={setTouchInput} /> : null}
     </div>
