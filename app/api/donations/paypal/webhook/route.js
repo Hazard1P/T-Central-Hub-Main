@@ -5,6 +5,7 @@ import {
   markPayPalWebhookEventProcessed,
   reconcilePayPalWebhookRecord,
 } from '@/lib/paypalWebhookStore';
+import { trackServerEvent } from '@/lib/server/vercelTelemetry';
 
 const SUPPORTED_WEBHOOK_EVENTS = new Set([
   'CHECKOUT.ORDER.APPROVED',
@@ -136,6 +137,7 @@ export async function POST(request) {
   }
 
   if (hasProcessedPayPalWebhookEvent(eventId)) {
+    await trackServerEvent('api_paypal_webhook', { outcome: 'duplicate' });
     return NextResponse.json({ ok: true, duplicate: true, eventId });
   }
 
@@ -144,6 +146,7 @@ export async function POST(request) {
 
   if (!supported) {
     markPayPalWebhookEventProcessed(eventId);
+    await trackServerEvent('api_paypal_webhook', { outcome: 'ignored', eventType });
     return NextResponse.json({ ok: true, ignored: true, eventId, eventType });
   }
 
@@ -161,6 +164,7 @@ export async function POST(request) {
   });
 
   markPayPalWebhookEventProcessed(eventId);
+  await trackServerEvent('api_paypal_webhook', { outcome: 'processed', eventType });
 
   return NextResponse.json({
     ok: true,

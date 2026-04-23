@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getAuthoritativeState, updateAuthoritativePlayer, pruneAuthoritativeRooms } from '@/lib/authoritativeMultiplayerStore';
 import { getDurableState, hasDurableMultiplayer, updateDurablePlayer } from '@/lib/durableMultiplayerStore';
 import { SESSION_MODES, buildRingAdjustmentOutputs, getSessionModeSnapshot, normalizeSessionMode, transitionSessionMode } from '@/lib/sessionModeEngine';
+import { trackServerEvent } from '@/lib/server/vercelTelemetry';
 
 function resolveRequestedMode(input = {}, fallback = SESSION_MODES.MULTI_PLAYER) {
   return normalizeSessionMode(input?.mode || input?.lobbyMode, fallback);
@@ -47,7 +48,9 @@ export async function GET(request) {
       id: searchParams.get('id') || undefined,
       token: searchParams.get('token') || undefined,
     });
-    return NextResponse.json(withModeState(result, { roomName, mode: requestedMode, source: 'state:get' }), { status: result.status || 200 });
+    const payload = withModeState(result, { roomName, mode: requestedMode, source: 'state:get' });
+    await trackServerEvent('api_multiplayer_state', { method: 'GET', durable: true, status: result.status || 200 });
+    return NextResponse.json(payload, { status: result.status || 200 });
   }
 
   pruneAuthoritativeRooms();
@@ -56,7 +59,9 @@ export async function GET(request) {
     id: searchParams.get('id') || undefined,
     token: searchParams.get('token') || undefined,
   });
-  return NextResponse.json(withModeState({ ...result, durable: false }, { roomName, mode: requestedMode, source: 'state:get' }), { status: result.status || 200 });
+  const payload = withModeState({ ...result, durable: false }, { roomName, mode: requestedMode, source: 'state:get' });
+  await trackServerEvent('api_multiplayer_state', { method: 'GET', durable: false, status: result.status || 200 });
+  return NextResponse.json(payload, { status: result.status || 200 });
 }
 
 export async function POST(request) {
@@ -72,7 +77,9 @@ export async function POST(request) {
       snapshot: body?.snapshot,
       captureSimulationEvent: body?.captureSimulationEvent !== false,
     });
-    return NextResponse.json(withModeState(result, { roomName, mode: requestedMode, source: 'state:post' }), { status: result.status || 200 });
+    const payload = withModeState(result, { roomName, mode: requestedMode, source: 'state:post' });
+    await trackServerEvent('api_multiplayer_state', { method: 'POST', durable: true, status: result.status || 200 });
+    return NextResponse.json(payload, { status: result.status || 200 });
   }
 
   pruneAuthoritativeRooms();
@@ -82,5 +89,7 @@ export async function POST(request) {
     token: body?.token,
     snapshot: body?.snapshot,
   });
-  return NextResponse.json(withModeState({ ...result, durable: false }, { roomName, mode: requestedMode, source: 'state:post' }), { status: result.status || 200 });
+  const payload = withModeState({ ...result, durable: false }, { roomName, mode: requestedMode, source: 'state:post' });
+  await trackServerEvent('api_multiplayer_state', { method: 'POST', durable: false, status: result.status || 200 });
+  return NextResponse.json(payload, { status: result.status || 200 });
 }
