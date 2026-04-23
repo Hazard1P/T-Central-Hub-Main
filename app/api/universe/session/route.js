@@ -52,7 +52,8 @@ export async function GET(request) {
     epoch: summarizeEpochRelativity(epochAnchor),
     dysonRings: summarizeCsisDysonState(csisDysonState),
     prayerSeeds: summarizePrayerSeeds([], 'solar_system'),
-    donations: summarizeDonationLedger(readDonationLedger()),
+    donations,
+    ring1Metering,
     generatedAt: new Date().toISOString(),
   });
 }
