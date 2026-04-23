@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import PageShell from '@/components/PageShell';
 import ServerConnectActions from '@/components/ServerConnectActions';
+import { getServerBySlug } from '@/lib/serverData';
 
 export const metadata = { title: 'Arma3 CTH' };
 
@@ -19,7 +20,9 @@ const cthPoints = [
 ];
 
 export default function ArmaPage() {
-  const serverIp = 'tcentral.game.nfoservers.com:2302';
+  const server = getServerBySlug('arma3-cth');
+  const serverIp = server?.ip || 'tcentral.game.nfoservers.com:2302';
+  const integration = server?.integration;
 
   return (
     <PageShell
@@ -47,6 +50,14 @@ export default function ArmaPage() {
             <span>Mode: Capture the Hill</span>
             <span>Route: Public tactical server</span>
           </div>
+
+          {integration ? (
+            <div className="server-inline-meta">
+              <span>Server ID: {integration.serverId}</span>
+              <span>PBO: {integration.pboPackage}</span>
+              <span>Mission: {integration.missionId}</span>
+            </div>
+          ) : null}
         </article>
 
         <article className="content-card arma-hero-image-card">
@@ -96,6 +107,24 @@ export default function ArmaPage() {
             {futureProspects.map((point) => (
               <li key={point}>{point}</li>
             ))}
+          </ul>
+        </article>
+
+        <article className="content-card">
+          <p className="eyebrow">System integration</p>
+          <h3>PBO + server ID wiring</h3>
+          <ul className="arma-list">
+            <li>Server build: {integration?.serverBuild || 'KOTH rebuild pipeline'}</li>
+            <li>Server ID: {integration?.serverId || 'tcentral-arma3-cth-01'}</li>
+            <li>PBO package: {integration?.pboPackage || 'tcentral_koth_hub.pbo'}</li>
+            <li>PBO mount: {integration?.pboMount || '@tcentral_kothhub/addons/tcentral_koth_hub.pbo'}</li>
+            <li>Mission key: {integration?.missionId || 'koth_altis_rebuild'}</li>
+            <li>Mission version: {integration?.missionVersion || '2026.04.23'}</li>
+            <li>Account storage table: {integration?.accountStorage || 'player_progression'}</li>
+            <li>
+              VIP system: {integration?.vipSystem?.enabled ? 'enabled' : 'pending'}
+              {integration?.vipSystem?.tiers?.length ? ` (${integration.vipSystem.tiers.join(', ')})` : ''}
+            </li>
           </ul>
         </article>
       </div>
