@@ -1,6 +1,14 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+
+
+
+function getDiscrepancyTone(severity) {
+  if (severity === 'high') return 'high-risk';
+  if (severity === 'medium') return 'monitoring';
+  return 'stable';
+}
 
 function getAnchorRoute(activeNode) {
   if (activeNode?.route) {
@@ -25,8 +33,47 @@ export default function WalletExchangePanel({ activeNode = null, lobbyMode = 'hu
   const [routeMode, setRouteMode] = useState(lobbyMode === 'hub' ? 'shared-shell' : 'private-shell');
   const [handoff, setHandoff] = useState('exchange');
   const [status, setStatus] = useState('Website route is ready inside the blackhole map.');
+  const [exchangeSystem, setExchangeSystem] = useState(null);
 
   const activeLabel = activeNode?.label || 'Deep Space Blackhole';
+
+
+  useEffect(() => {
+    let active = true;
+
+    const loadSystem = async () => {
+      try {
+        const response = await fetch('/api/matrixcoinexchange/system', { cache: 'no-store' });
+        if (!response.ok) {
+          throw new Error(`MatrixCoinExchange status API returned ${response.status}`);
+        }
+
+        const payload = await response.json();
+        if (active) {
+          setExchangeSystem(payload.status || null);
+        }
+      } catch (error) {
+        if (!active) return;
+        setExchangeSystem({
+          operationalMode: 'fallback',
+          discrepancy: { severity: 'high', score: 1 },
+          accountLinking: { linked: false, supportLinked: false },
+          integration: { ready: false, channel: 'safe-hold' },
+          fallback: {
+            engaged: true,
+            reason: error instanceof Error ? error.message : 'Unable to read MatrixCoinExchange system status.',
+          },
+        });
+      }
+    };
+
+    loadSystem();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const routeShellLabel = routeMode === 'shared-shell'
     ? 'Shared route'
     : routeMode === 'mission-cargo'
@@ -67,6 +114,8 @@ export default function WalletExchangePanel({ activeNode = null, lobbyMode = 'hu
         <span className="wallet-route-badge is-live">Anchored</span>
         <span className="wallet-route-badge">{routeShellLabel}</span>
         <span className="wallet-route-badge">Website link</span>
+        <span className="wallet-route-badge">{exchangeSystem?.operationalMode === 'fallback' ? 'Fallback API' : 'Primary API'}</span>
+        <span className="wallet-route-badge">Discrepancy {getDiscrepancyTone(exchangeSystem?.discrepancy?.severity)}</span>
       </div>
 
       <div className="steam-access-grid wallet-grid">
@@ -85,6 +134,18 @@ export default function WalletExchangePanel({ activeNode = null, lobbyMode = 'hu
         <div className="steam-access-item">
           <span>Website</span>
           <strong>matrixcoinexchange.com</strong>
+        </div>
+        <div className="steam-access-item">
+          <span>API lane</span>
+          <strong>{exchangeSystem?.operationalMode === 'fallback' ? 'Independent fallback' : 'Independent primary'}</strong>
+        </div>
+        <div className="steam-access-item">
+          <span>Account linking</span>
+          <strong>{exchangeSystem?.accountLinking?.linked ? 'Connected' : 'Guest mode'}</strong>
+        </div>
+        <div className="steam-access-item">
+          <span>Support link</span>
+          <strong>{exchangeSystem?.accountLinking?.supportLinked ? 'Verified' : 'Not linked'}</strong>
         </div>
       </div>
 
@@ -135,6 +196,14 @@ export default function WalletExchangePanel({ activeNode = null, lobbyMode = 'hu
       </div>
 
       <p className="lobby-mode-note wallet-route-note">{status}</p>
+      <p className="lobby-mode-note wallet-route-note">
+        {exchangeSystem
+          ? `System integration ${exchangeSystem.integration?.ready ? 'ready' : 'guarded'} · channel ${exchangeSystem.integration?.channel || 'safe-hold'} · discrepancy ${exchangeSystem.discrepancy?.score ?? 0}.`
+          : 'Loading MatrixCoinExchange system telemetry...'}
+      </p>
+      {exchangeSystem?.fallback?.engaged ? (
+        <p className="lobby-mode-note wallet-route-note">Fallback reason: {exchangeSystem.fallback.reason}</p>
+      ) : null}
     </div>
   );
 }
