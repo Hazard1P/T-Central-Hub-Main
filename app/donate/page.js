@@ -34,6 +34,29 @@ const supportLanes = [
   }
 ];
 
+const paypalBenefits = [
+  'Trusted global checkout that players already recognize and use.',
+  'Secure payment handling that keeps sensitive billing details outside the hub.',
+  'Support for both recurring subscriptions and one-time donations in one ecosystem.',
+  'Fast payout and transaction records that improve donation tracking and planning.',
+  'Lower friction on mobile and desktop so more supporters can complete checkout.'
+];
+
+const modelComparison = [
+  {
+    model: 'Subscription model',
+    bestFor: 'Players who want to fund steady monthly growth.',
+    value: 'Predictable support for hosting, moderation, and ongoing feature delivery.',
+    examples: ['Monthly supporter tiers', 'Roadmap-backed recurring support', 'Future supporter perks']
+  },
+  {
+    model: 'Donation model',
+    bestFor: 'Players who want flexible one-time contributions.',
+    value: 'On-demand support during events, launches, and community milestones.',
+    examples: ['Any-amount PayPal.Me gifts', 'Seasonal event boosts', 'One-time thank-you backing']
+  }
+];
+
 export default function DonatePage() {
   return (
     <PageShell
@@ -71,6 +94,34 @@ export default function DonatePage() {
             <ul className="lane-feature-list">
               {lane.features.map((feature) => (
                 <li key={feature}>{feature}</li>
+              ))}
+            </ul>
+          </article>
+        ))}
+      </section>
+
+      <section className="content-card patron-appeal-card">
+        <p className="eyebrow">Why PayPal integration helps</p>
+        <h3>Built to support both subscriptions and one-time donations.</h3>
+        <p className="muted">
+          Integrating PayPal into the central hub gives supporters a familiar checkout path while giving the team a durable way to run recurring and flexible funding models side by side.
+        </p>
+        <ul className="lane-feature-list">
+          {paypalBenefits.map((benefit) => (
+            <li key={benefit}>{benefit}</li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="support-lanes-grid">
+        {modelComparison.map((item) => (
+          <article key={item.model} className="content-card support-lane-card">
+            <p className="eyebrow">{item.model}</p>
+            <h3>{item.bestFor}</h3>
+            <p className="muted">{item.value}</p>
+            <ul className="lane-feature-list">
+              {item.examples.map((example) => (
+                <li key={example}>{example}</li>
               ))}
             </ul>
           </article>

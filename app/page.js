@@ -68,6 +68,14 @@ export default function HomePage() {
               <a className="button secondary" href={card.href}>Open route</a>
             </article>
           ))}
+          <article className="content-card entry-panel polished minimal-route-card">
+            <span className="entry-panel-kicker">Support Route</span>
+            <strong>Donation and subscriptions</strong>
+            <p>
+              Open the donation page to compare one-time and recurring support models, plus the benefits of PayPal integration for the T-Central Hub.
+            </p>
+            <a className="button secondary" href="/donate">Open donation page</a>
+          </article>
         </div>
       </section>
     </main>
