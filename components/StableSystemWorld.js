@@ -23,6 +23,7 @@ import { subscribeToMultiplayerRoom } from '@/lib/multiplayerRealtimeClient';
 import { resolveMultiplayerIdentity } from '@/lib/multiplayerSyncEngine';
 import { buildAccountSnapshot, defaultProgressState, deriveProgression, getAccountStorageKey, normalizeProgressState } from '@/lib/accountProgression';
 import AccountProgressPanel from '@/components/AccountProgressPanel';
+import { HYPERSPACE_DIMENSION_COUNT, HYPERSPACE_SIGNATURE_PREFIX } from '@/lib/simulationConfig';
 
 function useDeviceTier() {
   const [tier, setTier] = useState({ isMobile: false, dpr: [1, 1.6], stars: 7600, sparkles: 220, meteors: 18 });
@@ -1328,7 +1329,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           <div className="stable-chip-row">
             <span>Gravity flight</span>
             <span>{steamUser?.steamid ? 'Steam-linked shell' : 'Guest shell sync'}</span>
-            <span>Q12D state-space</span>
+            <span>{`${HYPERSPACE_SIGNATURE_PREFIX} state-space`}</span>
             <span>{universe?.privacy?.privacyTier || 'guest-public'}</span>
             <span>{lobbyMode === 'hub' ? 'Hub star sync' : '9-planet private system'}</span>
             <span>Epoch {(privateWorldAsset?.epochWindow ?? epochSummary.unix)}</span>
@@ -1472,9 +1473,9 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
         </div> : null}
 
         <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
-          <p className="eyebrow">Q12D / Physics telemetry</p>
+          <p className="eyebrow">{`${HYPERSPACE_SIGNATURE_PREFIX} / Physics telemetry`}</p>
           <h3>{telemetry.quantum.signature}</h3>
-          <p className="muted">Mathematical flight now resolves a live singularity window using RK4 integration, inverse-square gravity, event-horizon stress, entropic containment, and a 12-dimensional state-space that reacts to your motion and the nearest anchor.</p>
+          <p className="muted">{`Mathematical flight now resolves a live singularity window using RK4 integration, inverse-square gravity, event-horizon stress, entropic containment, and a ${HYPERSPACE_DIMENSION_COUNT}-dimensional state-space that reacts to your motion and the nearest anchor.`}</p>
           <div className="focus-meta">
             <span>Speed {telemetry.speed}</span>
             <span>Gravity {telemetry.gravity}</span>
