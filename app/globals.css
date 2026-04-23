@@ -4836,6 +4836,27 @@ button { font: inherit; }
   border: 1px solid rgba(125, 224, 255, 0.16);
 }
 
+.operations-validator-summary {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.9rem 1rem;
+  border-radius: 16px;
+  background: rgba(6, 17, 30, 0.72);
+  border: 1px solid rgba(131, 225, 255, 0.2);
+}
+
+.operations-validator-summary.confidence-high {
+  border-color: rgba(119, 255, 193, 0.3);
+}
+
+.operations-validator-summary.confidence-medium {
+  border-color: rgba(255, 221, 126, 0.32);
+}
+
+.operations-validator-summary.confidence-low {
+  border-color: rgba(255, 142, 142, 0.34);
+}
+
 .operations-sections-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

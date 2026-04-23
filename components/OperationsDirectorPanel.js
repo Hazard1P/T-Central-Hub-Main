@@ -23,7 +23,11 @@ function Section({ title, kicker, items }) {
   );
 }
 
-export default function OperationsDirectorPanel({ operations, lobbyMode = 'hub' }) {
+function formatCoverage(value = 0) {
+  return `${Math.round(Number(value || 0) * 100)}%`;
+}
+
+export default function OperationsDirectorPanel({ operations, lobbyMode = 'hub', validationSummary = null }) {
   if (!operations) return null;
 
   return (
@@ -46,6 +50,17 @@ export default function OperationsDirectorPanel({ operations, lobbyMode = 'hub' 
         <strong>{operations.nextDirective?.title || 'All primary directives complete'}</strong>
         <small>{operations.nextDirective?.detail || 'The base loop is online. Add new missions in future development passes.'}</small>
       </div>
+
+      {validationSummary ? (
+        <div className={`operations-validator-summary confidence-${validationSummary.confidence || 'low'}`}>
+          <span>Symmetry validator</span>
+          <strong>{String(validationSummary.confidence || 'low').toUpperCase()} confidence · {formatCoverage(validationSummary.coverage)} capture coverage</strong>
+          <small>
+            Checked {validationSummary.checked || 0} events · drift {validationSummary.driftCount || 0} · frame gaps {validationSummary.gapCount || 0}
+            {validationSummary.strictCoverageFailed ? ' · strict coverage threshold failed' : ''}
+          </small>
+        </div>
+      ) : null}
 
       <div className="operations-sections-grid">
         <Section title="Independent systems" kicker="Foundation" items={operations.independentSystems} />

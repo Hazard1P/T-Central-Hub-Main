@@ -21,6 +21,8 @@ async function handle(request, payload = {}) {
     fromTimestamp: payload?.from,
     toTimestamp: payload?.to,
     limit: payload?.limit,
+    strictMode: payload?.strictMode === true || payload?.strictMode === 'true',
+    minCoverage: payload?.minCoverage,
   });
 
   return NextResponse.json(result, { status: result.status || 200 });
@@ -33,6 +35,8 @@ export async function GET(request) {
     from: searchParams.get('from') || undefined,
     to: searchParams.get('to') || undefined,
     limit: searchParams.get('limit') || undefined,
+    strictMode: searchParams.get('strictMode') || undefined,
+    minCoverage: searchParams.get('minCoverage') || undefined,
   });
 }
 
