@@ -59,6 +59,26 @@ function resolveIdentity(body = {}, authContext) {
   };
 }
 
+
+function resolveRequestedMode(body = {}) {
+  return normalizeSessionMode(body?.mode || body?.lobbyMode, SESSION_MODES.MULTI_PLAYER);
+}
+
+function withModePayload(payload = {}, { roomName, mode, source, playerCount = 0, eventThroughput = 0, combatHeat = 0 } = {}) {
+  const modeState = transitionSessionMode({ roomName, to: mode, source });
+  const ringAdjustments = buildRingAdjustmentOutputs({ roomName, mode: modeState.mode, playerCount, eventThroughput, combatHeat });
+
+  return {
+    ...payload,
+    mode: modeState.mode,
+    modeTransition: modeState.transition,
+    ringAdjustments,
+    server: payload?.server
+      ? { ...payload.server, mode: modeState.mode, modeTransition: modeState.transition }
+      : payload?.server,
+  };
+}
+
 export async function POST(request) {
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
