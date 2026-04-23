@@ -33,6 +33,7 @@ export async function POST(request) {
       id: body?.id,
       token: body?.token,
       snapshot: body?.snapshot,
+      captureSimulationEvent: body?.captureSimulationEvent !== false,
     });
     return NextResponse.json(result, { status: result.status || 200 });
   }
