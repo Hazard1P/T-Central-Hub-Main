@@ -1728,13 +1728,23 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
 
       <div className="content-card stable-card observer flight-command-card stable-card-layer telemetry-layer">
         <p className="eyebrow">Flight command deck</p>
-        <h3>Spaceship + control rebuild</h3>
+        <h3>Flight-command deck interface</h3>
         <p className="muted">
-          Route-flight now uses a rebuilt command hull with singularity-aware traversal, boost-assisted vectoring, and damped control for clearer multiplayer and singleplayer piloting.
+          Route-flight now runs through a clearer command layout with grouped controls, live readability, and quicker crew-side tuning for multiplayer and private missions.
         </p>
-        <div className="focus-meta">
-          <span>Speed {telemetry.speed}</span>
-          <span>Position {telemetry.position.map((value) => value.toFixed ? value.toFixed(1) : value).join(' / ')}</span>
+        <div className="flight-command-stat-grid">
+          <article>
+            <small>Current speed</small>
+            <strong>{telemetry.speed}</strong>
+          </article>
+          <article>
+            <small>Nearest anchor</small>
+            <strong>{telemetry.nearest || 'deep-space drift'}</strong>
+          </article>
+          <article>
+            <small>Position vector</small>
+            <strong>{telemetry.position.map((value) => value.toFixed ? value.toFixed(1) : value).join(' / ')}</strong>
+          </article>
         </div>
         <div className="stable-chip-row alt">
           <span>Math engine live</span>
@@ -1744,7 +1754,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           <span>Singularity engine live</span>
           <span>Dynamic engine live</span>
         </div>
-        <div className="stable-chip-row alt">
+        <div className="stable-chip-row alt flight-command-toggle-row">
           <button className={`stable-route-button compact ${flightConfig.inertialDampers ? 'is-live' : ''}`} onClick={() => setFlightConfig((current) => ({ ...current, inertialDampers: !current.inertialDampers }))}>
             {flightConfig.inertialDampers ? 'Dampers online' : 'Dampers offline'}
           </button>
