@@ -29,6 +29,7 @@ export default function HomePage() {
             <a className="button primary" href="/system">Enter system</a>
             <a className="button secondary" href="/servers/arma3-cth">Open primary route</a>
             <a className="button secondary" href="/status">View status</a>
+            <a className="button secondary" href="/hub-form">Open hub form</a>
           </div>
 
           <div className="entry-status-bar refined">

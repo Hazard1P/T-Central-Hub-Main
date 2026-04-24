@@ -59,6 +59,9 @@ export default function SteamLoginHud() {
               <a className="steam-mini-link" href="/report-player">
                 Report player
               </a>
+              <a className="steam-mini-link" href="/hub-form">
+                Hub form
+              </a>
               {session ? <a className="steam-mini-link" href="/api/auth/steam/logout">Sign out Steam</a> : null}
               {googleUser ? <a className="steam-mini-link" href="/api/auth/google/logout">Sign out Google</a> : null}
             </>

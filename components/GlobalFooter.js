@@ -6,6 +6,7 @@ const footerLinks = [
   { href: '/eula', label: 'EULA' },
   { href: '/multiplayer-policy', label: 'Multiplayer Policy' },
   { href: '/contact', label: 'Contact' },
+  { href: '/hub-form', label: 'Hub Form' },
 ];
 
 export default function GlobalFooter() {

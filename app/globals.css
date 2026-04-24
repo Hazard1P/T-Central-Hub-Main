@@ -5547,3 +5547,143 @@ button { font: inherit; }
 .multiplayer-hud {
   z-index: 60;
 }
+
+/* Unified aesthetic refresh */
+.content-noise {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.35;
+  background-image: radial-gradient(rgba(255,255,255,0.07) 0.5px, transparent 0.5px);
+  background-size: 3px 3px;
+}
+
+.page-hero,
+.page-section,
+.content-bubbles {
+  position: relative;
+  z-index: 1;
+}
+
+.page-hero {
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 24px;
+  background: linear-gradient(140deg, rgba(7,17,30,0.9), rgba(12,32,53,0.72));
+}
+
+.page-hero-media {
+  margin-top: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.16);
+  overflow: hidden;
+}
+
+.page-hero-media img {
+  width: 100%;
+  max-height: 280px;
+  object-fit: cover;
+  display: block;
+}
+
+.panel-minimize-toggle {
+  width: 100%;
+  background: transparent;
+  color: inherit;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.panel-minimize-indicator {
+  font-size: 22px;
+  line-height: 1;
+  color: var(--cyan);
+}
+
+.hub-form-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.hub-form-card,
+.hub-board-feed {
+  background: rgba(10, 22, 36, 0.85);
+}
+
+.hub-form-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.hub-form-grid label {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.hub-form-grid input,
+.hub-form-grid select,
+.hub-form-grid textarea {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(4,12,22,0.86);
+  color: var(--text);
+  padding: 10px;
+}
+
+.hub-form-grid textarea {
+  min-height: 150px;
+  resize: vertical;
+}
+
+.hub-auth-required {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.hub-form-status.success { color: #8fffba; }
+.hub-form-status.error { color: #ff8f9d; }
+
+.hub-board-list {
+  display: grid;
+  gap: 10px;
+  max-height: 520px;
+  overflow: auto;
+}
+
+.hub-board-post {
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  padding: 12px;
+  background: rgba(9,20,34,0.8);
+}
+
+.hub-board-post-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.hub-board-post-head span {
+  border: 1px solid rgba(131,235,255,0.35);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  color: var(--cyan);
+}
