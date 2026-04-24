@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 
 function Section({ title, kicker, items }) {
   return (
@@ -45,56 +45,50 @@ const MISSION_TYPES = [
 
 export default function OperationsDirectorPanel({ operations, lobbyMode = 'hub', validationSummary = null }) {
   if (!operations) return null;
-  const [activeTab, setActiveTab] = useState('overview');
-  const [targetKey, setTargetKey] = useState(operations.activeFocusKey || 'deep_blackhole');
-  const [missionType, setMissionType] = useState('entropic-gather');
-  const [pilotCount, setPilotCount] = useState(2);
-  const [engineerCount, setEngineerCount] = useState(1);
-
-  const targetLabel = useMemo(() => MISSION_TARGETS.find((item) => item.value === targetKey)?.label || 'Deep Space Blackhole', [targetKey]);
-  const missionLabel = useMemo(() => MISSION_TYPES.find((item) => item.value === missionType)?.label || 'Entropic credit gathering', [missionType]);
-  const totalCrew = pilotCount + engineerCount;
+  const [open, setOpen] = useState(true);
 
   return (
     <div className="content-card stable-card operations-director-card stable-card-layer systems-layer">
-      <div className="operations-director-head">
-        <div>
-          <p className="eyebrow">Mission operations</p>
-          <h3>{operations.modeTitle}</h3>
+      <button
+        type="button"
+        className="panel-minimize-toggle"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        aria-label={open ? 'Minimize operations director panel' : 'Expand operations director panel'}
+      >
+        <div className="operations-director-head">
+          <div>
+            <p className="eyebrow">Operations director</p>
+            <h3>{operations.modeTitle}</h3>
+          </div>
+          <div className="operations-progress-badge">
+            <strong>{operations.completionPercent}%</strong>
+            <span>{operations.completedCount} / {operations.totalCount}</span>
+          </div>
         </div>
-        <div className="operations-progress-badge">
-          <strong>{operations.completionPercent}%</strong>
-          <span>{operations.completedCount} / {operations.totalCount}</span>
-        </div>
-      </div>
+        <span className="panel-minimize-indicator" aria-hidden="true">{open ? '−' : '+'}</span>
+      </button>
 
-      <div className="operations-tab-row" role="tablist" aria-label="Operations views">
-        <button type="button" role="tab" aria-selected={activeTab === 'overview'} className={`operations-tab ${activeTab === 'overview' ? 'is-active' : ''}`} onClick={() => setActiveTab('overview')}>
-          Overview
-        </button>
-        <button type="button" role="tab" aria-selected={activeTab === 'missions'} className={`operations-tab ${activeTab === 'missions' ? 'is-active' : ''}`} onClick={() => setActiveTab('missions')}>
-          Missions
-        </button>
-      </div>
+      {open ? (
+        <>
+          <p className="muted operations-summary">{operations.modeSummary}</p>
 
-      <p className="muted operations-summary">{operations.modeSummary}</p>
+          <div className="operations-next-directive">
+            <span>{lobbyMode === 'hub' ? 'Hub directive' : 'Private directive'}</span>
+            <strong>{operations.nextDirective?.title || 'All primary directives complete'}</strong>
+            <small>{operations.nextDirective?.detail || 'The base loop is online. Add new missions in future development passes.'}</small>
+          </div>
 
-      <div className="operations-next-directive">
-        <span>{lobbyMode === 'hub' ? 'Hub directive' : 'Private directive'}</span>
-        <strong>{operations.nextDirective?.title || 'All primary directives complete'}</strong>
-        <small>{operations.nextDirective?.detail || 'The base loop is online. Add new missions in future development passes.'}</small>
-      </div>
-
-      {validationSummary ? (
-        <div className={`operations-validator-summary confidence-${validationSummary.confidence || 'low'}`}>
-          <span>Symmetry validator</span>
-          <strong>{String(validationSummary.confidence || 'low').toUpperCase()} confidence · {formatCoverage(validationSummary.coverage)} capture coverage</strong>
-          <small>
-            Checked {validationSummary.checked || 0} events · drift {validationSummary.driftCount || 0} · frame gaps {validationSummary.gapCount || 0}
-            {validationSummary.strictCoverageFailed ? ' · strict coverage threshold failed' : ''}
-          </small>
-        </div>
-      ) : null}
+          {validationSummary ? (
+            <div className={`operations-validator-summary confidence-${validationSummary.confidence || 'low'}`}>
+              <span>Symmetry validator</span>
+              <strong>{String(validationSummary.confidence || 'low').toUpperCase()} confidence · {formatCoverage(validationSummary.coverage)} capture coverage</strong>
+              <small>
+                Checked {validationSummary.checked || 0} events · drift {validationSummary.driftCount || 0} · frame gaps {validationSummary.gapCount || 0}
+                {validationSummary.strictCoverageFailed ? ' · strict coverage threshold failed' : ''}
+              </small>
+            </div>
+          ) : null}
 
       {activeTab === 'overview' ? (
         <div className="operations-sections-grid">
@@ -143,6 +137,13 @@ export default function OperationsDirectorPanel({ operations, lobbyMode = 'hub',
           </div>
         </section>
       )}
+          <div className="operations-sections-grid">
+            <Section title="Independent systems" kicker="Foundation" items={operations.independentSystems} />
+            <Section title="Objectives" kicker="Live gameplay" items={operations.objectives} />
+            <Section title="Mission chain" kicker="Progression" items={operations.missions} />
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }

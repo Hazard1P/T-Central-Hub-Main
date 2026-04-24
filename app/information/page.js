@@ -1,4 +1,4 @@
-import SectionTitle from '@/components/SectionTitle';
+import PageShell from '@/components/PageShell';
 import DiscordPanel from '@/components/DiscordPanel';
 
 const blocks = [
@@ -31,25 +31,24 @@ export const metadata = {
 
 export default function InformationPage() {
   return (
-    <>
-      <section className="section-block page-top">
-        <div className="container">
-          <SectionTitle
-            eyebrow="Information"
-            title="A central page for updates, expectations, and helping players settle in."
-            text="Keep both communities informed with one easy place for expectations, update notes, and quick guidance."
-          />
-          <div className="card-grid two">
+    <PageShell
+      eyebrow="Information"
+      title="A central page for updates, expectations, and helping players settle in."
+      text="Keep both communities informed with one easy place for expectations, update notes, and quick guidance."
+      heroImage={{
+        src: '/cosmic-map-reference.jpg',
+        alt: 'Cosmic map reference art used by T-Central Hub',
+      }}
+    >
+      <div className="card-grid two">
             {blocks.map((block) => (
               <article key={block.title} className="content-card">
                 <h3>{block.title}</h3>
                 <p className="muted">{block.text}</p>
               </article>
             ))}
-          </div>
-        </div>
-      </section>
+      </div>
       <DiscordPanel />
-    </>
+    </PageShell>
   );
 }
