@@ -51,6 +51,11 @@ npm run start
 4. If using contact/report flows in production, configure Supabase first.
 5. Deploy.
 
+## Operational API quick checks
+- `/api/health`
+- `/api/auth/steam/login`
+- `/api/live-status`
+
 ## Notes
 - The `data/` directory is for local development fallback only.
 - The current package is intended to be the cumulative base for future updates.

@@ -36,6 +36,7 @@ This package is the consolidated Phase 1 through Phase 3 build.
 - `lib/multiplayerSyncEngine.js`
 
 ## Main API routes
+- `/api/health`
 - `/api/auth/steam/login`
 - `/api/auth/steam/callback`
 - `/api/auth/steam/logout`
@@ -68,6 +69,7 @@ This package includes a mathematically grounded browser simulation layer and a m
 
 
 ## Vercel readiness
+- Canonical runtime target is Node `24.x` (aligned with `package.json` engines and deployment docs).
 - `NEXT_PUBLIC_APP_URL` and metadata now resolve cleanly for localhost or Vercel hosts.
 - Session, support, and Prayer Seed cookies now align across localhost and production HTTPS.
 - API routes that depend on sessions or live state are marked dynamic for server freshness.
