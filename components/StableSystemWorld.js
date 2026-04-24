@@ -1009,10 +1009,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   });
 
   const [prayerSeedState, setPrayerSeedState] = useState({ status: '', ok: true });
-  const [correctionState, setCorrectionState] = useState(null);
   const [validatorSummary, setValidatorSummary] = useState(null);
-  const latestSimulationFrameRef = useRef({ frameIndex: 0, controlVector: [0, 0, 0], dt: 1 / 60, simulationSeed: null });
-  const predictionHistoryRef = useRef([]);
   const identity = useMemo(() => resolveMultiplayerIdentity(steamUser), [steamUser]);
   const [progress, setProgress] = useState(defaultProgressState());
   const [accountProfile, setAccountProfile] = useState(() => buildAccountSnapshot({ identity: { id: 'boot', displayName: 'Boot Pilot', kind: 'guest', authenticated: false }, progress: defaultProgressState() }));
