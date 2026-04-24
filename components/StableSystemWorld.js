@@ -995,13 +995,8 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   const [presentationMode, setPresentationMode] = useState(true);
   const [correctionState, setCorrectionState] = useState(null);
   const lastPresenceBroadcast = useRef(0);
-  const latestSimulationFrameRef = useRef({
-    frameIndex: 0,
-    controlVector: { x: 0, y: 0, z: 0, boost: 0 },
-    dt: 0,
-    simulationSeed: 'tcentral-main',
-  });
-  const predictionHistoryRef = useRef([]);
+  const previousServerSessionRef = useRef(null);
+  const activeSessionTokenRef = useRef(null);
   const [telemetry, setTelemetry] = useState({
     speed: 0,
     gravity: 0,
@@ -1014,6 +1009,10 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   });
 
   const [prayerSeedState, setPrayerSeedState] = useState({ status: '', ok: true });
+  const [correctionState, setCorrectionState] = useState(null);
+  const [validatorSummary, setValidatorSummary] = useState(null);
+  const latestSimulationFrameRef = useRef({ frameIndex: 0, controlVector: [0, 0, 0], dt: 1 / 60, simulationSeed: null });
+  const predictionHistoryRef = useRef([]);
   const identity = useMemo(() => resolveMultiplayerIdentity(steamUser), [steamUser]);
   const [progress, setProgress] = useState(defaultProgressState());
   const [accountProfile, setAccountProfile] = useState(() => buildAccountSnapshot({ identity: { id: 'boot', displayName: 'Boot Pilot', kind: 'guest', authenticated: false }, progress: defaultProgressState() }));
@@ -1089,6 +1088,14 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   const sessionMode = resolveClientSessionMode(lobbyMode, authoritativeState?.mode);
   const ringAdjustments = authoritativeState?.ringAdjustments || { ringThreeSpinIntensity: 0, ringThreePulse: 0.12, intensity: 0 };
 
+  const latestSimulationFrameRef = useRef({
+    frameIndex: 0,
+    controlVector: [0, 0, 0],
+    dt: 1 / 60,
+    simulationSeed: process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main',
+  });
+  const predictionHistoryRef = useRef([]);
+
   const handleCombatAction = useCallback(async (action) => {
     if (lobbyMode !== 'hub' || !serverSession?.token) return;
     try {
@@ -1106,8 +1113,14 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   }, [lobbyMode, serverSession]);
 
   const handleSimulationFrame = useCallback((frame) => {
-    latestSimulationFrameRef.current = frame;
-    predictionHistoryRef.current = [...predictionHistoryRef.current.slice(-179), frame];
+    const normalizedFrame = {
+      frameIndex: Number.isFinite(frame?.frameIndex) ? frame.frameIndex : latestSimulationFrameRef.current.frameIndex,
+      controlVector: Array.isArray(frame?.controlVector) ? frame.controlVector : latestSimulationFrameRef.current.controlVector,
+      dt: Number.isFinite(frame?.dt) ? frame.dt : latestSimulationFrameRef.current.dt,
+      simulationSeed: frame?.simulationSeed || latestSimulationFrameRef.current.simulationSeed,
+    };
+    latestSimulationFrameRef.current = normalizedFrame;
+    predictionHistoryRef.current = [...predictionHistoryRef.current.slice(-179), normalizedFrame];
   }, []);
 
   useEffect(() => {
@@ -1120,18 +1133,12 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
 
   useEffect(() => {
     let active = true;
-    if (lobbyMode !== 'hub') {
-      const previousSession = serverSession;
-      if (previousSession?.token) {
-        void disconnectMultiplayerSession(previousSession);
-      }
-      setServerSession(null);
-      setAuthoritativeState({ authoritative: false, players: [], projectiles: [], world: { contestedNodes: [], combatHeat: 0, anomalyPhase: 0 }, playerCount: 0, mode: SESSION_MODES.SINGLE_PLAYER, modeTransition: { from: SESSION_MODES.MULTI_PLAYER, to: SESSION_MODES.SINGLE_PLAYER, changedAt: Date.now(), source: 'lobby' }, ringAdjustments: { ringThreeSpinIntensity: 0, ringThreePulse: 0.12, intensity: 0 } });
-      setServerStatus({ connected: false, label: 'Private universe isolated', tick: 0 });
-      return () => { active = false; };
-    }
+    let cancelled = false;
 
     const connect = async () => {
+      if (lobbyMode !== 'hub') return;
+      if (serverSession?.token) return;
+
       try {
         const identity = resolveMultiplayerIdentity(steamUser);
         const response = await fetch('/api/multiplayer/connect', {
@@ -1140,18 +1147,48 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           body: JSON.stringify({ identity, steamUser, roomName: process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main', mode: SESSION_MODES.MULTI_PLAYER }),
         });
         const data = await response.json().catch(() => null);
-        if (!active || !response.ok || !data?.ok) return;
+        if (!active || cancelled || !response.ok || !data?.ok) return;
+        activeSessionTokenRef.current = data.token || null;
         setServerSession({ room: data.room, token: data.token, id: data.player?.id, displayName: data.player?.displayName });
         setServerStatus({ connected: true, label: data?.server?.durable ? 'Durable sync' : 'Authoritative sync', tick: data.server?.tick || 0 });
       } catch {
-        if (!active) return;
+        if (!active || cancelled) return;
         setServerStatus({ connected: false, label: 'Server unavailable', tick: 0 });
       }
     };
 
-    connect();
-    return () => { active = false; };
-  }, [lobbyMode, steamUser, serverSession, setAuthoritativeState, setServerSession, setServerStatus]);
+    void connect();
+    return () => {
+      active = false;
+      cancelled = true;
+    };
+  }, [lobbyMode, steamUser, setServerSession, setServerStatus]);
+
+  useEffect(() => {
+    const previousSession = previousServerSessionRef.current;
+    const previousToken = previousSession?.token;
+    const currentToken = serverSession?.token;
+
+    if (previousToken && previousToken !== currentToken) {
+      void disconnectMultiplayerSession(previousSession);
+    }
+
+    if (lobbyMode !== 'hub') {
+      if (currentToken) {
+        void disconnectMultiplayerSession(serverSession);
+      }
+      if (serverSession) {
+        setServerSession(null);
+      }
+      activeSessionTokenRef.current = null;
+      setAuthoritativeState({ authoritative: false, players: [], projectiles: [], world: { contestedNodes: [], combatHeat: 0, anomalyPhase: 0 }, playerCount: 0, mode: SESSION_MODES.SINGLE_PLAYER, modeTransition: { from: SESSION_MODES.MULTI_PLAYER, to: SESSION_MODES.SINGLE_PLAYER, changedAt: Date.now(), source: 'lobby' }, ringAdjustments: { ringThreeSpinIntensity: 0, ringThreePulse: 0.12, intensity: 0 } });
+      setServerStatus({ connected: false, label: 'Private universe isolated', tick: 0 });
+    } else if (currentToken) {
+      activeSessionTokenRef.current = currentToken;
+    }
+
+    previousServerSessionRef.current = serverSession;
+  }, [lobbyMode, serverSession, setAuthoritativeState, setServerSession, setServerStatus]);
 
   useEffect(() => {
     if (lobbyMode !== 'hub' || !serverSession?.token) return;
@@ -1169,10 +1206,10 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           tick: telemetry.tick,
           quantumSignature: telemetry.quantum?.signature,
           firing: telemetry.firing,
-          frameIndex: latestSimulationFrameRef.current.frameIndex,
-          controlVector: latestSimulationFrameRef.current.controlVector,
-          dt: latestSimulationFrameRef.current.dt,
-          simulationSeed: latestSimulationFrameRef.current.simulationSeed || simulationSeed,
+          frameIndex: Number.isFinite(latestSimulationFrameRef.current?.frameIndex) ? latestSimulationFrameRef.current.frameIndex : 0,
+          controlVector: Array.isArray(latestSimulationFrameRef.current?.controlVector) ? latestSimulationFrameRef.current.controlVector : [0, 0, 0],
+          dt: Number.isFinite(latestSimulationFrameRef.current?.dt) ? latestSimulationFrameRef.current.dt : 1 / 60,
+          simulationSeed: latestSimulationFrameRef.current?.simulationSeed || simulationSeed || process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main',
         };
         const response = await fetch('/api/multiplayer/state', {
           method: 'POST',
