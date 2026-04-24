@@ -1083,6 +1083,14 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   const sessionMode = resolveClientSessionMode(lobbyMode, authoritativeState?.mode);
   const ringAdjustments = authoritativeState?.ringAdjustments || { ringThreeSpinIntensity: 0, ringThreePulse: 0.12, intensity: 0 };
 
+  const latestSimulationFrameRef = useRef({
+    frameIndex: 0,
+    controlVector: [0, 0, 0],
+    dt: 1 / 60,
+    simulationSeed: process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main',
+  });
+  const predictionHistoryRef = useRef([]);
+
   const handleCombatAction = useCallback(async (action) => {
     if (lobbyMode !== 'hub' || !serverSession?.token) return;
     try {
@@ -1100,8 +1108,14 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   }, [lobbyMode, serverSession]);
 
   const handleSimulationFrame = useCallback((frame) => {
-    latestSimulationFrameRef.current = frame;
-    predictionHistoryRef.current = [...predictionHistoryRef.current.slice(-179), frame];
+    const normalizedFrame = {
+      frameIndex: Number.isFinite(frame?.frameIndex) ? frame.frameIndex : latestSimulationFrameRef.current.frameIndex,
+      controlVector: Array.isArray(frame?.controlVector) ? frame.controlVector : latestSimulationFrameRef.current.controlVector,
+      dt: Number.isFinite(frame?.dt) ? frame.dt : latestSimulationFrameRef.current.dt,
+      simulationSeed: frame?.simulationSeed || latestSimulationFrameRef.current.simulationSeed,
+    };
+    latestSimulationFrameRef.current = normalizedFrame;
+    predictionHistoryRef.current = [...predictionHistoryRef.current.slice(-179), normalizedFrame];
   }, []);
 
   useEffect(() => {
@@ -1187,10 +1201,10 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           tick: telemetry.tick,
           quantumSignature: telemetry.quantum?.signature,
           firing: telemetry.firing,
-          frameIndex: latestSimulationFrameRef.current.frameIndex,
-          controlVector: latestSimulationFrameRef.current.controlVector,
-          dt: latestSimulationFrameRef.current.dt,
-          simulationSeed: latestSimulationFrameRef.current.simulationSeed || simulationSeed,
+          frameIndex: Number.isFinite(latestSimulationFrameRef.current?.frameIndex) ? latestSimulationFrameRef.current.frameIndex : 0,
+          controlVector: Array.isArray(latestSimulationFrameRef.current?.controlVector) ? latestSimulationFrameRef.current.controlVector : [0, 0, 0],
+          dt: Number.isFinite(latestSimulationFrameRef.current?.dt) ? latestSimulationFrameRef.current.dt : 1 / 60,
+          simulationSeed: latestSimulationFrameRef.current?.simulationSeed || simulationSeed || process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main',
         };
         const response = await fetch('/api/multiplayer/state', {
           method: 'POST',
