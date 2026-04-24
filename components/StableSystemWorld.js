@@ -1210,7 +1210,11 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
         };
         const response = await fetch('/api/multiplayer/state', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${serverSession.token}`,
+            'x-multiplayer-token': serverSession.token,
+          },
           body: JSON.stringify({ roomName: serverSession.room, id: serverSession.id, token: serverSession.token, mode: SESSION_MODES.MULTI_PLAYER, snapshot }),
         });
         const data = await response.json().catch(() => null);

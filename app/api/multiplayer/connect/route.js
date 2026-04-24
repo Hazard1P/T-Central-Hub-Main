@@ -114,10 +114,13 @@ export async function POST(request) {
       steamUser: identity.steamUser,
     });
     const progression = await progressionPromise;
-    return NextResponse.json({ ...result, authContext: responseAuthContext, progressionDelta: progression?.delta || null }, { status: result.status || 200 });
     // Frontend consumers expect mode, modeTransition, and ringAdjustments fields on connect responses.
     const payload = withModePayload(
-      { ...result, authContext: responseAuthContext },
+      {
+        ...result,
+        authContext: responseAuthContext,
+        progressionDelta: progression?.delta || null,
+      },
       {
         roomName,
         mode: requestedMode,
@@ -135,10 +138,14 @@ export async function POST(request) {
     steamUser: identity.steamUser,
   });
   const progression = await progressionPromise;
-  return NextResponse.json({ ...result, durable: false, authContext: responseAuthContext, progressionDelta: progression?.delta || null });
   // Frontend consumers expect mode, modeTransition, and ringAdjustments fields on connect responses.
   const payload = withModePayload(
-    { ...result, durable: false, authContext: responseAuthContext },
+    {
+      ...result,
+      durable: false,
+      authContext: responseAuthContext,
+      progressionDelta: progression?.delta || null,
+    },
     {
       roomName,
       mode: requestedMode,
