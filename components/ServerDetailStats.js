@@ -31,6 +31,11 @@ export default function ServerDetailStats({ server }) {
             <span>{server.wipeCadence ? `Cycle: ${server.wipeCadence}` : `Mode: ${server.mode}`}</span>
             <span>Tier: {server.tier}</span>
           </div>
+          {server.modeDescription ? (
+            <p className="muted" style={{ marginTop: 12 }}>
+              {server.modeDescription}
+            </p>
+          ) : null}
         </article>
 
         <article className="content-card arma-hero-image-card">
@@ -45,6 +50,18 @@ export default function ServerDetailStats({ server }) {
             <h3>{stat.value}</h3>
           </article>
         ))}
+      </div>
+
+      <div className="arma-brief-grid">
+        <article className="content-card">
+          <p className="eyebrow">Route benefits</p>
+          <h3>Why this page exists</h3>
+          <ul className="arma-list">
+            <li>Single-screen server IP visibility before launch.</li>
+            <li>Steam quick-launch and direct-connect handoff.</li>
+            <li>In-universe continuity with blackholes route architecture.</li>
+          </ul>
+        </article>
       </div>
 
       {relatedServers.length ? (
