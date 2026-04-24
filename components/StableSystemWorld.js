@@ -994,6 +994,8 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   const [flightConfig, setFlightConfig] = useState({ thrustScale: 1, inertialDampers: true, chaseZoom: 1, routeAssist: true });
   const [presentationMode, setPresentationMode] = useState(true);
   const lastPresenceBroadcast = useRef(0);
+  const previousServerSessionRef = useRef(null);
+  const activeSessionTokenRef = useRef(null);
   const [telemetry, setTelemetry] = useState({
     speed: 0,
     gravity: 0,
@@ -1112,18 +1114,12 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
 
   useEffect(() => {
     let active = true;
-    if (lobbyMode !== 'hub') {
-      const previousSession = serverSession;
-      if (previousSession?.token) {
-        void disconnectMultiplayerSession(previousSession);
-      }
-      setServerSession(null);
-      setAuthoritativeState({ authoritative: false, players: [], projectiles: [], world: { contestedNodes: [], combatHeat: 0, anomalyPhase: 0 }, playerCount: 0, mode: SESSION_MODES.SINGLE_PLAYER, modeTransition: { from: SESSION_MODES.MULTI_PLAYER, to: SESSION_MODES.SINGLE_PLAYER, changedAt: Date.now(), source: 'lobby' }, ringAdjustments: { ringThreeSpinIntensity: 0, ringThreePulse: 0.12, intensity: 0 } });
-      setServerStatus({ connected: false, label: 'Private universe isolated', tick: 0 });
-      return () => { active = false; };
-    }
+    let cancelled = false;
 
     const connect = async () => {
+      if (lobbyMode !== 'hub') return;
+      if (serverSession?.token) return;
+
       try {
         const identity = resolveMultiplayerIdentity(steamUser);
         const response = await fetch('/api/multiplayer/connect', {
@@ -1132,18 +1128,48 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           body: JSON.stringify({ identity, steamUser, roomName: process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main', mode: SESSION_MODES.MULTI_PLAYER }),
         });
         const data = await response.json().catch(() => null);
-        if (!active || !response.ok || !data?.ok) return;
+        if (!active || cancelled || !response.ok || !data?.ok) return;
+        activeSessionTokenRef.current = data.token || null;
         setServerSession({ room: data.room, token: data.token, id: data.player?.id, displayName: data.player?.displayName });
         setServerStatus({ connected: true, label: data?.server?.durable ? 'Durable sync' : 'Authoritative sync', tick: data.server?.tick || 0 });
       } catch {
-        if (!active) return;
+        if (!active || cancelled) return;
         setServerStatus({ connected: false, label: 'Server unavailable', tick: 0 });
       }
     };
 
-    connect();
-    return () => { active = false; };
-  }, [lobbyMode, steamUser, serverSession, setAuthoritativeState, setServerSession, setServerStatus]);
+    void connect();
+    return () => {
+      active = false;
+      cancelled = true;
+    };
+  }, [lobbyMode, steamUser, setServerSession, setServerStatus]);
+
+  useEffect(() => {
+    const previousSession = previousServerSessionRef.current;
+    const previousToken = previousSession?.token;
+    const currentToken = serverSession?.token;
+
+    if (previousToken && previousToken !== currentToken) {
+      void disconnectMultiplayerSession(previousSession);
+    }
+
+    if (lobbyMode !== 'hub') {
+      if (currentToken) {
+        void disconnectMultiplayerSession(serverSession);
+      }
+      if (serverSession) {
+        setServerSession(null);
+      }
+      activeSessionTokenRef.current = null;
+      setAuthoritativeState({ authoritative: false, players: [], projectiles: [], world: { contestedNodes: [], combatHeat: 0, anomalyPhase: 0 }, playerCount: 0, mode: SESSION_MODES.SINGLE_PLAYER, modeTransition: { from: SESSION_MODES.MULTI_PLAYER, to: SESSION_MODES.SINGLE_PLAYER, changedAt: Date.now(), source: 'lobby' }, ringAdjustments: { ringThreeSpinIntensity: 0, ringThreePulse: 0.12, intensity: 0 } });
+      setServerStatus({ connected: false, label: 'Private universe isolated', tick: 0 });
+    } else if (currentToken) {
+      activeSessionTokenRef.current = currentToken;
+    }
+
+    previousServerSessionRef.current = serverSession;
+  }, [lobbyMode, serverSession, setAuthoritativeState, setServerSession, setServerStatus]);
 
   useEffect(() => {
     if (lobbyMode !== 'hub' || !serverSession?.token) return;
