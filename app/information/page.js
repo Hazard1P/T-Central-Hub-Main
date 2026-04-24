@@ -17,6 +17,10 @@ const blocks = [
   {
     title: 'Support and moderation',
     text: 'Point players toward Discord, moderation contact flow, and the dedicated player reporting page without building any account system.'
+  },
+  {
+    title: 'Blackhole route interlink',
+    text: 'Route subsections are designed to function alone (direct join instructions) and together (shared 3D/15D universe navigation and status sync).'
   }
 ];
 
