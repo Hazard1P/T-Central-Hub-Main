@@ -993,6 +993,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   const [touchInput, setTouchInput] = useState({ x: 0, y: 0, z: 0, boost: 0 });
   const [flightConfig, setFlightConfig] = useState({ thrustScale: 1, inertialDampers: true, chaseZoom: 1, routeAssist: true });
   const [presentationMode, setPresentationMode] = useState(true);
+  const [correctionState, setCorrectionState] = useState(null);
   const lastPresenceBroadcast = useRef(0);
   const previousServerSessionRef = useRef(null);
   const activeSessionTokenRef = useRef(null);
