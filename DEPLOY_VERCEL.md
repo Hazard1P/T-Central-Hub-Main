@@ -17,13 +17,14 @@
 
 ## Recommended Vercel project settings
 - Framework preset: Next.js
-- Node version: **24.x** (matches `package.json` engines: `24.x`)
+- Node version: **24.x** (default) or **22.x/20.x** when needed (matches `package.json` engines: `20.x || 22.x || 24.x`)
 - Build command: `npm run build`
 - Output directory: leave empty for Next.js auto-detection
 
 ## Runtime compatibility note
-- This repo uses Next.js `14.2.35`, which supports modern active LTS/current Node releases.
-- Canonical runtime target for this repository is Node `24.x` (see `package.json` engines).
+- This repo uses Next.js `14.2.35`, which requires Node.js `>=18.17`.
+- For parity across local CI and Vercel, this repository supports LTS lines `20.x`, `22.x`, and `24.x`.
+- Canonical runtime target for production remains Node `24.x` (default on Vercel), with `22.x` and `20.x` as supported fallback LTS options.
 
 ## Post-deploy checks
 - `/api/health`
