@@ -4,6 +4,7 @@ import { joinAuthoritativeRoom, pruneAuthoritativeRooms } from '@/lib/authoritat
 import { hasDurableMultiplayer, joinDurableRoom } from '@/lib/durableMultiplayerStore';
 import { resolveGameAuthContext } from '@/lib/auth/resolveGameAuthContext';
 import { awardMultiplayerProgressionEvent } from '@/lib/multiplayerProgression';
+import { SESSION_MODES, buildRingAdjustmentOutputs, normalizeSessionMode, transitionSessionMode } from '@/lib/sessionModeEngine';
 
 const ROOM_NAME_PATTERN = /^[a-zA-Z0-9_-]{1,64}$/;
 const GUEST_ID_PATTERN = /^[a-zA-Z0-9_-]{3,64}$/;
@@ -94,6 +95,7 @@ export async function POST(request) {
   const authContext = resolveGameAuthContext(cookies());
   const identity = resolveIdentity(body, authContext);
   const responseAuthContext = toApiAuthContext(authContext);
+  const requestedMode = resolveRequestedMode(body);
 
   const joinEventId = `connect-${roomName}-${identity.id}`;
   const progressionPromise = awardMultiplayerProgressionEvent({
@@ -113,6 +115,17 @@ export async function POST(request) {
     });
     const progression = await progressionPromise;
     return NextResponse.json({ ...result, authContext: responseAuthContext, progressionDelta: progression?.delta || null }, { status: result.status || 200 });
+    // Frontend consumers expect mode, modeTransition, and ringAdjustments fields on connect responses.
+    const payload = withModePayload(
+      { ...result, authContext: responseAuthContext },
+      {
+        roomName,
+        mode: requestedMode,
+        source: 'connect',
+        playerCount: result?.state?.playerCount || 0,
+      }
+    );
+    return NextResponse.json(payload, { status: result.status || 200 });
   }
 
   pruneAuthoritativeRooms();
@@ -123,4 +136,15 @@ export async function POST(request) {
   });
   const progression = await progressionPromise;
   return NextResponse.json({ ...result, durable: false, authContext: responseAuthContext, progressionDelta: progression?.delta || null });
+  // Frontend consumers expect mode, modeTransition, and ringAdjustments fields on connect responses.
+  const payload = withModePayload(
+    { ...result, durable: false, authContext: responseAuthContext },
+    {
+      roomName,
+      mode: requestedMode,
+      source: 'connect',
+      playerCount: result?.state?.playerCount || 0,
+    }
+  );
+  return NextResponse.json(payload);
 }
