@@ -993,7 +993,15 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   const [touchInput, setTouchInput] = useState({ x: 0, y: 0, z: 0, boost: 0 });
   const [flightConfig, setFlightConfig] = useState({ thrustScale: 1, inertialDampers: true, chaseZoom: 1, routeAssist: true });
   const [presentationMode, setPresentationMode] = useState(true);
+  const [correctionState, setCorrectionState] = useState(null);
   const lastPresenceBroadcast = useRef(0);
+  const latestSimulationFrameRef = useRef({
+    frameIndex: 0,
+    controlVector: { x: 0, y: 0, z: 0, boost: 0 },
+    dt: 0,
+    simulationSeed: 'tcentral-main',
+  });
+  const predictionHistoryRef = useRef([]);
   const [telemetry, setTelemetry] = useState({
     speed: 0,
     gravity: 0,
