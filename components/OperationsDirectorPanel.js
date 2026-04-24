@@ -1,5 +1,7 @@
 'use client';
 
+import { useMemo, useState } from 'react';
+
 function Section({ title, kicker, items }) {
   return (
     <section className="operations-section">
@@ -27,20 +29,52 @@ function formatCoverage(value = 0) {
   return `${Math.round(Number(value || 0) * 100)}%`;
 }
 
+const MISSION_TARGETS = [
+  { value: 'deep_blackhole', label: 'Deep Space Blackhole' },
+  { value: 'entropic_node', label: 'Entropic Node' },
+  { value: 'rust_anchor', label: 'Rust Anchor Blackhole' },
+  { value: 'arma3', label: 'Arma3 Blackhole' },
+  { value: 'matrixcoinexchange', label: 'MatrixCoinExchange Lane' },
+];
+
+const MISSION_TYPES = [
+  { value: 'blackhole-seal', label: 'Selective blackhole lock' },
+  { value: 'entropic-gather', label: 'Entropic credit gathering' },
+  { value: 'recon-route', label: 'Route recon and relay' },
+];
+
 export default function OperationsDirectorPanel({ operations, lobbyMode = 'hub', validationSummary = null }) {
   if (!operations) return null;
+  const [activeTab, setActiveTab] = useState('overview');
+  const [targetKey, setTargetKey] = useState(operations.activeFocusKey || 'deep_blackhole');
+  const [missionType, setMissionType] = useState('entropic-gather');
+  const [pilotCount, setPilotCount] = useState(2);
+  const [engineerCount, setEngineerCount] = useState(1);
+
+  const targetLabel = useMemo(() => MISSION_TARGETS.find((item) => item.value === targetKey)?.label || 'Deep Space Blackhole', [targetKey]);
+  const missionLabel = useMemo(() => MISSION_TYPES.find((item) => item.value === missionType)?.label || 'Entropic credit gathering', [missionType]);
+  const totalCrew = pilotCount + engineerCount;
 
   return (
     <div className="content-card stable-card operations-director-card stable-card-layer systems-layer">
       <div className="operations-director-head">
         <div>
-          <p className="eyebrow">Operations director</p>
+          <p className="eyebrow">Mission operations</p>
           <h3>{operations.modeTitle}</h3>
         </div>
         <div className="operations-progress-badge">
           <strong>{operations.completionPercent}%</strong>
           <span>{operations.completedCount} / {operations.totalCount}</span>
         </div>
+      </div>
+
+      <div className="operations-tab-row" role="tablist" aria-label="Operations views">
+        <button type="button" role="tab" aria-selected={activeTab === 'overview'} className={`operations-tab ${activeTab === 'overview' ? 'is-active' : ''}`} onClick={() => setActiveTab('overview')}>
+          Overview
+        </button>
+        <button type="button" role="tab" aria-selected={activeTab === 'missions'} className={`operations-tab ${activeTab === 'missions' ? 'is-active' : ''}`} onClick={() => setActiveTab('missions')}>
+          Missions
+        </button>
       </div>
 
       <p className="muted operations-summary">{operations.modeSummary}</p>
@@ -62,11 +96,53 @@ export default function OperationsDirectorPanel({ operations, lobbyMode = 'hub',
         </div>
       ) : null}
 
-      <div className="operations-sections-grid">
-        <Section title="Independent systems" kicker="Foundation" items={operations.independentSystems} />
-        <Section title="Objectives" kicker="Live gameplay" items={operations.objectives} />
-        <Section title="Mission chain" kicker="Progression" items={operations.missions} />
-      </div>
+      {activeTab === 'overview' ? (
+        <div className="operations-sections-grid">
+          <Section title="Independent systems" kicker="Foundation" items={operations.independentSystems} />
+          <Section title="Objectives" kicker="Live gameplay" items={operations.objectives} />
+          <Section title="Mission chain" kicker="Progression" items={operations.missions} />
+        </div>
+      ) : (
+        <section className="mission-assignment-panel" role="tabpanel">
+          <div className="mission-assignment-head">
+            <strong>Mission assignment board</strong>
+            <span>Configure crew for selective blackholes, entropic credit gathering, and extended route work.</span>
+          </div>
+          <div className="mission-assignment-grid">
+            <label>
+              <span>Mission target</span>
+              <select value={targetKey} onChange={(event) => setTargetKey(event.target.value)}>
+                {MISSION_TARGETS.map((item) => (
+                  <option key={item.value} value={item.value}>{item.label}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Mission profile</span>
+              <select value={missionType} onChange={(event) => setMissionType(event.target.value)}>
+                {MISSION_TYPES.map((item) => (
+                  <option key={item.value} value={item.value}>{item.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="mission-assignment-grid crew-grid">
+            <label>
+              <span>Pilots assigned: {pilotCount}</span>
+              <input type="range" min="1" max="8" step="1" value={pilotCount} onChange={(event) => setPilotCount(Number(event.target.value))} />
+            </label>
+            <label>
+              <span>Space engineers assigned: {engineerCount}</span>
+              <input type="range" min="0" max="6" step="1" value={engineerCount} onChange={(event) => setEngineerCount(Number(event.target.value))} />
+            </label>
+          </div>
+          <div className="mission-assignment-summary">
+            <small>Ready packet</small>
+            <strong>{missionLabel}</strong>
+            <p>{targetLabel} · {pilotCount} pilot{pilotCount === 1 ? '' : 's'} · {engineerCount} engineer{engineerCount === 1 ? '' : 's'} · total crew {totalCrew}</p>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
