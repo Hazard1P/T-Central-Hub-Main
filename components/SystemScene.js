@@ -9,17 +9,10 @@ import { SERVER_CATALOG } from '@/lib/serverCatalog';
 import { getSupabaseClient } from '@/lib/supabaseClient';
 import { WORLD_LAYOUT as NODES } from '@/lib/worldLayout';
 import { SYSTEM_RUNTIME, isMobileViewport, shouldReduceScene } from '@/lib/systemRuntime';
-import RouteLegend from '@/components/RouteLegend';
 import { getPrivateWorldKey } from '@/lib/securityConfig';
 import { DEFAULT_FLIGHT_STATS, normalizeFlightStats, getSafePosition } from '@/lib/playerRuntime';
-import ProgressStagePanel from '@/components/ProgressStagePanel';
-import WorldStructurePanel from '@/components/WorldStructurePanel';
-import NodeCountsPanel from '@/components/NodeCountsPanel';
-import SystemConsolePanel from '@/components/SystemConsolePanel';
-import WorldGuide from '@/components/WorldGuide';
 import ServerRoutePanel from '@/components/ServerRoutePanel';
 import RoomObjectives from '@/components/RoomObjectives';
-import SecurityStandardsPanel from '@/components/SecurityStandardsPanel';
 
 function formatStatus(status) {
   if (!status) return 'Status unavailable';
@@ -136,7 +129,7 @@ function CameraReset({ tick, onIntroDone }) {
 
 
 
-function FlyShipRig({ enabled, resetTick, onFlightStats }) {
+function FlyShipRig({ enabled, resetTick, onFlightStats, freeplayMode = false }) {
   const { camera, controls } = useThree();
   const shipRef = useRef(null);
   const flameCore = useRef(null);
@@ -241,8 +234,8 @@ function FlyShipRig({ enabled, resetTick, onFlightStats }) {
     const rawBoost = keys.current['ControlLeft'] || keys.current['ControlRight'];
     const canBoost = boostMeter.current > 4;
     const boost = rawBoost && canBoost;
-    const maxSpeed = boost ? 24 : 12;
-    const accel = boost ? 0.16 : 0.10;
+    const maxSpeed = freeplayMode ? (boost ? 72 : 40) : (boost ? 24 : 12);
+    const accel = freeplayMode ? (boost ? 0.22 : 0.16) : (boost ? 0.16 : 0.10);
 
     if (boost) {
       boostMeter.current = Math.max(0, boostMeter.current - delta * 20);
@@ -268,39 +261,49 @@ function FlyShipRig({ enabled, resetTick, onFlightStats }) {
 
     const move = new THREE.Vector3();
     if (keys.current['KeyW']) move.add(forward);
+    if (keys.current['ArrowUp']) move.add(forward);
     if (keys.current['KeyS']) move.addScaledVector(forward, -0.7);
+    if (keys.current['ArrowDown']) move.addScaledVector(forward, -0.7);
     if (keys.current['KeyD']) move.add(right);
+    if (keys.current['ArrowRight']) move.add(right);
     if (keys.current['KeyA']) move.addScaledVector(right, -1);
+    if (keys.current['ArrowLeft']) move.addScaledVector(right, -1);
     if (keys.current['Space']) move.add(up);
+    if (keys.current['KeyR']) move.add(up);
     if (keys.current['ShiftLeft'] || keys.current['ShiftRight']) move.addScaledVector(up, -1);
+    if (keys.current['KeyF']) move.addScaledVector(up, -1);
 
     if (move.lengthSq() > 0) {
       move.normalize();
       velocity.current.lerp(move.multiplyScalar(maxSpeed), accel);
     } else {
-      velocity.current.lerp(new THREE.Vector3(), 0.035);
+      velocity.current.lerp(new THREE.Vector3(), freeplayMode ? 0.018 : 0.035);
     }
 
     let gravityTarget = 'None';
     let strongestPull = 0;
-    const gravityAnchors = [
-      { label: 'Arma3', pos: [-9.4, 3.0, 0], radius: 6.5, pull: 1.6 },
-      { label: 'S&Box', pos: [0, 8.2, 0], radius: 5.4, pull: 1.2 },
-      { label: 'T-Central Hub', pos: [0, -6.0, 0], radius: 8.5, pull: 2.2 },
-      { label: 'Deep Black Hole', pos: [-12.2, -5.8, -0.3], radius: 7.0, pull: 1.9 },
-    ];
+    if (!freeplayMode) {
+      const gravityAnchors = [
+        { label: 'Arma3', pos: [-9.4, 3.0, 0], radius: 6.5, pull: 1.6 },
+        { label: 'S&Box', pos: [0, 8.2, 0], radius: 5.4, pull: 1.2 },
+        { label: 'T-Central Hub', pos: [0, -6.0, 0], radius: 8.5, pull: 2.2 },
+        { label: 'Deep Black Hole', pos: [-12.2, -5.8, -0.3], radius: 7.0, pull: 1.9 },
+      ];
 
-    for (const anchor of gravityAnchors) {
-      const d = distance3(anchor.pos, shipPos.current);
-      if (d < anchor.radius) {
-        const pullFactor = (1 - d / anchor.radius) * anchor.pull;
-        if (pullFactor > strongestPull) {
-          strongestPull = pullFactor;
-          gravityTarget = anchor.label;
+      for (const anchor of gravityAnchors) {
+        const d = distance3(anchor.pos, shipPos.current);
+        if (d < anchor.radius) {
+          const pullFactor = (1 - d / anchor.radius) * anchor.pull;
+          if (pullFactor > strongestPull) {
+            strongestPull = pullFactor;
+            gravityTarget = anchor.label;
+          }
+          const dir = new THREE.Vector3(anchor.pos[0], anchor.pos[1], anchor.pos[2]).sub(shipPos.current).normalize();
+          velocity.current.addScaledVector(dir, pullFactor * delta);
         }
-        const dir = new THREE.Vector3(anchor.pos[0], anchor.pos[1], anchor.pos[2]).sub(shipPos.current).normalize();
-        velocity.current.addScaledVector(dir, pullFactor * delta);
       }
+    } else {
+      gravityTarget = 'Freeplay';
     }
 
     shipPos.current.addScaledVector(velocity.current, delta);
@@ -758,7 +761,7 @@ function StatusNode({ node, status, selected, onHover, onLeave, onSelect }) {
   );
 }
 
-function Scene({ statuses, onSelect, resetTick, freeFly, onFlightStats, remotePlayers, reducedScene, isMobile, onIntroDone }) {
+function Scene({ statuses, onSelect, resetTick, freeFly, onFlightStats, remotePlayers, reducedScene, isMobile, onIntroDone, freeplayMode = false }) {
   const [hovered, setHovered] = useState('rust_biweekly');
 
   return (
@@ -814,7 +817,7 @@ function Scene({ statuses, onSelect, resetTick, freeFly, onFlightStats, remotePl
         minPolarAngle={0}
       />
       <CameraReset tick={resetTick} onIntroDone={onIntroDone} />
-      <FlyShipRig enabled={freeFly} resetTick={resetTick} onFlightStats={onFlightStats} />
+      <FlyShipRig enabled={freeFly} resetTick={resetTick} onFlightStats={onFlightStats} freeplayMode={freeplayMode} />
     </>
   );
 }
@@ -1091,13 +1094,13 @@ function distance3(a, b) {
 
 
 
-function FixedNav({ onCenter, onPilotToggle, freeFly }) {
+function FixedNav({ onCenter, onPilotToggle, freeFly, freeplayMode, onFreeplayToggle }) {
   return (
     <div className="hud-bottom-fixed">
       <button onClick={onCenter}>Center</button>
-      <a href="/donate"><button>Support</button></a>
-      <a href="/report-player"><button>Report</button></a>
       <button onClick={onPilotToggle}>{freeFly ? 'Exit Pilot' : 'Pilot'}</button>
+      <button onClick={onFreeplayToggle} disabled={!freeFly}>{freeplayMode ? 'Freeplay On' : 'Freeplay Off'}</button>
+      <a href="/report-player"><button>Report</button></a>
     </div>
   );
 }
@@ -1334,6 +1337,7 @@ export default function SystemScene({ lobbyMode = 'hub', steamUser: externalStea
   const [transition, setTransition] = useState(null);
   const [resetTick, setResetTick] = useState(0);
   const [freeFly, setFreeFly] = useState(false);
+  const [freeplayMode, setFreeplayMode] = useState(false);
   const [flightStats, setFlightStats] = useState({ ...DEFAULT_FLIGHT_STATS });
   const [introVisible, setIntroVisible] = useState(true);
   const [activeInterior, setActiveInterior] = useState(null);
@@ -1531,7 +1535,9 @@ export default function SystemScene({ lobbyMode = 'hub', steamUser: externalStea
   };
 
   const handlePilotToggle = () => {
-    setFreeFly((v) => !v);
+    const nextFreeFly = !freeFly;
+    setFreeFly(nextFreeFly);
+    if (!nextFreeFly) setFreeplayMode(false);
     setSelected({
       label: freeFly ? 'Observer Mode' : 'Pilot Mode',
       address: freeFly ? 'Ship hidden' : 'Ship active',
@@ -1539,7 +1545,20 @@ export default function SystemScene({ lobbyMode = 'hub', steamUser: externalStea
         ? 'Returned to observer mode. You can continue spectating the shared system.'
         : isMobile
           ? 'Pilot mode engaged. Use the touch thrusters and steer pad.'
-          : 'Pilot mode engaged. Use W A S D, mouse drag, Space, Shift, Ctrl, and Q / E.',
+          : 'Pilot mode engaged. Use W A S D, arrows, mouse drag, Space/Shift (or R/F), Ctrl boost, and Q / E.',
+    });
+  };
+
+  const handleFreeplayToggle = () => {
+    if (!freeFly) return;
+    const next = !freeplayMode;
+    setFreeplayMode(next);
+    setSelected({
+      label: next ? 'Freeplay Mode' : 'Pilot Mode',
+      address: next ? 'Unrestricted flight profile' : 'Standard flight profile',
+      description: next
+        ? 'Freeplay movement enabled with higher speed, softer damping, and no anchor gravity pull.'
+        : 'Standard pilot profile restored with normal pull lanes around anchor objects.',
     });
   };
 
@@ -1549,25 +1568,35 @@ export default function SystemScene({ lobbyMode = 'hub', steamUser: externalStea
       <SteamIdentityPanel />
       <SystemOverlay loading={loading} mode={mode} freeFly={freeFly} />
       <PilotAssistPanel freeFly={freeFly} isMobile={isMobile} />
-      <SystemConsolePanel mode={mode} freeFly={freeFly} />
-      <ProgressStagePanel />
-      <SecurityStandardsPanel />
-      <ServerRoutePanel selected={selected} />
-      <RouteLegend />
       {lobbyMode === 'private' ? <div className="private-world-banner">Private world key: {getPrivateWorldKey(steamUser?.steamid)}</div> : null}
-      <WorldStructurePanel />
-      <NodeCountsPanel />
-      <RoomObjectives />
-      <WorldGuide />
       <RoomPulse freeFly={freeFly} remotePlayers={remotePlayers} />
       <CockpitOverlay freeFly={freeFly} flightStats={safeFlightStats} selected={selected} />
-      <FixedNav onCenter={handleCenter} onPilotToggle={handlePilotToggle} freeFly={freeFly} />
+      <FixedNav
+        onCenter={handleCenter}
+        onPilotToggle={handlePilotToggle}
+        freeFly={freeFly}
+        freeplayMode={freeplayMode}
+        onFreeplayToggle={handleFreeplayToggle}
+      />
       <MobilePilotControls visible={freeFly && isMobile} />
       <div className="interactive-map-stage full refined-stage">
         <div className="cosmic-overlay" />
         <Canvas dpr={[1, 1.5]} performance={{ min: 0.5 }} camera={{ position: [0, 2.4, 36], fov: 40 }} gl={{ antialias: !isMobile, powerPreference: 'high-performance' }}>
-          <Scene statuses={statuses} onSelect={setSelected} resetTick={resetTick} freeFly={freeFly} onFlightStats={(next) => setFlightStats(normalizeFlightStats(next))} remotePlayers={remotePlayers} reducedScene={reducedScene} isMobile={isMobile} onIntroDone={() => setIntroVisible(false)} />
+          <Scene
+            statuses={statuses}
+            onSelect={setSelected}
+            resetTick={resetTick}
+            freeFly={freeFly}
+            freeplayMode={freeplayMode}
+            onFlightStats={(next) => setFlightStats(normalizeFlightStats(next))}
+            remotePlayers={remotePlayers}
+            reducedScene={reducedScene}
+            isMobile={isMobile}
+            onIntroDone={() => setIntroVisible(false)}
+          />
         </Canvas>
+        <ServerRoutePanel selected={selected} />
+        <RoomObjectives />
         <FocusPanel item={selected} statuses={statuses} onClose={() => setSelected(null)} onOpen={openNode} />
         <Arma3BlackholeInterior
           item={activeInterior === 'arma3' ? selected : null}
