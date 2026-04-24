@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { joinAuthoritativeRoom, pruneAuthoritativeRooms } from '@/lib/authoritativeMultiplayerStore';
 import { hasDurableMultiplayer, joinDurableRoom } from '@/lib/durableMultiplayerStore';
 import { resolveGameAuthContext } from '@/lib/auth/resolveGameAuthContext';
+import { SESSION_MODES, buildRingAdjustmentOutputs, normalizeSessionMode, transitionSessionMode } from '@/lib/sessionModeEngine';
 
 const ROOM_NAME_PATTERN = /^[a-zA-Z0-9_-]{1,64}$/;
 const GUEST_ID_PATTERN = /^[a-zA-Z0-9_-]{3,64}$/;
@@ -93,6 +94,7 @@ export async function POST(request) {
   const authContext = resolveGameAuthContext(cookies());
   const identity = resolveIdentity(body, authContext);
   const responseAuthContext = toApiAuthContext(authContext);
+  const requestedMode = resolveRequestedMode(body);
 
   if (hasDurableMultiplayer()) {
     const result = await joinDurableRoom({
@@ -100,7 +102,17 @@ export async function POST(request) {
       identity,
       steamUser: identity.steamUser,
     });
-    return NextResponse.json({ ...result, authContext: responseAuthContext }, { status: result.status || 200 });
+    // Frontend consumers expect mode, modeTransition, and ringAdjustments fields on connect responses.
+    const payload = withModePayload(
+      { ...result, authContext: responseAuthContext },
+      {
+        roomName,
+        mode: requestedMode,
+        source: 'connect',
+        playerCount: result?.state?.playerCount || 0,
+      }
+    );
+    return NextResponse.json(payload, { status: result.status || 200 });
   }
 
   pruneAuthoritativeRooms();
@@ -109,5 +121,15 @@ export async function POST(request) {
     identity,
     steamUser: identity.steamUser,
   });
-  return NextResponse.json({ ...result, durable: false, authContext: responseAuthContext });
+  // Frontend consumers expect mode, modeTransition, and ringAdjustments fields on connect responses.
+  const payload = withModePayload(
+    { ...result, durable: false, authContext: responseAuthContext },
+    {
+      roomName,
+      mode: requestedMode,
+      source: 'connect',
+      playerCount: result?.state?.playerCount || 0,
+    }
+  );
+  return NextResponse.json(payload);
 }
