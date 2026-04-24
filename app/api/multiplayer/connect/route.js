@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { joinAuthoritativeRoom, pruneAuthoritativeRooms } from '@/lib/authoritativeMultiplayerStore';
 import { hasDurableMultiplayer, joinDurableRoom } from '@/lib/durableMultiplayerStore';
 import { resolveGameAuthContext } from '@/lib/auth/resolveGameAuthContext';
+import { awardMultiplayerProgressionEvent } from '@/lib/multiplayerProgression';
 
 const ROOM_NAME_PATTERN = /^[a-zA-Z0-9_-]{1,64}$/;
 const GUEST_ID_PATTERN = /^[a-zA-Z0-9_-]{3,64}$/;
@@ -94,13 +95,24 @@ export async function POST(request) {
   const identity = resolveIdentity(body, authContext);
   const responseAuthContext = toApiAuthContext(authContext);
 
+  const joinEventId = `connect-${roomName}-${identity.id}`;
+  const progressionPromise = awardMultiplayerProgressionEvent({
+    playerId: identity.id,
+    roomName,
+    eventId: joinEventId,
+    trigger: 'first_join',
+    sessionId: joinEventId,
+    displayName: identity.displayName,
+  });
+
   if (hasDurableMultiplayer()) {
     const result = await joinDurableRoom({
       roomName,
       identity,
       steamUser: identity.steamUser,
     });
-    return NextResponse.json({ ...result, authContext: responseAuthContext }, { status: result.status || 200 });
+    const progression = await progressionPromise;
+    return NextResponse.json({ ...result, authContext: responseAuthContext, progressionDelta: progression?.delta || null }, { status: result.status || 200 });
   }
 
   pruneAuthoritativeRooms();
@@ -109,5 +121,6 @@ export async function POST(request) {
     identity,
     steamUser: identity.steamUser,
   });
-  return NextResponse.json({ ...result, durable: false, authContext: responseAuthContext });
+  const progression = await progressionPromise;
+  return NextResponse.json({ ...result, durable: false, authContext: responseAuthContext, progressionDelta: progression?.delta || null });
 }
