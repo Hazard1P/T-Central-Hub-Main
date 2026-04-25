@@ -2,13 +2,11 @@ import SteamLoginHud from '@/components/SteamLoginHud';
 import CinematicUniverseCanvas from '@/components/CinematicUniverseCanvas';
 import { getHomeLaunchCards, getHomeStatusPills } from '@/lib/siteContent';
 import { buildUniverseGraph } from '@/lib/universeEngine';
-import { PRIMARY_SERVER_ROUTES } from '@/lib/serverData';
 
 export default function HomePage() {
   const launchCards = getHomeLaunchCards().slice(0, 3);
   const statusPills = getHomeStatusPills();
   const graph = buildUniverseGraph();
-  const featuredRoutes = PRIMARY_SERVER_ROUTES.slice(0, 3);
 
   return (
     <main className="entry-page cosmic-entry-page simplified-home-page">
@@ -89,41 +87,6 @@ export default function HomePage() {
             <a className="button secondary" href="https://matrixcoinexchange.com" target="_blank" rel="noreferrer">
               Open Matrixcoinexchange
             </a>
-          </article>
-        </div>
-
-        <div className="arma-brief-grid">
-          <article className="content-card">
-            <p className="eyebrow">Features</p>
-            <h3>Independent + co-dependent route design</h3>
-            <ul className="arma-list">
-              <li>Each route page works independently with direct server details and join actions.</li>
-              <li>All route pages also plug into one shared blackholes system with synchronized status visuals.</li>
-              <li>Steam launch + connect links are available per server for rapid handoff from site to game.</li>
-            </ul>
-          </article>
-          <article className="content-card">
-            <p className="eyebrow">Perks & benefits</p>
-            <h3>Faster onboarding, cleaner flow</h3>
-            <ul className="arma-list">
-              <li>Server IP, mode, and map are surfaced before players commit to a route.</li>
-              <li>Descriptions stay mode-specific so new users understand each game loop quickly.</li>
-              <li>Status and route context remain visible while the cinematic background stays active.</li>
-            </ul>
-          </article>
-          <article className="content-card">
-            <p className="eyebrow">Connection points</p>
-            <h3>Steam API style quick-entry paths</h3>
-            <div className="system-news-list">
-              {featuredRoutes.map((route) => (
-                <a className="system-news-link" href={route.href} key={route.id}>
-                  <span>{route.shortTitle}</span>
-                  <small>
-                    {route.ip} • {route.mode}
-                  </small>
-                </a>
-              ))}
-            </div>
           </article>
         </div>
       </section>
