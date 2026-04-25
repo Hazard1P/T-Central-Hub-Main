@@ -15,7 +15,7 @@ export default function BlackholeMapPanel({ activeNode = null, lobbyMode = 'hub'
       </div>
 
       <p className="lobby-mode-copy">
-        The deep-space blackhole is the main gateway. The cosmic map keeps track of routes, home position, return lanes, and whether you are inside your private epoch system or the shared hub star system.
+        The deep-space blackhole is the main gateway. The cosmic map keeps track of routes, home position, return lanes, and whether you are inside your private epoch system lattice or the shared hub star system.
       </p>
 
       <div className="map-anchor-visual" aria-hidden="true">
@@ -52,6 +52,14 @@ export default function BlackholeMapPanel({ activeNode = null, lobbyMode = 'hub'
               <span>Epoch</span>
               <strong>{privateWorldAsset.epochWindow}</strong>
             </div>
+            <div className="steam-access-item">
+              <span>Solar replicas</span>
+              <strong>{privateWorldAsset.replicaSystems?.length || 0}</strong>
+            </div>
+            <div className="steam-access-item">
+              <span>Server blackholes</span>
+              <strong>{privateWorldAsset.serverBlackholeKeys?.length || 0}</strong>
+            </div>
           </>
         ) : null}
       </div>
@@ -62,7 +70,7 @@ export default function BlackholeMapPanel({ activeNode = null, lobbyMode = 'hub'
 
       {privateWorldAsset ? (
         <p className="lobby-mode-note">
-          Your private map stays sealed. If Steam is linked it follows that account; otherwise it follows your guest identity. The inner blackhole stays inside the private map fabric, while Central.Star and its 9 rolling epoch planets remain private to that universe.
+          Your private map stays sealed per account identity. The independent Central.Star replica systems roll from Unix epoch time, and four server-linked blackholes stay embedded as private anchors for multiplayer discrepancy control.
         </p>
       ) : null}
     </div>

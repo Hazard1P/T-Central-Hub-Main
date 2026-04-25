@@ -1529,7 +1529,7 @@ export default function SystemScene({ lobbyMode = 'hub', steamUser: externalStea
     setSelected({
       label: 'System Center',
       address: 'Navigation origin',
-      description: `Centered back into the ${lobbyMode === 'hub' ? 'shared multiplayer hub' : 'private Steam-scoped world'}. Select one of the 5 blackholes, 3 Dyson spheres, or the solar system to continue through the world layout.`,
+      description: `Centered back into the ${lobbyMode === 'hub' ? 'shared multiplayer hub' : 'private Steam-scoped world'}. Select a blackhole, Dyson sphere, or solar system to continue through the world layout.`,
     });
     setResetTick((n) => n + 1);
   };

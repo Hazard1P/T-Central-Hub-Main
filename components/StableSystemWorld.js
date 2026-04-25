@@ -1545,7 +1545,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             <span>{steamUser?.steamid ? 'Steam-linked shell' : 'Guest shell sync'}</span>
             <span>{`${HYPERSPACE_SIGNATURE_PREFIX} state-space`}</span>
             <span>{universe?.privacy?.privacyTier || 'guest-public'}</span>
-            <span>{lobbyMode === 'hub' ? 'Hub star sync' : '9-planet private system'}</span>
+            <span>{lobbyMode === 'hub' ? 'Hub star sync' : `${privateWorldAsset?.replicaSystems?.length || 1}x epoch-rolling private systems`}</span>
             <span>Epoch {(privateWorldAsset?.epochWindow ?? epochSummary.unix)}</span>
             <span>Ops {operations.completionPercent}%</span>
           </div>
@@ -1590,7 +1590,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           <div className="content-card stable-card observer stable-card-layer observer-layer">
             <p className="eyebrow">Private map asset</p>
             <h3>{privateWorldAsset.label}</h3>
-            <p className="muted">Singleplayer fabric stays private to the Steam-linked world. The nested blackhole is sealed inside the map mesh and anchored to the Unix epoch network window instead of becoming a public route surface.</p>
+            <p className="muted">Singleplayer fabric stays private to each account world while multiplayer remains shared for flight and combat. The nested blackhole and the four server-linked private blackholes stay inside the map mesh, and the independent Central.Star replica systems roll with Unix epoch timing.</p>
             <div className="focus-meta">
               <span>{privateWorldAsset.privateScope}</span>
               <span>Anchor {privateWorldAsset.anchorToken}</span>
@@ -1600,6 +1600,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
               <span>Epoch {privateWorldAsset.unixEpoch}</span>
               <span>Window {privateWorldAsset.epochWindow}</span>
               <span>Nested blackhole core</span>
+              <span>{privateWorldAsset.serverBlackholeKeys?.length || 0} server blackholes</span>
             </div>
           </div>
         ) : null}
