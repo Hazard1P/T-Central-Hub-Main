@@ -1,4 +1,3 @@
-photo.jpg: README.md
 arma-cth-shot.png: README.md, CONFORMANCE_PASS.txt, app/servers/arma3-cth/page.js, lib/gameAssets.js
 cosmic-map.jpg: CONFORMANCE_PASS.txt, lib/gameAssets.js
 blackhole-anchor.jpg: lib/gameAssets.js

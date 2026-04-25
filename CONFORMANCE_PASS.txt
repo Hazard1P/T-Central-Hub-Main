@@ -1,6 +1,6 @@
 Consolidation pass completed.
 Primary package aligned around one live Arma3 server.
-Images checked: cosmic-map.jpg, photo.jpg, arma-cth-shot.png.
+Images checked: cosmic-map.jpg, arma-cth-shot.png.
 Interactive server connection remains encapsulated in client component.
 Added /status route for package state summary.
 No additional corrective replacements were needed beyond normalization and consistency pass.
