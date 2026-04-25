@@ -19,7 +19,7 @@ export default function HomePage() {
           <p className="eyebrow">T-Central Hub</p>
           <h1>Main gateway for cinematic routing, Steam handoff, and live server entry.</h1>
           <p className="muted max-copy">
-            The front page now acts as mission control for your web layer and in-game 3D/15D blackhole system: discover routes, read mode briefs, and jump
+            The front page now acts as mission control for your web layer and in-game 3D/5D game simulation system: discover routes, read mode briefs, and jump
             straight into game servers with quick Steam connect actions.
           </p>
 

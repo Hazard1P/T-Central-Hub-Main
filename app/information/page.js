@@ -20,7 +20,7 @@ const blocks = [
   },
   {
     title: 'Blackhole route interlink',
-    text: 'Route subsections are designed to function alone (direct join instructions) and together (shared 3D/15D universe navigation and status sync).'
+    text: 'Route subsections are designed to function alone (direct join instructions) and together (shared 3D/5D simulation navigation and status sync).'
   }
 ];
 
