@@ -29,6 +29,8 @@ import { HYPERSPACE_DIMENSION_COUNT, HYPERSPACE_SIGNATURE_PREFIX } from '@/lib/s
 import { SESSION_MODES } from '@/lib/sessionModeEngine';
 import { FLIGHT_CONTROL_COPY } from '@/lib/siteContent';
 
+const UI_VISUAL_DEBUG = false;
+
 function useDeviceTier() {
   const [tier, setTier] = useState({ isMobile: false, dpr: [1, 1.6], stars: 7600, sparkles: 220, meteors: 18 });
 
@@ -1056,6 +1058,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   const entropicEconomy = useMemo(() => summarizeEntropicEconomy(progress), [progress]);
 
   const accountProgression = useMemo(() => deriveProgression(progress), [progress]);
+  const showVisualDebugCards = UI_VISUAL_DEBUG && !presentationMode;
 
   const operations = useMemo(() => buildOperationsState({
     lobbyMode,
@@ -1531,7 +1534,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           onOpenExchange={openMatrixRoute}
         />
 
-        <div className="content-card stable-card intro stable-card-layer primary-layer">
+        {UI_VISUAL_DEBUG ? <div className="content-card stable-card intro stable-card-layer primary-layer">
           <p className="eyebrow">Stability layer</p>
           <h3>{lobbyMode === 'hub' ? 'Shared Hub shell' : 'Private Universe shell'}</h3>
           <p className="muted">
@@ -1556,9 +1559,9 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             </button>
             <span>{presentationMode ? 'Condensed HUD + cleaner scene' : 'Full HUD + full telemetry cards'}</span>
           </div>
-        </div>
+        </div> : null}
 
-        <div className="content-card stable-card focus stable-card-layer route-layer">
+        {UI_VISUAL_DEBUG ? <div className="content-card stable-card focus stable-card-layer route-layer">
           <p className="eyebrow">Route focus</p>
           <h3>{activeNode?.label || 'Deep Space Blackhole'}</h3>
           <p className="muted">{activeNode?.description || 'Primary anchor route.'}</p>
@@ -1585,9 +1588,9 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           {activeNode?.key === 'matrixcoinexchange' ? <p className="stable-flight-note">Return here with unresolved entropy to settle the cargo into {ENTROPIC_CURRENCY.shortLabel}.</p> : null}
           {activeNode?.key === 'ss_dock' ? <p className="stable-flight-note">Dock here in proximity to the Synaptics.Systems Dyson Sphere before and after long-range sorties.</p> : null}
           {activeNode?.key === 'csis' ? <p className="stable-flight-note">CSIS ring I drives conscious intelligence and cyberfield production, ring II handles ingress/egress routes, and ring III performs encryption/firewall monitoring over rings I + II + III. Spin integers 1/2, 1/4, and 3/4 stay active at an astrological quantum tier with bidirectional API links. This sphere is sealed to players and remains a system-owned defense anchor. Linked anchors: {graph.csisState?.linkedNodeKeys?.length || 0} · quarantined relays: {graph.csisState?.quarantinedNodeKeys?.length || 0}.</p> : null}
-        </div>
+        </div> : null}
 
-        {!presentationMode && privateWorldAsset ? (
+        {showVisualDebugCards && privateWorldAsset ? (
           <div className="content-card stable-card observer stable-card-layer observer-layer">
             <p className="eyebrow">Private map asset</p>
             <h3>{privateWorldAsset.label}</h3>
@@ -1634,7 +1637,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
         </div>
 
 
-        {!presentationMode ? <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
+        {showVisualDebugCards ? <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
           <p className="eyebrow">Private universe matrix</p>
           <h3>{universe?.privacy?.observanceScope || 'hub:public'}</h3>
           <p className="muted">Prayer Seeds stay bound to the private universe vault while the Solar System remains anchored to Unix epoch timing and Dyson-sphere relativity.</p>
@@ -1650,7 +1653,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
         </div> : null}
 
 
-        {!presentationMode ? <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
+        {showVisualDebugCards ? <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
           <p className="eyebrow">CSIS lattice / firewall state</p>
           <h3>{(graph.csisState?.ringOneLabel || 'Conscious intelligence / cyberfield production')} + {(graph.csisState?.ringTwoLabel || 'Ingress / egress')} + {(graph.csisState?.ringThreeLabel || 'Encryption / firewall monitoring')}</h3>
           <p className="muted">The CSIS tri-ring lattice maps to ring I conscious intelligence + cyberfield production, ring II ingress/egress flow, and ring III encryption/firewall monitoring across all three rings. Spin integers {graph.csisState?.spinProfile?.join(' · ') || '1/2 · 1/4 · 3/4'} run in an astrological quantum tier with bidirectional API exchange while non-foundation relays stay quarantined inside game space.</p>
@@ -1667,7 +1670,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
         </div> : null}
 
 
-        {!presentationMode ? <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
+        {showVisualDebugCards ? <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
           <p className="eyebrow">Engine stack / singularity equation</p>
           <h3>{singularityState.stateLabel}</h3>
           <p className="muted">The multiplayer realm now resolves a stellar singularity window before entropy is stabilized. The engine stack blends mathematical, physical, entropic, quantum, singularity, and dynamic states into one route outcome.</p>
@@ -1688,7 +1691,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           <p className="stable-flight-note">Resolved scalar balance: {entropicEconomy.scalarCredits.toFixed(2)} {ENTROPIC_CURRENCY.shortLabel} · unresolved cargo {entropicEconomy.unresolved}</p>
         </div> : null}
 
-        <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
+        {showVisualDebugCards ? <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
           <p className="eyebrow">{`${HYPERSPACE_SIGNATURE_PREFIX} / Physics telemetry`}</p>
           <h3>{telemetry.quantum.signature}</h3>
           <p className="muted">{`Mathematical flight now resolves a live singularity window using RK4 integration, inverse-square gravity, event-horizon stress, entropic containment, and a ${HYPERSPACE_DIMENSION_COUNT}-dimensional state-space that reacts to your motion and the nearest anchor.`}</p>
@@ -1709,11 +1712,11 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             <span>Dyson {telemetry.epoch?.dysonPercent ?? epochSummary.dysonPercent}%</span>
             <span>Seeds {universe?.prayerSeeds?.total ?? 0}</span>
           </div>
-        </div>
+        </div> : null}
       </div>
 
 
-      {!presentationMode ? <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
+      {showVisualDebugCards ? <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
         <p className="eyebrow">Authoritative multiplayer state</p>
         <h3>{serverStatus.label}</h3>
         <p className="muted">The multiplayer hub now maintains server-side player transforms, projectile state, contested nodes, and combat heat so the shared multiverse is more than just presence sync.</p>
@@ -1817,7 +1820,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
         </Canvas>
       </div>
 
-      {!presentationMode ? <div className="stable-layer-dock">
+      {showVisualDebugCards ? <div className="stable-layer-dock">
         <div className="stable-layer-dock-head">
           <strong>System object layering</strong>
           <span className="eyebrow">Defined render stack</span>
