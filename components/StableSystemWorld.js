@@ -1520,17 +1520,19 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       <div className="stable-system-veil" />
 
       <div className="stable-system-hud">
-        <OperationsDirectorPanel operations={operations} lobbyMode={lobbyMode} validationSummary={validatorSummary} />
-        <AccountProgressPanel profile={{ ...accountProfile, progression: accountProgression, progress }} lobbyMode={lobbyMode} />
-        <EntropyMissionPanel
-          lobbyMode={lobbyMode}
-          activeNode={activeNode}
-          progress={progress}
-          operations={operations}
-          onMineEntropy={handleMineEntropy}
-          onResolveEntropy={handleResolveEntropy}
-          onOpenExchange={openMatrixRoute}
-        />
+        <aside className="left-ops-rail">
+          <OperationsDirectorPanel operations={operations} lobbyMode={lobbyMode} validationSummary={validatorSummary} />
+          <AccountProgressPanel profile={{ ...accountProfile, progression: accountProgression, progress }} lobbyMode={lobbyMode} />
+          <EntropyMissionPanel
+            lobbyMode={lobbyMode}
+            activeNode={activeNode}
+            progress={progress}
+            operations={operations}
+            onMineEntropy={handleMineEntropy}
+            onResolveEntropy={handleResolveEntropy}
+            onOpenExchange={openMatrixRoute}
+          />
+        </aside>
 
         <div className="content-card stable-card intro stable-card-layer primary-layer">
           <p className="eyebrow">Stability layer</p>
