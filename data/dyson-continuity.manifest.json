@@ -1,0 +1,22 @@
+{
+  "policyVersion": "1.0.0",
+  "releaseChannel": "stable",
+  "canonicalSphereIds": [
+    "dyson.csis",
+    "dyson.synaptics"
+  ],
+  "spheres": {
+    "dyson.csis": {
+      "worldNodeKey": "csis",
+      "missionNodeId": "mission-node-dyson-csis",
+      "pipelineSourceKey": "dyson_csis",
+      "stateKey": "sphere.csis"
+    },
+    "dyson.synaptics": {
+      "worldNodeKey": "ss",
+      "missionNodeId": "mission-node-dyson-synaptics",
+      "pipelineSourceKey": "dyson_synaptics",
+      "stateKey": "sphere.synaptics"
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 4,
+  "release": "1.0.0",
+  "spheres": {
+    "sphere.csis": {
+      "stateVersion": 3,
+      "lastMilestone": "prepatch-defense-mesh",
+      "updatedAt": "2026-04-26T03:20:17.085Z"
+    },
+    "sphere.synaptics": {
+      "stateVersion": 6,
+      "lastMilestone": "prepatch-lattice",
+      "updatedAt": "2026-04-26T03:20:17.085Z"
+    }
+  },
+  "migratedFromSchema": 3,
+  "rollbackSafe": true
+}

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 3,
+  "release": "0.9.9",
+  "spheres": {
+    "sphere.csis": {
+      "stateVersion": 3,
+      "lastMilestone": "prepatch-defense-mesh"
+    },
+    "sphere.synaptics": {
+      "stateVersion": 6,
+      "lastMilestone": "prepatch-lattice"
+    }
+  }
+}
