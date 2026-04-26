@@ -79,6 +79,9 @@ body:has(.report-page) #__next {
   --gold: #ffd15c;
   --shadow: 0 24px 60px rgba(0,0,0,0.36);
   --radius: 28px;
+  --steam-login-hud-top: 18px;
+  --steam-login-hud-height: 116px;
+  --steam-hud-news-gap: 12px;
 }
 
 * { box-sizing: border-box; }
@@ -4186,8 +4189,8 @@ button { font: inherit; }
 
 .system-news-panel {
   position: fixed;
-  top: 18px;
-  left: 18px;
+  top: calc(var(--steam-login-hud-top) + var(--steam-login-hud-height) + var(--steam-hud-news-gap));
+  right: 18px;
   z-index: 44;
   display: grid;
   gap: 10px;
@@ -4387,8 +4390,8 @@ button { font: inherit; }
 
 @media (max-width: 900px) {
   .system-news-panel {
-    top: 14px;
-    left: 14px;
+    top: calc(var(--steam-login-hud-top) + var(--steam-login-hud-height) + var(--steam-hud-news-gap));
+    right: 14px;
   }
 
   .stable-system-hud {
@@ -4426,8 +4429,8 @@ button { font: inherit; }
 }
 
 .system-news-panel {
-  top: 18px;
-  left: 18px;
+  top: calc(var(--steam-login-hud-top) + var(--steam-login-hud-height) + var(--steam-hud-news-gap));
+  right: 18px;
   z-index: 59;
 }
 
@@ -4521,17 +4524,28 @@ button { font: inherit; }
 }
 
 @media (max-width: 900px) {
+  :root {
+    --steam-login-hud-top: 14px;
+    --steam-login-hud-height: 136px;
+  }
+
   .system-news-panel {
-    top: 14px;
+    top: calc(var(--steam-login-hud-top) + var(--steam-login-hud-height) + var(--steam-hud-news-gap));
     left: 14px;
     right: 14px;
   }
 
   .steam-login-hud {
-    top: auto;
+    top: var(--steam-login-hud-top);
     left: 14px;
     right: 14px;
-    bottom: 14px;
+    bottom: auto;
+  }
+
+  .system-news-toggle,
+  .system-news-card {
+    width: 100%;
+    max-width: none;
   }
 
   .multiplayer-hud {
