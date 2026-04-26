@@ -9,7 +9,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "verify:api": "node scripts/verify-api-routes.mjs"
+    "verify:api": "node scripts/verify-api-routes.mjs",
+    "check:dyson-continuity": "node scripts/check-dyson-continuity.mjs",
+    "release:notes": "node scripts/generate-dyson-release-notes.mjs",
+    "migrate:dyson-state": "node scripts/migrate-dyson-state.mjs",
+    "ci:continuity": "npm run check:dyson-continuity && npm run release:notes"
   },
   "dependencies": {
     "@react-three/drei": "^9.121.4",

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "2026.04.26",
+  "dysonSpheres": [
+    {
+      "id": "dyson.csis",
+      "nodeKey": "csis",
+      "stateVersion": "3.2.0"
+    },
+    {
+      "id": "dyson.synaptics",
+      "nodeKey": "ss",
+      "stateVersion": "5.8.1"
+    }
+  ]
+}
