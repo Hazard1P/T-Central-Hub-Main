@@ -4790,7 +4790,7 @@ button { font: inherit; }
 }
 
 .operations-director-card {
-  grid-column: 1 / -1;
+  grid-column: auto;
   display: grid;
   gap: 1rem;
 }
@@ -5154,9 +5154,24 @@ button { font: inherit; }
   margin-top: 0.8rem;
 }
 
-.flight-command-card {
-  margin: 1rem clamp(1rem, 2vw, 1.8rem) 0;
-  z-index: 18;
+.stable-system-page .flight-command-card {
+  position: fixed;
+  left: clamp(1rem, 2vw, 1.8rem);
+  right: clamp(1rem, 2vw, 1.8rem);
+  bottom: clamp(1rem, 2.2vh, 1.5rem);
+  margin: 0;
+  max-width: min(46rem, calc(100vw - clamp(2rem, 4vw, 3.6rem)));
+  width: 100%;
+  z-index: 48;
+}
+
+@media (max-width: 1100px) {
+  .stable-system-page .flight-command-card {
+    left: 1rem;
+    right: 1rem;
+    max-width: calc(100vw - 2rem);
+    bottom: max(1rem, env(safe-area-inset-bottom));
+  }
 }
 
 .operations-tab-row {
@@ -5307,8 +5322,11 @@ button { font: inherit; }
     grid-template-columns: 1fr;
   }
 
-  .flight-command-card {
-    margin: 0.8rem 1rem 0;
+  .stable-system-page .flight-command-card {
+    left: 1rem;
+    right: 1rem;
+    max-width: calc(100vw - 2rem);
+    bottom: calc(8.6rem + env(safe-area-inset-bottom));
   }
 }
 
@@ -5809,43 +5827,54 @@ button { font: inherit; }
   color: var(--cyan);
 }
 
-/* Top-left simulation control stack */
-.system-top-left-controls {
+
+/* Left operations rail layout */
+.left-ops-rail {
   position: fixed;
-  top: 88px;
   left: 18px;
-  z-index: 57;
-  width: min(24rem, calc(100vw - 36px));
+  top: 196px;
+  z-index: 43;
   display: grid;
-  gap: 0.75rem;
+  gap: 14px;
+  width: min(340px, calc(100vw - 36px));
+  max-height: calc(100vh - 214px);
+  overflow-y: auto;
+  padding-right: 4px;
+  pointer-events: auto;
 }
 
-.system-top-left-controls .lobby-mode-panel,
-.system-top-left-controls .system-shell-control-layer {
-  position: static;
-  top: auto;
-  left: auto;
-  right: auto;
+.left-ops-rail .stable-card,
+.left-ops-rail .operations-director-card,
+.left-ops-rail .account-progress-panel,
+.left-ops-rail .entropy-mission-card {
   width: 100%;
-  margin: 0;
+  min-height: auto;
 }
 
-.system-top-left-controls .lobby-mode-panel {
-  transform: none;
+.stable-system-hud > .stable-card {
+  margin-left: clamp(340px, 26vw, 372px);
 }
 
-@media (min-width: 901px) {
-  .system-shell-control-layer {
-    left: clamp(1rem, 2vw, 1.8rem);
-    right: auto;
+@media (max-width: 1280px) {
+  .left-ops-rail {
+    width: min(320px, calc(100vw - 36px));
+  }
+
+  .stable-system-hud > .stable-card {
+    margin-left: clamp(324px, 33vw, 352px);
   }
 }
 
 @media (max-width: 900px) {
-  .system-top-left-controls {
-    left: 14px;
-    right: 14px;
-    top: 210px;
-    width: auto;
+  .left-ops-rail {
+    position: static;
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .stable-system-hud > .stable-card {
+    margin-left: 0;
   }
 }
