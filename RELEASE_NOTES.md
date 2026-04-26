@@ -1,35 +1,16 @@
 # Release Notes
 
-Build: 2026.04.26.2
-Release Version: 1.1.0
+Build: 2026.04.26.1
+Release Version: 1.0.0
 
 ## Dyson Sphere Continuity Verification
 
 - dyson.csis
-  - stateVersion: 5
+  - stateVersion: 4
   - contentDelta: ring3-firewall-signature-refresh
   - simulationMilestone: defense_mesh_calibrated
 - dyson.synaptics
-  - stateVersion: 8
+  - stateVersion: 7
   - contentDelta: collector-ring-output-balance-pass
   - simulationMilestone: encryption-lattice-stable
-
-## Spawned Blackhole Server Continuity Verification
-
-- blackhole.arma3
-  - stateVersion: 3
-  - contentDelta: spawn-radius-lockstep-pass
-  - simulationMilestone: hub-entry-vector-stable
-- blackhole.rust_biweekly
-  - stateVersion: 4
-  - contentDelta: wipe-cadence-overlay-refresh
-  - simulationMilestone: rotation-window-synced
-- blackhole.rust_weekly
-  - stateVersion: 4
-  - contentDelta: spawn-lane-variance-pass
-  - simulationMilestone: rotation-window-synced
-- blackhole.rust_monthly
-  - stateVersion: 4
-  - contentDelta: long-cycle-progression-tag-refresh
-  - simulationMilestone: rotation-window-synced
 

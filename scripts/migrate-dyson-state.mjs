@@ -7,7 +7,7 @@ function asObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
 }
 
-function normalizeState(input = {}) {
+function normalizeSphereState(input = {}) {
   return {
     stateVersion: Number.isFinite(Number(input.stateVersion)) ? Number(input.stateVersion) : 0,
     lastMilestone: typeof input.lastMilestone === 'string' ? input.lastMilestone : 'uninitialized',
@@ -20,21 +20,18 @@ const raw = JSON.parse(await fs.readFile(path.join(root, 'data', 'dyson-state.sn
 const now = new Date().toISOString();
 
 const next = {
-  schemaVersion: 5,
-  release: '1.1.0',
-  states: {},
+  schemaVersion: 4,
+  release: '1.0.0',
+  spheres: {},
   migratedFromSchema: Number(raw?.schemaVersion || 0),
-  rollbackSafe: Number(raw?.schemaVersion || 0) <= 5,
+  rollbackSafe: Number(raw?.schemaVersion || 0) <= 4,
 };
 
-const stateKeys = [
-  ...(continuity.canonicalSphereIds || []).map((id) => continuity?.spheres?.[id]?.stateKey),
-  ...(continuity.canonicalBlackholeServerIds || []).map((id) => continuity?.blackholeServers?.[id]?.stateKey),
-].filter(Boolean);
-
-for (const stateKey of stateKeys) {
-  next.states[stateKey] = {
-    ...normalizeState(asObject(raw?.states)?.[stateKey] || asObject(raw?.spheres)?.[stateKey]),
+for (const canonicalId of continuity.canonicalSphereIds || []) {
+  const stateKey = continuity?.spheres?.[canonicalId]?.stateKey;
+  if (!stateKey) continue;
+  next.spheres[stateKey] = {
+    ...normalizeSphereState(asObject(raw?.spheres)?.[stateKey]),
     updatedAt: now,
   };
 }

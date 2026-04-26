@@ -11,31 +11,5 @@
       "nodeKey": "ss",
       "stateVersion": "5.8.1"
     }
-  ],
-  "spawnedBlackholeServers": [
-    {
-      "id": "blackhole.arma3",
-      "nodeKey": "arma3",
-      "spawned": true,
-      "stateVersion": "2.4.0"
-    },
-    {
-      "id": "blackhole.rust_biweekly",
-      "nodeKey": "rust_biweekly",
-      "spawned": true,
-      "stateVersion": "3.1.0"
-    },
-    {
-      "id": "blackhole.rust_weekly",
-      "nodeKey": "rust_weekly",
-      "spawned": true,
-      "stateVersion": "3.0.2"
-    },
-    {
-      "id": "blackhole.rust_monthly",
-      "nodeKey": "rust_monthly",
-      "spawned": true,
-      "stateVersion": "3.0.4"
-    }
   ]
 }

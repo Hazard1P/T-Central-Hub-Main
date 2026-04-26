@@ -10,17 +10,9 @@ async function loadJson(relPath) {
 }
 
 function fail(issues) {
-  console.error('Hub continuity gate failed:');
+  console.error('Dyson continuity gate failed:');
   for (const issue of issues) console.error(`- ${issue}`);
   process.exit(1);
-}
-
-function hasForwardProgress(marker) {
-  return Boolean(
-    marker
-      && Number.isFinite(Number(marker.stateVersion))
-      && (String(marker.contentDelta || '').trim().length > 0 || String(marker.simulationMilestone || '').trim().length > 0)
-  );
 }
 
 const continuity = await loadJson('data/dyson-continuity.manifest.json');
@@ -29,60 +21,45 @@ const missionGraph = await loadJson('data/mission-event-graph.manifest.json');
 const simPipeline = await loadJson('data/simulation-pipeline.manifest.json');
 const progression = await loadJson('data/dyson-progression.manifest.json');
 
-const canonicalSphereIds = Array.isArray(continuity?.canonicalSphereIds) ? continuity.canonicalSphereIds : [];
-const canonicalBlackholeIds = Array.isArray(continuity?.canonicalBlackholeServerIds) ? continuity.canonicalBlackholeServerIds : [];
+const canonicalIds = Array.isArray(continuity?.canonicalSphereIds) ? continuity.canonicalSphereIds : [];
 const issues = [];
 
-if (canonicalSphereIds.length !== 2) issues.push(`expected exactly 2 canonical Dyson sphere ids, found ${canonicalSphereIds.length}`);
-if (canonicalBlackholeIds.length < 1) issues.push('expected at least 1 canonical blackhole server id');
+if (canonicalIds.length !== 2) issues.push(`expected exactly 2 canonical sphere ids, found ${canonicalIds.length}`);
 
-for (const canonicalId of canonicalSphereIds) {
+for (const canonicalId of canonicalIds) {
   const descriptor = continuity?.spheres?.[canonicalId];
   if (!descriptor) {
-    issues.push(`missing sphere continuity descriptor for ${canonicalId}`);
+    issues.push(`missing continuity descriptor for ${canonicalId}`);
     continue;
   }
 
-  const worldHas = (worldState?.dysonSpheres || []).some((sphere) => sphere?.id === canonicalId && sphere?.nodeKey === descriptor.worldNodeKey);
-  if (!worldHas) issues.push(`${canonicalId} missing in world state manifest`);
+  const worldHasSphere = (worldState?.dysonSpheres || []).some((sphere) => sphere?.id === canonicalId && sphere?.nodeKey === descriptor.worldNodeKey);
+  if (!worldHasSphere) issues.push(`${canonicalId} missing in world state manifest`);
 
-  const missionHas = (missionGraph?.graph?.nodes || []).some((node) => node?.sphereId === canonicalId && node?.id === descriptor.missionNodeId);
-  if (!missionHas) issues.push(`${canonicalId} missing in mission/event graph manifest`);
+  const missionHasSphere = (missionGraph?.graph?.nodes || []).some((node) => node?.sphereId === canonicalId && node?.id === descriptor.missionNodeId);
+  if (!missionHasSphere) issues.push(`${canonicalId} missing in mission/event graph manifest`);
 
-  const simHas = (simPipeline?.tickPipeline?.stages || []).some((stage) => (stage?.sphereSources || []).includes(descriptor.pipelineSourceKey));
-  if (!simHas) issues.push(`${canonicalId} missing in simulation tick/update pipeline manifest`);
+  const simHasSphere = (simPipeline?.tickPipeline?.stages || []).some((stage) => (stage?.sphereSources || []).includes(descriptor.pipelineSourceKey));
+  if (!simHasSphere) issues.push(`${canonicalId} missing in simulation tick/update pipeline manifest`);
 
-  if (!hasForwardProgress(progression?.spheres?.[canonicalId])) {
+  const marker = progression?.spheres?.[canonicalId];
+  const hasForwardProgress = Boolean(
+    marker
+      && Number.isFinite(Number(marker.stateVersion))
+      && (String(marker.contentDelta || '').trim().length > 0 || String(marker.simulationMilestone || '').trim().length > 0)
+  );
+  if (!hasForwardProgress) {
     issues.push(`${canonicalId} missing forward progress marker (stateVersion + content delta or simulation milestone)`);
   }
 }
 
-for (const canonicalId of canonicalBlackholeIds) {
-  const descriptor = continuity?.blackholeServers?.[canonicalId];
-  if (!descriptor) {
-    issues.push(`missing blackhole continuity descriptor for ${canonicalId}`);
-    continue;
-  }
-
-  const worldHas = (worldState?.spawnedBlackholeServers || [])
-    .some((node) => node?.id === canonicalId && node?.nodeKey === descriptor.worldNodeKey && node?.spawned === true);
-  if (!worldHas) issues.push(`${canonicalId} missing in spawned blackhole world state manifest`);
-
-  const missionHas = (missionGraph?.graph?.nodes || [])
-    .some((node) => node?.blackholeServerId === canonicalId && node?.id === descriptor.missionNodeId);
-  if (!missionHas) issues.push(`${canonicalId} missing in mission/event graph manifest`);
-
-  const simHas = (simPipeline?.tickPipeline?.stages || [])
-    .some((stage) => (stage?.serverBlackholeSources || []).includes(descriptor.pipelineSourceKey));
-  if (!simHas) issues.push(`${canonicalId} missing in simulation tick/update pipeline manifest`);
-
-  if (!hasForwardProgress(progression?.blackholeServers?.[canonicalId])) {
-    issues.push(`${canonicalId} missing forward progress marker (stateVersion + content delta or simulation milestone)`);
-  }
+if (!Number.isFinite(Number(progression?.continuityStateVersion))) {
+  issues.push('progression manifest missing continuityStateVersion');
 }
 
-if (!Number.isFinite(Number(progression?.continuityStateVersion))) issues.push('progression manifest missing continuityStateVersion');
-if (!String(progression?.buildId || '').trim()) issues.push('progression manifest missing buildId');
+if (!String(progression?.buildId || '').trim()) {
+  issues.push('progression manifest missing buildId');
+}
 
 if (issues.length > 0) fail(issues);
-console.log(`Hub continuity gate passed for ${canonicalSphereIds.length} Dyson spheres and ${canonicalBlackholeIds.length} spawned blackhole servers.`);
+console.log(`Dyson continuity gate passed for ${canonicalIds.length} canonical spheres.`);

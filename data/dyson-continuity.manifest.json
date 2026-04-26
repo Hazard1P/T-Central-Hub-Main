@@ -1,15 +1,9 @@
 {
-  "policyVersion": "1.1.0",
+  "policyVersion": "1.0.0",
   "releaseChannel": "stable",
   "canonicalSphereIds": [
     "dyson.csis",
     "dyson.synaptics"
-  ],
-  "canonicalBlackholeServerIds": [
-    "blackhole.arma3",
-    "blackhole.rust_biweekly",
-    "blackhole.rust_weekly",
-    "blackhole.rust_monthly"
   ],
   "spheres": {
     "dyson.csis": {
@@ -23,32 +17,6 @@
       "missionNodeId": "mission-node-dyson-synaptics",
       "pipelineSourceKey": "dyson_synaptics",
       "stateKey": "sphere.synaptics"
-    }
-  },
-  "blackholeServers": {
-    "blackhole.arma3": {
-      "worldNodeKey": "arma3",
-      "missionNodeId": "mission-node-blackhole-arma3",
-      "pipelineSourceKey": "blackhole_arma3",
-      "stateKey": "blackhole.arma3"
-    },
-    "blackhole.rust_biweekly": {
-      "worldNodeKey": "rust_biweekly",
-      "missionNodeId": "mission-node-blackhole-rust-biweekly",
-      "pipelineSourceKey": "blackhole_rust_biweekly",
-      "stateKey": "blackhole.rust_biweekly"
-    },
-    "blackhole.rust_weekly": {
-      "worldNodeKey": "rust_weekly",
-      "missionNodeId": "mission-node-blackhole-rust-weekly",
-      "pipelineSourceKey": "blackhole_rust_weekly",
-      "stateKey": "blackhole.rust_weekly"
-    },
-    "blackhole.rust_monthly": {
-      "worldNodeKey": "rust_monthly",
-      "missionNodeId": "mission-node-blackhole-rust-monthly",
-      "pipelineSourceKey": "blackhole_rust_monthly",
-      "stateKey": "blackhole.rust_monthly"
     }
   }
 }

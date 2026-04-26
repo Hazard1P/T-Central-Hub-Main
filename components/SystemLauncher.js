@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { FLIGHT_CONTROL_COPY } from '@/lib/siteContent';
 
 export default function SystemLauncher({ onEnter }) {
   const [entering, setEntering] = useState(false);
@@ -29,6 +30,12 @@ export default function SystemLauncher({ onEnter }) {
         </div>
 
         <div className="system-launcher-grid">
+          <article className="content-card entry-panel">
+            <span className="entry-panel-kicker">Movement primer</span>
+            <strong>Free-fly controls</strong>
+            <p>{FLIGHT_CONTROL_COPY.launchPrimer}</p>
+            <p className="muted">You can free-fly immediately after launch.</p>
+          </article>
           <article className="content-card entry-panel">
             <span className="entry-panel-kicker">Performance-first</span>
             <strong>Lighter first load</strong>

@@ -7,12 +7,6 @@
         "sphereSources": [
           "dyson_csis",
           "dyson_synaptics"
-        ],
-        "serverBlackholeSources": [
-          "blackhole_arma3",
-          "blackhole_rust_biweekly",
-          "blackhole_rust_weekly",
-          "blackhole_rust_monthly"
         ]
       },
       {
@@ -20,12 +14,6 @@
         "sphereSources": [
           "dyson_csis",
           "dyson_synaptics"
-        ],
-        "serverBlackholeSources": [
-          "blackhole_arma3",
-          "blackhole_rust_biweekly",
-          "blackhole_rust_weekly",
-          "blackhole_rust_monthly"
         ]
       }
     ]

@@ -2,6 +2,7 @@ import SteamLoginHud from '@/components/SteamLoginHud';
 import CinematicUniverseCanvas from '@/components/CinematicUniverseCanvas';
 import { getHomeLaunchCards, getHomeStatusPills } from '@/lib/siteContent';
 import { buildUniverseGraph } from '@/lib/universeEngine';
+import MainAreaGatewayStatus from '@/components/MainAreaGatewayStatus';
 
 export default function HomePage() {
   const launchCards = getHomeLaunchCards().slice(0, 3);
@@ -88,6 +89,7 @@ export default function HomePage() {
               Open Matrixcoinexchange
             </a>
           </article>
+          <MainAreaGatewayStatus />
         </div>
       </section>
     </main>

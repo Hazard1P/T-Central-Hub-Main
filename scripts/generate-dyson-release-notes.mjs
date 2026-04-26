@@ -30,18 +30,6 @@ for (const sphereId of continuity.canonicalSphereIds || []) {
 }
 
 lines.push('');
-lines.push('## Spawned Blackhole Server Continuity Verification');
-lines.push('');
-
-for (const blackholeId of continuity.canonicalBlackholeServerIds || []) {
-  const server = progression?.blackholeServers?.[blackholeId] || {};
-  lines.push(`- ${blackholeId}`);
-  lines.push(`  - stateVersion: ${server.stateVersion ?? 'missing'}`);
-  lines.push(`  - contentDelta: ${server.contentDelta || 'missing'}`);
-  lines.push(`  - simulationMilestone: ${server.simulationMilestone || 'missing'}`);
-}
-
-lines.push('');
 
 const output = `${lines.join('\n')}\n`;
 const outPath = path.join(root, 'RELEASE_NOTES.md');

@@ -11,26 +11,6 @@
         "id": "mission-node-dyson-synaptics",
         "sphereId": "dyson.synaptics",
         "type": "mission_anchor"
-      },
-      {
-        "id": "mission-node-blackhole-arma3",
-        "blackholeServerId": "blackhole.arma3",
-        "type": "server_blackhole_anchor"
-      },
-      {
-        "id": "mission-node-blackhole-rust-biweekly",
-        "blackholeServerId": "blackhole.rust_biweekly",
-        "type": "server_blackhole_anchor"
-      },
-      {
-        "id": "mission-node-blackhole-rust-weekly",
-        "blackholeServerId": "blackhole.rust_weekly",
-        "type": "server_blackhole_anchor"
-      },
-      {
-        "id": "mission-node-blackhole-rust-monthly",
-        "blackholeServerId": "blackhole.rust_monthly",
-        "type": "server_blackhole_anchor"
       }
     ],
     "edges": [
@@ -38,21 +18,6 @@
         "from": "mission-node-dyson-csis",
         "to": "mission-node-dyson-synaptics",
         "event": "relay_handoff"
-      },
-      {
-        "from": "mission-node-blackhole-arma3",
-        "to": "mission-node-blackhole-rust-biweekly",
-        "event": "hub_server_rotation"
-      },
-      {
-        "from": "mission-node-blackhole-rust-biweekly",
-        "to": "mission-node-blackhole-rust-weekly",
-        "event": "hub_server_rotation"
-      },
-      {
-        "from": "mission-node-blackhole-rust-weekly",
-        "to": "mission-node-blackhole-rust-monthly",
-        "event": "hub_server_rotation"
       }
     ]
   }
