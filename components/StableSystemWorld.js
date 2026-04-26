@@ -27,6 +27,7 @@ import { buildAccountSnapshot, defaultProgressState, deriveProgression, getAccou
 import AccountProgressPanel from '@/components/AccountProgressPanel';
 import { HYPERSPACE_DIMENSION_COUNT, HYPERSPACE_SIGNATURE_PREFIX } from '@/lib/simulationConfig';
 import { SESSION_MODES } from '@/lib/sessionModeEngine';
+import { FLIGHT_CONTROL_COPY } from '@/lib/siteContent';
 
 function useDeviceTier() {
   const [tier, setTier] = useState({ isMobile: false, dpr: [1, 1.6], stars: 7600, sparkles: 220, meteors: 18 });
@@ -1620,7 +1621,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             <span>{authoritativeState.playerCount || presence.length} pilots</span>
           </div>
           <p className="stable-flight-note">
-            Desktop: WASD / arrows + Space / Shift. Mobile: use the flight pad.
+            Desktop: {FLIGHT_CONTROL_COPY.desktopSummary} + {FLIGHT_CONTROL_COPY.verticalSummary}. Mobile: use the {FLIGHT_CONTROL_COPY.touchSummary}.
           </p>
           {lobbyMode === 'private' ? (
             <button className="stable-route-button" onClick={handlePrayerSeed}>
@@ -1778,7 +1779,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           </label>
         </div>
         <p className="stable-flight-note">
-          Controls: WASD / arrows to vector, Space / Shift to climb and dive, hold Control to boost, tap Q or F to fire, and keep the active route centered for auto-assist capture.
+          {FLIGHT_CONTROL_COPY.fullSummary}
         </p>
         <div className="stable-chip-row alt">
           <button className="stable-route-button compact" onClick={() => handleCombatAction({ type: 'fire' })} disabled={lobbyMode !== 'hub' || !serverSession?.token}>
