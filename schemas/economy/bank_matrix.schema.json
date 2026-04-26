@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://t-central-hub/schemas/economy/bank_matrix.schema.json",
+  "title": "BankMatrixEconomyState",
+  "description": "Canonical data contract for the T-Central entropic credit bank matrix.",
+  "type": "object",
+  "required": [
+    "wallet",
+    "entropic_credit_balance",
+    "transaction_ledger",
+    "entropy_decay_rules",
+    "settlement_state"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "wallet": {
+      "type": "object",
+      "required": ["wallet_id", "player_id", "mode_scope", "status", "created_at"],
+      "additionalProperties": false,
+      "properties": {
+        "wallet_id": { "type": "string", "minLength": 1 },
+        "player_id": { "type": "string", "minLength": 1 },
+        "mode_scope": {
+          "type": "string",
+          "pattern": "^(singleplayer:[A-Za-z0-9_-]+|multiplayer:[A-Za-z0-9_-]+)$"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "locked", "suspended", "archived"]
+        },
+        "created_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "entropic_credit_balance": {
+      "type": "object",
+      "required": [
+        "available_micro_ec",
+        "reserved_micro_ec",
+        "lifetime_minted_micro_ec",
+        "lifetime_burned_micro_ec",
+        "last_updated_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "available_micro_ec": { "type": "integer", "minimum": 0 },
+        "reserved_micro_ec": { "type": "integer", "minimum": 0 },
+        "lifetime_minted_micro_ec": { "type": "integer", "minimum": 0 },
+        "lifetime_burned_micro_ec": { "type": "integer", "minimum": 0 },
+        "last_updated_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "transaction_ledger": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "transaction_id",
+          "event_seq",
+          "tick_id",
+          "entry_type",
+          "amount_micro_ec",
+          "idempotency_key",
+          "origin_event_id",
+          "previous_hash",
+          "entry_hash",
+          "settlement_state",
+          "recorded_at"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "transaction_id": { "type": "string", "minLength": 1 },
+          "event_seq": { "type": "integer", "minimum": 0 },
+          "tick_id": { "type": "integer", "minimum": 0 },
+          "entry_type": {
+            "type": "string",
+            "enum": ["mint", "sink", "conversion", "settlement", "reversal"]
+          },
+          "amount_micro_ec": { "type": "integer", "minimum": 0 },
+          "idempotency_key": { "type": "string", "minLength": 1 },
+          "origin_event_id": { "type": "string", "minLength": 1 },
+          "mint_reason_code": {
+            "type": ["string", "null"],
+            "enum": [
+              "simulation_objective_reward",
+              "baseline_stipend",
+              "admin_recovery",
+              null
+            ]
+          },
+          "previous_hash": { "type": "string", "minLength": 1 },
+          "entry_hash": { "type": "string", "minLength": 1 },
+          "settlement_state": {
+            "type": "string",
+            "enum": ["pending", "settled", "reversed", "rejected"]
+          },
+          "recorded_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "entropy_decay_rules": {
+      "type": "object",
+      "required": ["rule_version", "schedule", "minimum_floor_micro_ec", "rounding_mode"],
+      "additionalProperties": false,
+      "properties": {
+        "rule_version": { "type": "string", "minLength": 1 },
+        "schedule": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["after_inactive_ticks", "decay_ppm"],
+            "additionalProperties": false,
+            "properties": {
+              "after_inactive_ticks": { "type": "integer", "minimum": 0 },
+              "decay_ppm": { "type": "integer", "minimum": 0, "maximum": 1000000 }
+            }
+          }
+        },
+        "minimum_floor_micro_ec": { "type": "integer", "minimum": 0 },
+        "rounding_mode": { "type": "string", "enum": ["floor"] }
+      }
+    },
+    "settlement_state": {
+      "type": "object",
+      "required": [
+        "last_settlement_at",
+        "pending_count",
+        "checkpoint_tick",
+        "checkpoint_entry_hash",
+        "replay_safe"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "last_settlement_at": { "type": "string", "format": "date-time" },
+        "pending_count": { "type": "integer", "minimum": 0 },
+        "checkpoint_tick": { "type": "integer", "minimum": 0 },
+        "checkpoint_entry_hash": { "type": "string", "minLength": 1 },
+        "replay_safe": { "type": "boolean" }
+      }
+    }
+  }
+}
