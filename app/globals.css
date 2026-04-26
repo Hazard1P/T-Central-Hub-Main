@@ -5808,3 +5808,44 @@ button { font: inherit; }
   font-size: 11px;
   color: var(--cyan);
 }
+
+/* Top-left simulation control stack */
+.system-top-left-controls {
+  position: fixed;
+  top: 88px;
+  left: 18px;
+  z-index: 57;
+  width: min(24rem, calc(100vw - 36px));
+  display: grid;
+  gap: 0.75rem;
+}
+
+.system-top-left-controls .lobby-mode-panel,
+.system-top-left-controls .system-shell-control-layer {
+  position: static;
+  top: auto;
+  left: auto;
+  right: auto;
+  width: 100%;
+  margin: 0;
+}
+
+.system-top-left-controls .lobby-mode-panel {
+  transform: none;
+}
+
+@media (min-width: 901px) {
+  .system-shell-control-layer {
+    left: clamp(1rem, 2vw, 1.8rem);
+    right: auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .system-top-left-controls {
+    left: 14px;
+    right: 14px;
+    top: 210px;
+    width: auto;
+  }
+}
