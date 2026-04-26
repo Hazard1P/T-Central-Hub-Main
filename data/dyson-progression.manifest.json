@@ -1,0 +1,17 @@
+{
+  "buildId": "2026.04.26.1",
+  "releaseVersion": "1.0.0",
+  "continuityStateVersion": 4,
+  "spheres": {
+    "dyson.csis": {
+      "stateVersion": 4,
+      "contentDelta": "ring3-firewall-signature-refresh",
+      "simulationMilestone": "defense_mesh_calibrated"
+    },
+    "dyson.synaptics": {
+      "stateVersion": 7,
+      "contentDelta": "collector-ring-output-balance-pass",
+      "simulationMilestone": "encryption-lattice-stable"
+    }
+  }
+}

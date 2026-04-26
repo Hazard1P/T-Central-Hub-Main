@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "2026.04.26",
+  "tickPipeline": {
+    "stages": [
+      {
+        "name": "gravity_sources",
+        "sphereSources": [
+          "dyson_csis",
+          "dyson_synaptics"
+        ]
+      },
+      {
+        "name": "mission_integrations",
+        "sphereSources": [
+          "dyson_csis",
+          "dyson_synaptics"
+        ]
+      }
+    ]
+  }
+}
