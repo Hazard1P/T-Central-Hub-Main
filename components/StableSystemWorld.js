@@ -993,6 +993,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   const [selected, setSelected] = useState(null);
   const [touchInput, setTouchInput] = useState({ x: 0, y: 0, z: 0, boost: 0 });
   const [flightConfig, setFlightConfig] = useState({ thrustScale: 1, inertialDampers: true, chaseZoom: 1, routeAssist: true });
+  const [flightDeckOpen, setFlightDeckOpen] = useState(true);
   const [presentationMode, setPresentationMode] = useState(true);
   const [correctionState, setCorrectionState] = useState(null);
   const lastPresenceBroadcast = useRef(0);
@@ -1733,60 +1734,75 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       </div> : null}
 
       <div className="content-card stable-card observer flight-command-card stable-card-layer telemetry-layer">
-        <p className="eyebrow">Flight command deck</p>
-        <h3>Flight-command deck interface</h3>
-        <p className="muted">
-          Route-flight now runs through a clearer command layout with grouped controls, live readability, and quicker crew-side tuning for multiplayer and private missions.
-        </p>
-        <div className="flight-command-stat-grid">
-          <article>
-            <small>Current speed</small>
-            <strong>{telemetry.speed}</strong>
-          </article>
-          <article>
-            <small>Nearest anchor</small>
-            <strong>{telemetry.nearest || 'deep-space drift'}</strong>
-          </article>
-          <article>
-            <small>Position vector</small>
-            <strong>{telemetry.position.map((value) => value.toFixed ? value.toFixed(1) : value).join(' / ')}</strong>
-          </article>
-        </div>
-        <div className="stable-chip-row alt">
-          <span>Math engine live</span>
-          <span>Physics engine live</span>
-          <span>Entropic engine live</span>
-          <span>Quantum engine live</span>
-          <span>Singularity engine live</span>
-          <span>Dynamic engine live</span>
-        </div>
-        <div className="stable-chip-row alt flight-command-toggle-row">
-          <button className={`stable-route-button compact ${flightConfig.inertialDampers ? 'is-live' : ''}`} onClick={() => setFlightConfig((current) => ({ ...current, inertialDampers: !current.inertialDampers }))}>
-            {flightConfig.inertialDampers ? 'Dampers online' : 'Dampers offline'}
-          </button>
-          <button className={`stable-route-button compact ${flightConfig.routeAssist ? 'is-live' : ''}`} onClick={() => setFlightConfig((current) => ({ ...current, routeAssist: !current.routeAssist }))}>
-            {flightConfig.routeAssist ? 'Route assist on' : 'Route assist off'}
-          </button>
-        </div>
-        <div className="flight-slider-grid">
-          <label>
-            <span>Thrust bias</span>
-            <input type="range" min="0.65" max="1.8" step="0.05" value={flightConfig.thrustScale} onChange={(event) => setFlightConfig((current) => ({ ...current, thrustScale: Number(event.target.value) }))} />
-          </label>
-          <label>
-            <span>Chase zoom</span>
-            <input type="range" min="0.8" max="1.4" step="0.05" value={flightConfig.chaseZoom} onChange={(event) => setFlightConfig((current) => ({ ...current, chaseZoom: Number(event.target.value) }))} />
-          </label>
-        </div>
-        <p className="stable-flight-note">
-          {FLIGHT_CONTROL_COPY.fullSummary}
-        </p>
-        <div className="stable-chip-row alt">
-          <button className="stable-route-button compact" onClick={() => handleCombatAction({ type: 'fire' })} disabled={lobbyMode !== 'hub' || !serverSession?.token}>
-            Fire pulse
-          </button>
-          <span>{lobbyMode === 'hub' ? 'Shared combat lane' : 'Combat disabled in private world'}</span>
-        </div>
+        <button
+          type="button"
+          className="panel-minimize-toggle"
+          onClick={() => setFlightDeckOpen((value) => !value)}
+          aria-expanded={flightDeckOpen}
+          aria-label={flightDeckOpen ? 'Minimize flight command deck panel' : 'Expand flight command deck panel'}
+        >
+          <div>
+            <p className="eyebrow">Flight command deck</p>
+            <h3>Flight-command deck interface</h3>
+          </div>
+          <span className="panel-minimize-indicator" aria-hidden="true">{flightDeckOpen ? '−' : '+'}</span>
+        </button>
+        {flightDeckOpen ? (
+          <>
+            <p className="muted">
+              Route-flight now runs through a clearer command layout with grouped controls, live readability, and quicker crew-side tuning for multiplayer and private missions.
+            </p>
+            <div className="flight-command-stat-grid">
+              <article>
+                <small>Current speed</small>
+                <strong>{telemetry.speed}</strong>
+              </article>
+              <article>
+                <small>Nearest anchor</small>
+                <strong>{telemetry.nearest || 'deep-space drift'}</strong>
+              </article>
+              <article>
+                <small>Position vector</small>
+                <strong>{telemetry.position.map((value) => value.toFixed ? value.toFixed(1) : value).join(' / ')}</strong>
+              </article>
+            </div>
+            <div className="stable-chip-row alt">
+              <span>Math engine live</span>
+              <span>Physics engine live</span>
+              <span>Entropic engine live</span>
+              <span>Quantum engine live</span>
+              <span>Singularity engine live</span>
+              <span>Dynamic engine live</span>
+            </div>
+            <div className="stable-chip-row alt flight-command-toggle-row">
+              <button className={`stable-route-button compact ${flightConfig.inertialDampers ? 'is-live' : ''}`} onClick={() => setFlightConfig((current) => ({ ...current, inertialDampers: !current.inertialDampers }))}>
+                {flightConfig.inertialDampers ? 'Dampers online' : 'Dampers offline'}
+              </button>
+              <button className={`stable-route-button compact ${flightConfig.routeAssist ? 'is-live' : ''}`} onClick={() => setFlightConfig((current) => ({ ...current, routeAssist: !current.routeAssist }))}>
+                {flightConfig.routeAssist ? 'Route assist on' : 'Route assist off'}
+              </button>
+            </div>
+            <div className="flight-slider-grid">
+              <label>
+                <span>Thrust bias</span>
+                <input type="range" min="0.65" max="1.8" step="0.05" value={flightConfig.thrustScale} onChange={(event) => setFlightConfig((current) => ({ ...current, thrustScale: Number(event.target.value) }))} />
+              </label>
+              <label>
+                <span>Chase zoom</span>
+                <input type="range" min="0.8" max="1.4" step="0.05" value={flightConfig.chaseZoom} onChange={(event) => setFlightConfig((current) => ({ ...current, chaseZoom: Number(event.target.value) }))} />
+              </label>
+            </div>
+            <p className="stable-flight-note">
+              {FLIGHT_CONTROL_COPY.fullSummary}
+            </p>
+            <div className="stable-chip-row alt">
+              <button className="stable-route-button compact" onClick={() => handleCombatAction({ type: 'fire' })} disabled={lobbyMode !== 'hub' || !serverSession?.token}>
+                Fire pulse
+              </button>
+              <span>{lobbyMode === 'hub' ? 'Shared combat lane' : 'Combat disabled in private world'}</span>
+            </div>
+          </>
+        ) : null}
       </div>
 
       <div className="stable-world-canvas polished-canvas cinematic-polished-canvas">
