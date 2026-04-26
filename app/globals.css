@@ -4790,7 +4790,7 @@ button { font: inherit; }
 }
 
 .operations-director-card {
-  grid-column: 1 / -1;
+  grid-column: auto;
   display: grid;
   gap: 1rem;
 }
@@ -5807,4 +5807,56 @@ button { font: inherit; }
   padding: 4px 10px;
   font-size: 11px;
   color: var(--cyan);
+}
+
+
+/* Left operations rail layout */
+.left-ops-rail {
+  position: fixed;
+  left: 18px;
+  top: 196px;
+  z-index: 43;
+  display: grid;
+  gap: 14px;
+  width: min(340px, calc(100vw - 36px));
+  max-height: calc(100vh - 214px);
+  overflow-y: auto;
+  padding-right: 4px;
+  pointer-events: auto;
+}
+
+.left-ops-rail .stable-card,
+.left-ops-rail .operations-director-card,
+.left-ops-rail .account-progress-panel,
+.left-ops-rail .entropy-mission-card {
+  width: 100%;
+  min-height: auto;
+}
+
+.stable-system-hud > .stable-card {
+  margin-left: clamp(340px, 26vw, 372px);
+}
+
+@media (max-width: 1280px) {
+  .left-ops-rail {
+    width: min(320px, calc(100vw - 36px));
+  }
+
+  .stable-system-hud > .stable-card {
+    margin-left: clamp(324px, 33vw, 352px);
+  }
+}
+
+@media (max-width: 900px) {
+  .left-ops-rail {
+    position: static;
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .stable-system-hud > .stable-card {
+    margin-left: 0;
+  }
 }
