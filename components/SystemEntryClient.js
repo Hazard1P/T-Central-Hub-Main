@@ -56,8 +56,10 @@ export default function SystemEntryClient() {
       {launchPhase === 'in_sim' ? (
         <SystemErrorBoundary>
           <MultiplayerSessionProvider>
-            <LobbyModePanel lobbyMode={lobbyMode} onChange={setLobbyMode} steamUser={steamUser} universe={universe} />
-            <SystemShellControlLayer steamUser={steamUser} lobbyMode={lobbyMode} onChange={setLobbyMode} activeNode={selectedNode} />
+            <div className="system-top-left-controls">
+              <LobbyModePanel lobbyMode={lobbyMode} onChange={setLobbyMode} steamUser={steamUser} universe={universe} />
+              <SystemShellControlLayer steamUser={steamUser} lobbyMode={lobbyMode} onChange={setLobbyMode} activeNode={selectedNode} />
+            </div>
             <StableSystemWorld lobbyMode={lobbyMode} steamUser={steamUser} onSelectionChange={setSelectedNode} />
           </MultiplayerSessionProvider>
         </SystemErrorBoundary>
