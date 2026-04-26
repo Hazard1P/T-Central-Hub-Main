@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "2026.04.26",
+  "tickPipeline": {
+    "stages": [
+      {
+        "name": "gravity_sources",
+        "sphereSources": [
+          "dyson_csis",
+          "dyson_synaptics"
+        ],
+        "serverBlackholeSources": [
+          "blackhole_arma3",
+          "blackhole_rust_biweekly",
+          "blackhole_rust_weekly",
+          "blackhole_rust_monthly"
+        ]
+      },
+      {
+        "name": "mission_integrations",
+        "sphereSources": [
+          "dyson_csis",
+          "dyson_synaptics"
+        ],
+        "serverBlackholeSources": [
+          "blackhole_arma3",
+          "blackhole_rust_biweekly",
+          "blackhole_rust_weekly",
+          "blackhole_rust_monthly"
+        ]
+      }
+    ]
+  }
+}

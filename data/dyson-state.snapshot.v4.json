@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 5,
+  "release": "1.1.0",
+  "states": {
+    "sphere.csis": {
+      "stateVersion": 3,
+      "lastMilestone": "prepatch-defense-mesh",
+      "updatedAt": "2026-04-26T03:24:04.466Z"
+    },
+    "sphere.synaptics": {
+      "stateVersion": 6,
+      "lastMilestone": "prepatch-lattice",
+      "updatedAt": "2026-04-26T03:24:04.466Z"
+    },
+    "blackhole.arma3": {
+      "stateVersion": 0,
+      "lastMilestone": "uninitialized",
+      "updatedAt": "2026-04-26T03:24:04.466Z"
+    },
+    "blackhole.rust_biweekly": {
+      "stateVersion": 0,
+      "lastMilestone": "uninitialized",
+      "updatedAt": "2026-04-26T03:24:04.466Z"
+    },
+    "blackhole.rust_weekly": {
+      "stateVersion": 0,
+      "lastMilestone": "uninitialized",
+      "updatedAt": "2026-04-26T03:24:04.466Z"
+    },
+    "blackhole.rust_monthly": {
+      "stateVersion": 0,
+      "lastMilestone": "uninitialized",
+      "updatedAt": "2026-04-26T03:24:04.466Z"
+    }
+  },
+  "migratedFromSchema": 3,
+  "rollbackSafe": true
+}
