@@ -2,6 +2,7 @@ import SteamLoginHud from '@/components/SteamLoginHud';
 import CinematicUniverseCanvas from '@/components/CinematicUniverseCanvas';
 import { getHomeLaunchCards, getHomeStatusPills } from '@/lib/siteContent';
 import { buildUniverseGraph } from '@/lib/universeEngine';
+import { getEconomyReadModel } from '@/lib/economyReadModel';
 import MainAreaGatewayStatus from '@/components/MainAreaGatewayStatus';
 
 export default function HomePage() {
