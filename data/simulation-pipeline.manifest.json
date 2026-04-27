@@ -3,15 +3,29 @@
   "tickPipeline": {
     "stages": [
       {
-        "name": "gravity_sources",
+        "name": "gravity_sources_csis",
         "sphereSources": [
+          "dyson_csis"
+        ]
+      },
+      {
+        "name": "gravity_sources_synaptics",
+        "sphereSources": [
+          "dyson_synaptics"
           "dyson.csis",
           "dyson.synaptics"
         ]
       },
       {
-        "name": "mission_integrations",
+        "name": "mission_integrations_csis",
         "sphereSources": [
+          "dyson_csis"
+        ]
+      },
+      {
+        "name": "mission_integrations_synaptics",
+        "sphereSources": [
+          "dyson_synaptics"
           "dyson.csis",
           "dyson.synaptics"
         ]
