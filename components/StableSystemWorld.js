@@ -357,6 +357,11 @@ function DysonSphereStructure({ node, sessionMode = SESSION_MODES.IDLE, ringAdju
   const csisState = node.csisState || {};
   const dysonState = node.dysonState || {};
   const isSynaptics = profile === 'synaptics' || node.key === 'ss';
+  const dysonTagVariantClass = node.key === 'csis'
+    ? 'dyson-logic-tag--csis'
+    : node.key === 'ss'
+      ? 'dyson-logic-tag--synaptics'
+      : '';
   const ringThreeSpinRef = useRef(0);
   const ringThreePulseRef = useRef(0.12);
   const resolvedRingAdjustments = ringAdjustments || node?.dysonState?.ringAdjustments || {};
@@ -438,6 +443,9 @@ function DysonSphereStructure({ node, sessionMode = SESSION_MODES.IDLE, ringAdju
       {profile === 'csis' ? <CsisFirewallShell sweep={csisState.firewallSweep || 0} /> : null}
       {profile === 'csis' ? (
         <Html center distanceFactor={16} position={[0, 2.6, 0]}>
+          <div className={`dyson-logic-tag ${dysonTagVariantClass}`.trim()}>
+            <strong>CSIS dual ring</strong>
+            <span>Ring I: network linkage · Ring II: foundation firewall</span>
           <div className="dyson-logic-tag">
             <strong>Canada Strings of Intelligence Dispersal tri-ring</strong>
             <span>Ring 1: intelligence dispersal · Ring 2: routing · Ring 3: entropy regeneration</span>
@@ -446,7 +454,7 @@ function DysonSphereStructure({ node, sessionMode = SESSION_MODES.IDLE, ringAdju
       ) : null}
       {isSynaptics ? (
         <Html center distanceFactor={16} position={[0, 3.0, 0]}>
-          <div className="dyson-logic-tag">
+          <div className={`dyson-logic-tag ${dysonTagVariantClass}`.trim()}>
             <strong>Synaptics tri-ring</strong>
             <span>{dysonState.ringOneLabel || 'Collector ring'} · {dysonState.ringTwoLabel || 'Habitat ring'} · {dysonState.ringThreeLabel || 'Encryption ring'}</span>
           </div>
