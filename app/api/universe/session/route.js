@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { createEpochAnchor, summarizeEpochRelativity } from '@/lib/epochDysonEngine';
-import { computeCsisDysonState, summarizeCsisDysonState } from '@/lib/csisDysonSphereEngine';
+import { computeRegisteredDysonStates } from '@/lib/dysonSphereRegistry';
 import { createPrivacySummary } from '@/lib/universePrivacyEngine';
 import { summarizePrayerSeeds } from '@/lib/prayerSeedEngine';
 import { readDonationLedger, summarizeDonationLedger } from '@/lib/donationLedger';
@@ -24,23 +24,26 @@ export async function GET(request) {
   const privacy = createPrivacySummary({ steamUser: authContext.steamUser, lobbyMode });
   const epochAnchor = createEpochAnchor();
   const sessionMode = lobbyMode === 'hub' ? 'multiplayer' : 'singleplayer';
-  const csisDysonState = computeCsisDysonState({
-    epoch: epochAnchor,
-    authContext: {
-      authenticated: authContext.authenticated,
-    },
-    sessionContext: {
-      mode: sessionMode,
-    },
-    telemetry: {
-      meterTick: epochAnchor.unix,
-      previousMeterTick: epochAnchor.unix - 30,
-      discrepancyDelta: Math.abs((epochAnchor.dysonAlignment || 0) - (epochAnchor.siderealDrift || 0)),
-      styleSignal: epochAnchor.phase || 0,
+  const dysonStates = computeRegisteredDysonStates({
+    sphereIds: ['dyson.csis', 'dyson.synaptics'],
+    input: {
+      epoch: epochAnchor,
+      authContext: {
+        authenticated: authContext.authenticated,
+      },
+      sessionContext: {
+        mode: sessionMode,
+      },
+      telemetry: {
+        meterTick: epochAnchor.unix,
+        previousMeterTick: epochAnchor.unix - 30,
+        discrepancyDelta: Math.abs((epochAnchor.dysonAlignment || 0) - (epochAnchor.siderealDrift || 0)),
+        styleSignal: epochAnchor.phase || 0,
+      },
     },
   });
 
-  const dysonRings = summarizeCsisDysonState(csisDysonState);
+  const dysonRings = dysonStates['dyson.csis'] || {};
   const donations = summarizeDonationLedger(readDonationLedger());
 
   await trackServerEvent('api_universe_session', {
@@ -63,6 +66,7 @@ export async function GET(request) {
     privacy,
     epoch: summarizeEpochRelativity(epochAnchor),
     dysonRings,
+    dysonSpheres: dysonStates,
     prayerSeeds: summarizePrayerSeeds([], 'solar_system'),
     donations,
     ring1Metering: dysonRings.ring1,
