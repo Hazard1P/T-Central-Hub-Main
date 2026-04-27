@@ -5445,6 +5445,34 @@ button { font: inherit; }
   font-size: 0.72rem;
 }
 
+.dyson-logic-tag--csis {
+  border-color: rgba(111, 240, 255, 0.5);
+  background: rgba(5, 20, 30, 0.82);
+  box-shadow: 0 14px 34px rgba(8, 128, 156, 0.24);
+}
+
+.dyson-logic-tag--csis strong {
+  color: #bff8ff;
+}
+
+.dyson-logic-tag--csis span {
+  color: rgba(191, 248, 255, 0.82);
+}
+
+.dyson-logic-tag--synaptics {
+  border-color: rgba(255, 213, 122, 0.5);
+  background: rgba(28, 18, 4, 0.82);
+  box-shadow: 0 14px 34px rgba(173, 111, 18, 0.24);
+}
+
+.dyson-logic-tag--synaptics strong {
+  color: #ffe3a8;
+}
+
+.dyson-logic-tag--synaptics span {
+  color: rgba(255, 227, 168, 0.82);
+}
+
 .universe-label {
   display: grid;
   gap: 0.18rem;
