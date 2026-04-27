@@ -34,6 +34,41 @@ const nodes = [
   },
 ];
 
+const multiplayerServerLinkedNodes = [
+  {
+    key: 'server_anchor_alpha',
+    kind: 'blackhole',
+    associatedServer: 'arma3-cth-primary',
+    target_server_id: 'arma3-cth-primary',
+    mode_support: ['multi_player'],
+    region: 'us-central',
+  },
+  {
+    key: 'server_anchor_bravo',
+    kind: 'blackhole',
+    associatedServer: 'rust-weekly-primary',
+    target_server_id: 'rust-weekly-primary',
+    mode_support: ['multi_player'],
+    region: 'us-central',
+  },
+  {
+    key: 'server_anchor_charlie',
+    kind: 'blackhole',
+    associatedServer: 'mc-survival-primary',
+    target_server_id: 'mc-survival-primary',
+    mode_support: ['multi_player'],
+    region: 'us-east',
+  },
+  {
+    key: 'server_anchor_delta',
+    kind: 'blackhole',
+    associatedServer: 'valheim-cluster-primary',
+    target_server_id: 'valheim-cluster-primary',
+    mode_support: ['multi_player'],
+    region: 'eu-west',
+  },
+];
+
 test('routing correctness: multiplayer routes to session-authoritative server, singleplayer routes to local-authoritative instance', () => {
   const registry = buildBlackholeBindingRegistry(nodes);
 
@@ -121,4 +156,27 @@ test('atlas connectivity includes per-blackhole healthy/degraded/offline status'
   assert.equal(atlas.connectivity.deep_blackhole.status, 'degraded');
   assert.equal(atlas.connectivity.rust_gate.status, 'healthy');
   assert.equal(atlas.connectivity.void_blackhole.status, 'offline');
+});
+
+test('multiplayer server-linked blackholes each resolve to their own destination instance', () => {
+  const registry = buildBlackholeBindingRegistry(multiplayerServerLinkedNodes);
+  const serverInstances = {
+    'arma3-cth-primary': { id: 'arma3-cth-primary', authority: 'session-authoritative', healthy: true, region: 'us-central' },
+    'rust-weekly-primary': { id: 'rust-weekly-primary', authority: 'session-authoritative', healthy: true, region: 'us-central' },
+    'mc-survival-primary': { id: 'mc-survival-primary', authority: 'session-authoritative', healthy: true, region: 'us-east' },
+    'valheim-cluster-primary': { id: 'valheim-cluster-primary', authority: 'session-authoritative', healthy: true, region: 'eu-west' },
+  };
+
+  multiplayerServerLinkedNodes.forEach((node) => {
+    const commit = resolveBlackholeRouteAtJumpCommit({
+      blackholeId: node.key,
+      mode: 'multi_player',
+      registry,
+      serverInstances,
+    });
+
+    assert.equal(commit.ok, true);
+    assert.equal(commit.status, 'healthy');
+    assert.equal(commit.destination.id, node.target_server_id);
+  });
 });
