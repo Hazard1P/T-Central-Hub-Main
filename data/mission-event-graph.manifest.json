@@ -17,7 +17,11 @@
       {
         "from": "mission-node-dyson-csis",
         "to": "mission-node-dyson-synaptics",
-        "event": "relay_handoff"
+        "event": "relay_handoff",
+        "optional": true,
+        "requires": [
+          "cross_sphere_bridge_enabled"
+        ]
       }
     ]
   }
