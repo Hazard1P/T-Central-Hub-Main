@@ -9,6 +9,11 @@ import { summarizePrayerSeeds } from '@/lib/prayerSeedEngine';
 import { readDonationLedger, summarizeDonationLedger } from '@/lib/donationLedger';
 import { resolveGameAuthContext } from '@/lib/auth/resolveGameAuthContext';
 import { trackServerEvent } from '@/lib/server/vercelTelemetry';
+import {
+  getDysonRingIntegrityStatus,
+  startDysonRingIntegrityService,
+  upsertDysonRingContinuitySnapshot,
+} from '@/lib/dysonContinuity';
 import { runLaunchGenesisPipeline } from '@/lib/launch/launchGenesisPipeline';
 import { persistLaunchRecord } from '@/lib/serverPersistence';
 
@@ -19,6 +24,8 @@ function resolveLobbyMode(value) {
 }
 
 export async function GET(request) {
+  startDysonRingIntegrityService();
+
   const cookieStore = cookies();
   const authContext = resolveGameAuthContext(cookieStore);
 
@@ -70,6 +77,8 @@ export async function GET(request) {
     },
   });
 
+  const dysonRings = summarizeCsisDysonState(csisDysonState);
+  const dysonRingIntegrity = upsertDysonRingContinuitySnapshot(dysonRings);
   const dysonRings = dysonStates['dyson.csis'] || {};
   const donations = summarizeDonationLedger(readDonationLedger());
 
@@ -94,6 +103,10 @@ export async function GET(request) {
     privacy,
     epoch: summarizeEpochRelativity(epochAnchor),
     dysonRings,
+    dysonRingIntegrity: {
+      ...getDysonRingIntegrityStatus(),
+      ...dysonRingIntegrity,
+    },
     dysonSpheres: dysonStates,
     prayerSeeds: summarizePrayerSeeds([], 'solar_system'),
     donations,
