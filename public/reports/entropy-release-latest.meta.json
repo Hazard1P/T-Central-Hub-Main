@@ -1,0 +1,39 @@
+{
+  "url": "/reports/entropy-release-latest.pdf",
+  "sha256": "86f78d37af93406f61ea8da239aad02621575027b4906505658dc66326024878",
+  "generatedAt": "2026-04-27T01:23:43.589Z",
+  "signature": "f946143ac6e4ee242aef2a30241ed14c27f287a333baeb2890932d95bac55dd5",
+  "gateState": "gate-open-stable",
+  "ring3Releases": [
+    {
+      "sphereId": "dyson.csis",
+      "stateVersion": 4,
+      "contentDelta": "ring3-firewall-signature-refresh",
+      "simulationMilestone": "defense_mesh_calibrated",
+      "ring3Health": "ring3-verified"
+    },
+    {
+      "sphereId": "dyson.synaptics",
+      "stateVersion": 7,
+      "contentDelta": "collector-ring-output-balance-pass",
+      "simulationMilestone": "encryption-lattice-stable",
+      "ring3Health": "ring3-monitor"
+    }
+  ],
+  "continuitySnapshots": [
+    {
+      "file": "dyson-state.snapshot.v4.json",
+      "schemaVersion": 4,
+      "release": "1.0.0",
+      "rollbackSafe": true,
+      "updatedAt": "2026-04-26T03:20:17.085Z"
+    },
+    {
+      "file": "dyson-state.snapshot.v3.json",
+      "schemaVersion": 3,
+      "release": "0.9.9",
+      "rollbackSafe": false,
+      "updatedAt": null
+    }
+  ]
+}

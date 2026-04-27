@@ -1,0 +1,42 @@
+%PDF-1.4
+1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
+2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj
+3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >> endobj
+4 0 obj << /Length 1777 >> stream
+BT /F1 11 Tf 50 750 Td (Entropy Release Bulletin) Tj ET
+BT /F1 11 Tf 50 736 Td (Generated: 2026-04-27T01:23:43.589Z) Tj ET
+BT /F1 11 Tf 50 722 Td (Build: 2026.04.26.1   Release: 1.0.0) Tj ET
+BT /F1 11 Tf 50 708 Td (Gate State Marker: gate-open-stable) Tj ET
+BT /F1 11 Tf 50 694 Td (Continuity Policy: 1.0.0 \(stable\)) Tj ET
+BT /F1 11 Tf 50 680 Td (Signature \(sha256\): f946143ac6e4ee242aef2a30241ed14c27f287a333baeb2890932d95bac55dd5) Tj ET
+BT /F1 11 Tf 50 666 Td () Tj ET
+BT /F1 11 Tf 50 652 Td (Ring3 Entropy Release Markers:) Tj ET
+BT /F1 11 Tf 50 638 Td (- dyson.csis | state=4 | delta=ring3-firewall-signature-refresh) Tj ET
+BT /F1 11 Tf 50 624 Td (  milestone=defense_mesh_calibrated | marker=ring3-verified) Tj ET
+BT /F1 11 Tf 50 610 Td (- dyson.synaptics | state=7 | delta=collector-ring-output-balance-pass) Tj ET
+BT /F1 11 Tf 50 596 Td (  milestone=encryption-lattice-stable | marker=ring3-monitor) Tj ET
+BT /F1 11 Tf 50 582 Td () Tj ET
+BT /F1 11 Tf 50 568 Td (Continuity Snapshot Health:) Tj ET
+BT /F1 11 Tf 50 554 Td (- dyson-state.snapshot.v4.json | schema=4 | release=1.0.0 | rollback-safe) Tj ET
+BT /F1 11 Tf 50 540 Td (  sphere.csis: v3 | prepatch-defense-mesh | 2026-04-26T03:20:17.085Z) Tj ET
+BT /F1 11 Tf 50 526 Td (  sphere.synaptics: v6 | prepatch-lattice | 2026-04-26T03:20:17.085Z) Tj ET
+BT /F1 11 Tf 50 512 Td (- dyson-state.snapshot.v3.json | schema=3 | release=0.9.9 | rollback-unknown) Tj ET
+BT /F1 11 Tf 50 498 Td (  sphere.csis: v3 | prepatch-defense-mesh | n/a) Tj ET
+BT /F1 11 Tf 50 484 Td (  sphere.synaptics: v6 | prepatch-lattice | n/a) Tj ET
+BT /F1 11 Tf 50 470 Td () Tj ET
+BT /F1 11 Tf 50 456 Td (Latest Continuity Snapshot: dyson-state.snapshot.v4.json) Tj ET
+BT /F1 11 Tf 50 442 Td (Canonical spheres: dyson.csis, dyson.synaptics) Tj ET
+endstream endobj
+5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000002069 00000 n 
+trailer << /Size 6 /Root 1 0 R >>
+startxref
+2139
+%%EOF
