@@ -12,6 +12,8 @@
         "name": "gravity_sources_synaptics",
         "sphereSources": [
           "dyson_synaptics"
+          "dyson.csis",
+          "dyson.synaptics"
         ]
       },
       {
@@ -24,6 +26,8 @@
         "name": "mission_integrations_synaptics",
         "sphereSources": [
           "dyson_synaptics"
+          "dyson.csis",
+          "dyson.synaptics"
         ]
       }
     ]
