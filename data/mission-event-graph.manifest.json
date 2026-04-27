@@ -13,12 +13,6 @@
         "type": "mission_anchor"
       }
     ],
-    "edges": [
-      {
-        "from": "mission-node-dyson-csis",
-        "to": "mission-node-dyson-synaptics",
-        "event": "relay_handoff"
-      }
-    ]
+    "edges": []
   }
 }

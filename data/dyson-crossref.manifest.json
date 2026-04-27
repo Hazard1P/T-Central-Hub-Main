@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "2026.04.26",
+  "links": [
+    {
+      "fromSphereId": "dyson.csis",
+      "toSphereId": "dyson.synaptics",
+      "mode": "read_only",
+      "scope": "telemetry"
+    },
+    {
+      "fromSphereId": "dyson.synaptics",
+      "toSphereId": "dyson.csis",
+      "mode": "read_only",
+      "scope": "telemetry"
+    }
+  ]
+}
