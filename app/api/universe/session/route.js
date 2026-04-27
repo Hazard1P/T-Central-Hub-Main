@@ -9,6 +9,7 @@ import { summarizePrayerSeeds } from '@/lib/prayerSeedEngine';
 import { readDonationLedger, summarizeDonationLedger } from '@/lib/donationLedger';
 import { resolveGameAuthContext } from '@/lib/auth/resolveGameAuthContext';
 import { trackServerEvent } from '@/lib/server/vercelTelemetry';
+import { continuityHealthService } from '@/lib/continuity/continuityHealthService';
 import {
   getDysonRingIntegrityStatus,
   startDysonRingIntegrityService,
@@ -32,6 +33,7 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const lobbyMode = resolveLobbyMode(searchParams.get('lobbyMode'));
 
+  const continuityRuntime = continuityHealthService.start();
   const launchGenesis = runLaunchGenesisPipeline({ authContext, lobbyMode });
 
   if (!launchGenesis.ok) {
@@ -111,6 +113,12 @@ export async function GET(request) {
     prayerSeeds: summarizePrayerSeeds([], 'solar_system'),
     donations,
     ring1Metering: dysonRings.ring1,
+    continuityHealth: continuityRuntime.snapshot,
+    launchGate: {
+      authoritative: 'runtime',
+      ciGateScript: 'scripts/check-dyson-continuity.mjs',
+      status: continuityRuntime.snapshot?.gateStatus || 'blocked',
+    },
     launchRecord: launchGenesis.launchRecord,
     launchPersistence: persistence,
     generatedAt: new Date().toISOString(),
