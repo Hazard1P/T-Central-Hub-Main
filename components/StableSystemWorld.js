@@ -438,8 +438,8 @@ function DysonSphereStructure({ node, sessionMode = SESSION_MODES.IDLE, ringAdju
       {profile === 'csis' ? (
         <Html center distanceFactor={16} position={[0, 2.6, 0]}>
           <div className="dyson-logic-tag">
-            <strong>CSIS dual ring</strong>
-            <span>Ring I: network linkage · Ring II: foundation firewall</span>
+            <strong>Canada Strings of Intelligence Dispersal tri-ring</strong>
+            <span>Ring 1: intelligence dispersal · Ring 2: routing · Ring 3: entropy regeneration</span>
           </div>
         </Html>
       ) : null}
@@ -1590,7 +1590,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           {activeNode?.key === 'entropic_node' ? <p className="stable-flight-note">Mine this seam only after switching to the multiplayer hub.</p> : null}
           {activeNode?.key === 'matrixcoinexchange' ? <p className="stable-flight-note">Return here with unresolved entropy to settle the cargo into {ENTROPIC_CURRENCY.shortLabel}.</p> : null}
           {activeNode?.key === 'ss_dock' ? <p className="stable-flight-note">Dock here in proximity to the Synaptics.Systems Dyson Sphere before and after long-range sorties.</p> : null}
-          {activeNode?.key === 'csis' ? <p className="stable-flight-note">CSIS ring I drives conscious intelligence and cyberfield production, ring II handles ingress/egress routes, and ring III performs encryption/firewall monitoring over rings I + II + III. Spin integers 1/2, 1/4, and 3/4 stay active at an astrological quantum tier with bidirectional API links. This sphere is sealed to players and remains a system-owned defense anchor. Linked anchors: {graph.csisState?.linkedNodeKeys?.length || 0} · quarantined relays: {graph.csisState?.quarantinedNodeKeys?.length || 0}.</p> : null}
+          {activeNode?.key === 'csis' ? <p className="stable-flight-note">Canada Strings of Intelligence Dispersal ring 1 drives intelligence dispersal outputs, ring 2 handles ingress/egress server and external system database routing, and ring 3 regenerates entropy for star singularity state. Spin integers 1/2, 1/4, and 3/4 stay active at an astrological quantum tier with bidirectional API links. This sphere is sealed to players and remains a system-owned defense anchor. Linked anchors: {graph.csisState?.linkedNodeKeys?.length || 0} · quarantined relays: {graph.csisState?.quarantinedNodeKeys?.length || 0}.</p> : null}
         </div> : null}
 
         {showVisualDebugCards && privateWorldAsset ? (
@@ -1657,9 +1657,9 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
 
 
         {showVisualDebugCards ? <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
-          <p className="eyebrow">CSIS lattice / firewall state</p>
-          <h3>{(graph.csisState?.ringOneLabel || 'Conscious intelligence / cyberfield production')} + {(graph.csisState?.ringTwoLabel || 'Ingress / egress')} + {(graph.csisState?.ringThreeLabel || 'Encryption / firewall monitoring')}</h3>
-          <p className="muted">The CSIS tri-ring lattice maps to ring I conscious intelligence + cyberfield production, ring II ingress/egress flow, and ring III encryption/firewall monitoring across all three rings. Spin integers {graph.csisState?.spinProfile?.join(' · ') || '1/2 · 1/4 · 3/4'} run in an astrological quantum tier with bidirectional API exchange while non-foundation relays stay quarantined inside game space.</p>
+          <p className="eyebrow">Canada Strings of Intelligence Dispersal lattice state</p>
+          <h3>{(graph.csisState?.ringOneLabel || 'Intelligence dispersal outputs')} + {(graph.csisState?.ringTwoLabel || 'Ingress / egress + database routing')} + {(graph.csisState?.ringThreeLabel || 'Entropy regeneration / singularity state')}</h3>
+          <p className="muted">The Canada Strings of Intelligence Dispersal tri-ring lattice maps to ring 1 intelligence dispersal outputs, ring 2 ingress/egress server plus external system database routing, and ring 3 entropy regeneration for star singularity state. Spin integers {graph.csisState?.spinProfile?.join(' · ') || '1/2 · 1/4 · 3/4'} run in an astrological quantum tier with bidirectional API exchange while non-foundation relays stay quarantined inside game space.</p>
           <div className="focus-meta">
             <span>Linked anchors {graph.csisState?.linkedNodeKeys?.length || 0}</span>
             <span>Quarantined relays {graph.csisState?.quarantinedNodeKeys?.length || 0}</span>
