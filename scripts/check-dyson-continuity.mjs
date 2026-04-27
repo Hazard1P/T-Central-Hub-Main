@@ -33,6 +33,22 @@ const crossref = await loadJsonIfPresent('data/dyson-crossref.manifest.json');
 
 const canonicalIds = Array.isArray(continuity?.canonicalSphereIds) ? continuity.canonicalSphereIds : [];
 const issues = [];
+const missionNodesById = new Map((missionGraph?.graph?.nodes || []).map((node) => [node?.id, node]));
+
+for (const edge of missionGraph?.graph?.edges || []) {
+  const fromNode = missionNodesById.get(edge?.from);
+  const toNode = missionNodesById.get(edge?.to);
+  const isCrossSphere = Boolean(fromNode?.sphereId && toNode?.sphereId && fromNode.sphereId !== toNode.sphereId);
+  if (!isCrossSphere) continue;
+
+  const requires = Array.isArray(edge?.requires) ? edge.requires.filter((flag) => typeof flag === 'string' && flag.trim()) : [];
+  const optional = edge?.optional === true;
+  if (!optional || requires.length === 0) {
+    issues.push(
+      `cross-sphere mission edge ${edge?.from || 'unknown'} -> ${edge?.to || 'unknown'} (${edge?.event || 'event:unknown'}) must be optional and gated with at least one explicit requires flag`
+    );
+  }
+}
 
 if (canonicalIds.length !== 2) issues.push(`expected exactly 2 canonical sphere ids, found ${canonicalIds.length}`);
 
