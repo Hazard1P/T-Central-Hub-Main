@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { applyAuthoritativeAction, pruneAuthoritativeRooms } from '@/lib/authoritativeMultiplayerStore';
 import { applyDurableAction, hasDurableMultiplayer } from '@/lib/durableMultiplayerStore';
 import { SESSION_MODES, buildRingAdjustmentOutputs, getSessionModeSnapshot, normalizeSessionMode, transitionSessionMode } from '@/lib/sessionModeEngine';
+import { createModeBridgeTransfer, rehydrateModeBridgeState, validateModeBridgeTransfer } from '@/lib/persistence/modeBridgeState';
 import { trackServerEvent } from '@/lib/server/vercelTelemetry';
 import { awardMultiplayerProgressionEvent } from '@/lib/multiplayerProgression';
 import { attachRing1Continuity } from '@/lib/ring1Continuity';
@@ -76,6 +77,9 @@ function validateActionPayload(body) {
       action: body.action,
       requestedMode: modeResolution.mode,
       captureSimulationEvent: body?.captureSimulationEvent !== false,
+      accountAnchor: body?.accountId || body?.id,
+      incomingTransfer: body?.modeBridgeTransfer && typeof body?.modeBridgeTransfer === 'object' ? body.modeBridgeTransfer : null,
+      incomingState: rehydrateModeBridgeState(body?.modeBridgeState || body?.modeBridgeTransfer?.state),
     },
   };
 }
@@ -85,6 +89,32 @@ function resolveProgressionTrigger(action = {}) {
   if (['objective', 'objective_capture', 'objective_tick', 'objective_assist'].includes(action?.type)) return 'objective_participation';
   if (['session_complete', 'match_complete', 'extract'].includes(action?.type)) return 'session_completion';
   return null;
+}
+
+
+
+function withModeBridgeTransfer(payload = {}, { roomName, sessionAnchor, accountAnchor, incomingTransfer, incomingState } = {}) {
+  const validation = validateModeBridgeTransfer({ transfer: incomingTransfer, roomName, sessionAnchor, accountAnchor });
+  if (!validation.ok) return { ok: false, status: validation.status, error: validation.error, details: validation.details };
+
+  const modeBridgeTransfer = createModeBridgeTransfer({
+    incomingTransfer,
+    modeTransition: payload?.modeTransition,
+    mode: payload?.mode,
+    roomName,
+    sessionAnchor,
+    accountAnchor,
+    modeBridgeState: incomingState,
+  });
+
+  return {
+    ok: true,
+    payload: {
+      ...payload,
+      modeBridgeTransfer,
+      modeBridgeState: modeBridgeTransfer.state,
+    },
+  };
 }
 
 function withModeState(result = {}, { roomName, mode, source } = {}) {
@@ -128,7 +158,7 @@ export async function POST(request) {
     return NextResponse.json({ ok: false, error: validation.error, issues: validation.issues }, { status: validation.status });
   }
 
-  const { roomName, id, token, action, requestedMode, captureSimulationEvent } = validation.value;
+  const { roomName, id, token, action, requestedMode, captureSimulationEvent, accountAnchor, incomingTransfer, incomingState } = validation.value;
 
   const progressionTrigger = resolveProgressionTrigger(body?.action);
   const progressionEventId = String(
@@ -167,8 +197,18 @@ export async function POST(request) {
       actionType: action?.type,
       runReconciliation: runRing1Reconciliation,
     });
+    const bridgePayload = withModeBridgeTransfer(payloadWithContinuity, {
+      roomName,
+      sessionAnchor: id,
+      accountAnchor,
+      incomingTransfer,
+      incomingState,
+    });
+    if (!bridgePayload.ok) {
+      return NextResponse.json({ ok: false, error: bridgePayload.error, details: bridgePayload.details || null }, { status: bridgePayload.status || 409 });
+    }
     await trackServerEvent('api_multiplayer_action', { durable: true, status: result.status || 200 });
-    return NextResponse.json(payloadWithContinuity, { status: result.status || 200 });
+    return NextResponse.json(bridgePayload.payload, { status: result.status || 200 });
   }
 
   pruneAuthoritativeRooms();
@@ -189,6 +229,16 @@ export async function POST(request) {
     actionType: action?.type,
     runReconciliation: runRing1Reconciliation,
   });
+  const bridgePayload = withModeBridgeTransfer(payloadWithContinuity, {
+    roomName,
+    sessionAnchor: id,
+    accountAnchor,
+    incomingTransfer,
+    incomingState,
+  });
+  if (!bridgePayload.ok) {
+    return NextResponse.json({ ok: false, error: bridgePayload.error, details: bridgePayload.details || null }, { status: bridgePayload.status || 409 });
+  }
   await trackServerEvent('api_multiplayer_action', { durable: false, status: result.status || 200 });
-  return NextResponse.json(payloadWithContinuity, { status: result.status || 200 });
+  return NextResponse.json(bridgePayload.payload, { status: result.status || 200 });
 }
