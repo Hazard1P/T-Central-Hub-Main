@@ -4,12 +4,20 @@ import { getHomeLaunchCards, getHomeStatusPills } from '@/lib/siteContent';
 import { buildUniverseGraph } from '@/lib/universeEngine';
 import { getEconomyReadModel } from '@/lib/economyReadModel';
 import MainAreaGatewayStatus from '@/components/MainAreaGatewayStatus';
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
 
-export default function HomePage() {
+export default async function HomePage() {
   const launchCards = getHomeLaunchCards().slice(0, 3);
   const statusPills = getHomeStatusPills();
   const graph = buildUniverseGraph();
   const economy = getEconomyReadModel();
+
+  const entropyReportPath = path.join(process.cwd(), 'public', 'reports', 'entropy-release-latest.meta.json');
+  const entropyReport = await fs
+    .readFile(entropyReportPath, 'utf8')
+    .then((raw) => JSON.parse(raw))
+    .catch(() => null);
 
   return (
     <main className="entry-page cosmic-entry-page simplified-home-page">
@@ -79,6 +87,26 @@ export default function HomePage() {
             Entropic credit status is available from the canonical read model endpoint at
             {' '}<code>/api/economy-read-model</code> for Main Area visibility.
           </p>
+
+          <article className="content-card entry-panel polished minimal-route-card" style={{ marginTop: '1rem' }}>
+            <span className="entry-panel-kicker">Entropy Bulletin</span>
+            <strong>Signed entropy release PDF</strong>
+            <p>
+              Cross-check the latest ring3 entropy release and continuity snapshot digest.
+              {entropyReport?.generatedAt ? ` Generated at ${entropyReport.generatedAt}.` : ' Generate it with scripts/generate-entropy-frontpage-pdf.mjs.'}
+            </p>
+            <p className="muted" style={{ wordBreak: 'break-all' }}>
+              SHA-256: {entropyReport?.sha256 || 'pending-generation'}
+            </p>
+            <div className="entry-actions">
+              <a className="button secondary" href={entropyReport?.url || '/reports/entropy-release-latest.pdf'} target="_blank" rel="noreferrer">
+                Open entropy PDF
+              </a>
+              <a className="button secondary" href="/api/reports/entropy-release" target="_blank" rel="noreferrer">
+                Open metadata API
+              </a>
+            </div>
+          </article>
 
           <div className="entry-link-row compact">
             <a href="/privacy-policy">Privacy policy</a>
