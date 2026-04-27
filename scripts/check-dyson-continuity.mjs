@@ -23,6 +23,8 @@ const progression = await loadJson('data/dyson-progression.manifest.json');
 
 const canonicalIds = Array.isArray(continuity?.canonicalSphereIds) ? continuity.canonicalSphereIds : [];
 const issues = [];
+const stages = simPipeline?.tickPipeline?.stages || [];
+const requiredStagePrefixes = ['gravity_sources', 'mission_integrations'];
 
 if (canonicalIds.length !== 2) issues.push(`expected exactly 2 canonical sphere ids, found ${canonicalIds.length}`);
 
@@ -39,8 +41,20 @@ for (const canonicalId of canonicalIds) {
   const missionHasSphere = (missionGraph?.graph?.nodes || []).some((node) => node?.sphereId === canonicalId && node?.id === descriptor.missionNodeId);
   if (!missionHasSphere) issues.push(`${canonicalId} missing in mission/event graph manifest`);
 
-  const simHasSphere = (simPipeline?.tickPipeline?.stages || []).some((stage) => (stage?.sphereSources || []).includes(descriptor.pipelineSourceKey));
-  if (!simHasSphere) issues.push(`${canonicalId} missing in simulation tick/update pipeline manifest`);
+  const stageNamesForSphere = stages
+    .filter((stage) => (stage?.sphereSources || []).includes(descriptor.pipelineSourceKey))
+    .map((stage) => String(stage?.name || ''));
+
+  if (stageNamesForSphere.length === 0) {
+    issues.push(`${canonicalId} missing in simulation tick/update pipeline manifest`);
+  }
+
+  for (const requiredPrefix of requiredStagePrefixes) {
+    const hasRequiredStage = stageNamesForSphere.some((name) => name === requiredPrefix || name.startsWith(`${requiredPrefix}_`));
+    if (!hasRequiredStage) {
+      issues.push(`${canonicalId} missing ${requiredPrefix} stage in simulation tick/update pipeline manifest`);
+    }
+  }
 
   const marker = progression?.spheres?.[canonicalId];
   const hasForwardProgress = Boolean(
