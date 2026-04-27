@@ -5,15 +5,15 @@
       {
         "name": "gravity_sources",
         "sphereSources": [
-          "dyson_csis",
-          "dyson_synaptics"
+          "dyson.csis",
+          "dyson.synaptics"
         ]
       },
       {
         "name": "mission_integrations",
         "sphereSources": [
-          "dyson_csis",
-          "dyson_synaptics"
+          "dyson.csis",
+          "dyson.synaptics"
         ]
       }
     ]
