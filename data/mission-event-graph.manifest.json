@@ -1,5 +1,9 @@
 {
   "schemaVersion": "2026.04.26",
+  "executionRules": {
+    "sphereMissionIndependence": "Each sphere mission node must be executable standalone; cross-sphere coordination cannot introduce mandatory runtime dependencies.",
+    "crossSphereCoordination": "Use optional event-bus topics with per-sphere listeners. Mission anchors may publish and/or subscribe, but no direct hard dependency edge is allowed between sphere mission anchors unless explicitly documented and justified."
+  },
   "graph": {
     "nodes": [
       {
@@ -13,12 +17,27 @@
         "type": "mission_anchor"
       }
     ],
-    "edges": [
+    "topics": [
       {
-        "from": "mission-node-dyson-csis",
-        "to": "mission-node-dyson-synaptics",
-        "event": "relay_handoff"
+        "id": "coordination.relay_handoff",
+        "semantics": "optional",
+        "description": "Shared event topic for cross-sphere relay coordination without mandatory execution dependency."
       }
-    ]
+    ],
+    "subscriptions": [
+      {
+        "nodeId": "mission-node-dyson-csis",
+        "topicId": "coordination.relay_handoff",
+        "mode": "publish_subscribe",
+        "required": false
+      },
+      {
+        "nodeId": "mission-node-dyson-synaptics",
+        "topicId": "coordination.relay_handoff",
+        "mode": "publish_subscribe",
+        "required": false
+      }
+    ],
+    "edges": []
   }
 }
