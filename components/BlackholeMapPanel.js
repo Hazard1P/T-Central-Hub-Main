@@ -1,11 +1,23 @@
 'use client';
 
+import Link from 'next/link';
 import { createPrivateWorldAsset } from '@/lib/privateWorldAsset';
 
 export default function BlackholeMapPanel({ activeNode = null, lobbyMode = 'hub', steamUser = null }) {
   const activeLabel = activeNode?.label || 'Deep Space Blackhole';
   const routeState = activeNode?.route ? 'Route ready' : 'Anchor view';
   const privateWorldAsset = createPrivateWorldAsset({ steamUser, lobbyMode });
+
+  const serverBlackholeAnchors = privateWorldAsset?.nodes
+    ?.filter((node) => node.kind === 'blackhole' && node.serverSlug)
+    .slice(0, 4)
+    .map((node) => ({
+      key: node.key,
+      label: node.label,
+      serverTitle: node.serverTitle,
+      href: node.serverHref || `/servers/${node.serverSlug}`,
+      serverSlug: node.serverSlug,
+    })) || [];
 
   return (
     <div className="blackhole-map-panel system-dock-card">
@@ -56,13 +68,23 @@ export default function BlackholeMapPanel({ activeNode = null, lobbyMode = 'hub'
               <span>Solar replicas</span>
               <strong>{privateWorldAsset.replicaSystems?.length || 0}</strong>
             </div>
-            <div className="steam-access-item">
-              <span>Server blackholes</span>
-              <strong>{privateWorldAsset.serverBlackholeKeys?.length || 0}</strong>
-            </div>
           </>
         ) : null}
       </div>
+
+      {serverBlackholeAnchors.length ? (
+        <div className="steam-access-item">
+          <span>Server blackhole anchors</span>
+          <ul>
+            {serverBlackholeAnchors.map((anchor) => (
+              <li key={anchor.key}>
+                <strong>{anchor.label}</strong> · {anchor.serverTitle} ·{' '}
+                <Link href={anchor.href}>{`/servers/${anchor.serverSlug}`}</Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <p className="lobby-mode-note">
         {routeState} · use the blackhole as the center point for travel, objectives, docking, and the external website handoff.
