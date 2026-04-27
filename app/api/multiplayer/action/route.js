@@ -5,6 +5,8 @@ import { applyDurableAction, hasDurableMultiplayer } from '@/lib/durableMultipla
 import { SESSION_MODES, buildRingAdjustmentOutputs, getSessionModeSnapshot, normalizeSessionMode, transitionSessionMode } from '@/lib/sessionModeEngine';
 import { trackServerEvent } from '@/lib/server/vercelTelemetry';
 import { awardMultiplayerProgressionEvent } from '@/lib/multiplayerProgression';
+import { attachRing1Continuity } from '@/lib/ring1Continuity';
+import { runRing1Reconciliation } from '@/lib/integrations/synapticsSecondsMeterAdapter';
 
 const ROOM_NAME_PATTERN = /^[a-zA-Z0-9_-]{1,64}$/;
 const ACTION_TYPE_WHITELIST = new Set(['fire']);
@@ -99,6 +101,7 @@ function withModeState(result = {}, { roomName, mode, source } = {}) {
   return {
     ...result,
     mode: modeState.mode,
+    modeChanged: modeState.changed,
     modeTransition: modeState.transition,
     ringAdjustments,
     state: {
@@ -155,8 +158,17 @@ export async function POST(request) {
     });
     const progression = await progressionPromise;
     const payload = withModeState({ ...result, progressionDelta: progression?.delta || null }, { roomName, mode: requestedMode, source: 'action' });
+    const payloadWithContinuity = await attachRing1Continuity(payload, {
+      roomName,
+      playerId: id,
+      sessionToken: token,
+      requestedMode,
+      source: 'multiplayer:action',
+      actionType: action?.type,
+      runReconciliation: runRing1Reconciliation,
+    });
     await trackServerEvent('api_multiplayer_action', { durable: true, status: result.status || 200 });
-    return NextResponse.json(payload, { status: result.status || 200 });
+    return NextResponse.json(payloadWithContinuity, { status: result.status || 200 });
   }
 
   pruneAuthoritativeRooms();
@@ -168,6 +180,15 @@ export async function POST(request) {
   });
   const progression = await progressionPromise;
   const payload = withModeState({ ...result, durable: false, progressionDelta: progression?.delta || null }, { roomName, mode: requestedMode, source: 'action' });
+  const payloadWithContinuity = await attachRing1Continuity(payload, {
+    roomName,
+    playerId: id,
+    sessionToken: token,
+    requestedMode,
+    source: 'multiplayer:action',
+    actionType: action?.type,
+    runReconciliation: runRing1Reconciliation,
+  });
   await trackServerEvent('api_multiplayer_action', { durable: false, status: result.status || 200 });
-  return NextResponse.json(payload, { status: result.status || 200 });
+  return NextResponse.json(payloadWithContinuity, { status: result.status || 200 });
 }
