@@ -11,12 +11,13 @@ import { getPrivateWorldKey } from '@/lib/securityConfig';
 import { buildUniverseGraph, getNodePositionMap } from '@/lib/universeEngine';
 import { createPrivateWorldAsset } from '@/lib/privateWorldAsset';
 import { summarizeEpochRelativity } from '@/lib/epochDysonEngine';
-import { createGravitySources, stepShipState } from '@/lib/physicsEngine';
-import { buildGravitySourcesFromSeed, computePositionError, stepFrame } from '@/lib/simCore/stepFrame';
+import { createGravitySources } from '@/lib/physicsEngine';
+import { buildGravitySourcesFromSeed, computePositionError } from '@/lib/simCore/stepFrame';
 import { createQuantumState, summarizeQuantumState, evolveQuantumState } from '@/lib/quantumFieldEngine';
 import { buildOperationsState } from '@/lib/missionFramework';
 import { ENTROPIC_CURRENCY, computeEntropicIntegrity, resolveEntropicYield, summarizeEntropicEconomy } from '@/lib/entropicEngine';
-import { resolveStarSingularity } from '@/lib/singularityEngine';
+import { createSimulationRuntimeClient } from '@/lib/simRuntime/client';
+import { SIM_RUNTIME_STATUS } from '@/lib/simRuntime/contracts';
 import { buildDynamicEngineState } from '@/lib/dynamicEngine';
 import OperationsDirectorPanel from '@/components/OperationsDirectorPanel';
 import EntropyMissionPanel from '@/components/EntropyMissionPanel';
@@ -588,7 +589,7 @@ function NodeVisual({ node, onSelect, selectedKey, graphNode, condensedLabels = 
   );
 }
 
-function FlightRig({ gravitySources, onNearestChange, onTelemetryChange, onCombatAction, touchInput, isMobile = false, authenticated = false, epochSummary = null, flightConfig = null, multiplayerMode = false, simulationSeed = 'tcentral-main', simulationGravitySources = [], onSimulationFrame = null, correctionState = null }) {
+function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTelemetryChange, onCombatAction, touchInput, isMobile = false, authenticated = false, epochSummary = null, flightConfig = null, multiplayerMode = false, simulationSeed = 'tcentral-main', simulationGravitySources = [], onSimulationFrame = null, correctionState = null }) {
   const groupRef = useRef(null);
   const hullGlowRef = useRef(null);
   const engineCoreRef = useRef(null);
@@ -613,6 +614,15 @@ function FlightRig({ gravitySources, onNearestChange, onTelemetryChange, onComba
   const quantumRef = useRef(createQuantumState(12));
   const fireLatch = useRef(false);
   const frameCounter = useRef(0);
+  const correctionTargetRef = useRef(null);
+
+  useEffect(() => {
+    if (!correctionState?.position || !correctionState?.velocity) return;
+    correctionTargetRef.current = {
+      position: new THREE.Vector3(...correctionState.position),
+      velocity: new THREE.Vector3(...correctionState.velocity),
+    };
+  }, [correctionState]);
 
   useFrame((state, delta) => {
     if (!groupRef.current) return;
@@ -634,43 +644,36 @@ function FlightRig({ gravitySources, onNearestChange, onTelemetryChange, onComba
     const thrustScale = (flightConfig?.thrustScale || 1) * (boostActive ? 1.65 : 1);
     const dt = Math.min(delta, 1 / 24);
     const controlVector = [rawMove.x * thrustScale, rawMove.y * thrustScale, rawMove.z * thrustScale];
-    const stepped = multiplayerMode
-      ? stepFrame({
-        position: [groupRef.current.position.x, groupRef.current.position.y, groupRef.current.position.z],
-        velocity: [velocity.current.x, velocity.current.y, velocity.current.z],
-        controlVector,
-        dt,
-        worldSeed: simulationSeed,
-        gravitySources: simulationGravitySources,
-        profile: 'multiplayer',
-      })
-      : stepShipState({
-        position: groupRef.current.position.clone(),
-        velocity: velocity.current.clone(),
-        inputVector: rawMove.multiplyScalar(thrustScale),
-        gravitySources,
-        isMobile,
-        dt,
-      });
+    const stepped = simRuntimeClient.stepSnapshot({
+      mode: multiplayerMode ? 'multiplayer' : 'singleplayer',
+      frameIndex: frameCounter.current,
+      simulationSeed,
+      position: [groupRef.current.position.x, groupRef.current.position.y, groupRef.current.position.z],
+      velocity: [velocity.current.x, velocity.current.y, velocity.current.z],
+      positionVector: groupRef.current.position.clone(),
+      velocityVector: velocity.current.clone(),
+      controlVector,
+      inputVector: rawMove.clone().multiplyScalar(thrustScale),
+      dt,
+      gravitySources: multiplayerMode ? simulationGravitySources : gravitySources,
+      isMobile,
+    });
 
-    if (multiplayerMode) {
-      velocity.current.set(...stepped.velocity);
-      groupRef.current.position.set(...stepped.position);
-    } else {
-      velocity.current.copy(stepped.velocity);
-      groupRef.current.position.copy(stepped.position);
-    }
+    velocity.current.set(...(stepped.velocity || [0, 0, 0]));
+    groupRef.current.position.set(...(stepped.position || [0, 0, 18]));
     if (flightConfig?.inertialDampers !== false && rawMove.lengthSq() === 0) {
       velocity.current.lerp(new THREE.Vector3(0, 0, 0), 0.045);
     }
-    frameRef.current += 1;
     onSimulationFrame?.({
-      frameIndex: frameRef.current,
+      frameIndex: frameCounter.current,
       controlVector: controlVector.map((v) => Number(v.toFixed(4))),
       dt: Number(dt.toFixed(5)),
       position: [Number(groupRef.current.position.x.toFixed(3)), Number(groupRef.current.position.y.toFixed(3)), Number(groupRef.current.position.z.toFixed(3))],
       velocity: [Number(velocity.current.x.toFixed(3)), Number(velocity.current.y.toFixed(3)), Number(velocity.current.z.toFixed(3))],
       simulationSeed,
+      heartbeat: stepped.heartbeat,
+      runtimeStatus: stepped.runtimeStatus,
+      degradedReason: stepped.degradedReason,
     });
 
     if (correctionTargetRef.current) {
@@ -684,10 +687,8 @@ function FlightRig({ gravitySources, onNearestChange, onTelemetryChange, onComba
     const targetQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), direction);
     groupRef.current.quaternion.slerp(targetQuat, 0.08);
 
-    const gravityMagnitude = multiplayerMode
-      ? new THREE.Vector3(...(stepped.gravity || [0, 0, 0])).length()
-      : stepped.gravitySample.acceleration.length();
-    const nearest = multiplayerMode ? null : (stepped.gravitySample.diagnostics[0] || null);
+    const gravityMagnitude = Number(stepped.gravityMagnitude || 0);
+    const nearest = stepped.nearest || null;
     const horizonFactor = nearest?.horizonFactor || 0;
 
     quantumRef.current = evolveQuantumState({
@@ -732,7 +733,7 @@ function FlightRig({ gravitySources, onNearestChange, onTelemetryChange, onComba
       nearest: nearest?.key || null,
       nearestDistance: Number((nearest?.distance || 0).toFixed(2)),
       escapeVelocity: Number((nearest?.escapeVelocity || 0).toFixed(2)),
-      horizon: multiplayerMode ? null : stepped.horizon,
+      horizon: stepped.horizon,
       quantum: summarizeQuantumState(quantumRef.current),
       epoch: epochSummary,
       boosting: boostActive,
@@ -754,10 +755,15 @@ function FlightRig({ gravitySources, onNearestChange, onTelemetryChange, onComba
         Number(direction.y.toFixed(2)),
         Number(direction.z.toFixed(2)),
       ],
-      frameIndex: frameRef.current,
+      frameIndex: frameCounter.current,
       controlVector: controlVector.map((v) => Number(v.toFixed(4))),
       dt: Number(dt.toFixed(5)),
       simulationSeed,
+      runtime: {
+        status: stepped.runtimeStatus || SIM_RUNTIME_STATUS.ONLINE,
+        degradedReason: stepped.degradedReason || null,
+      },
+      continuityHeartbeat: stepped.heartbeat,
     });
 
     state.invalidate();
@@ -884,7 +890,7 @@ function ProjectileSwarm({ projectiles = [] }) {
   );
 }
 
-function StableSceneContent({ graph, displayNodes, onSelect, selectedKey, onAutoFocus, onTelemetryChange, onCombatAction, touchInput, deviceTier, authenticated = false, flightConfig = null, remotePilots = [], projectiles = [], presentationMode = true, multiplayerMode = false, simulationSeed = 'tcentral-main', simulationGravitySources = [], onSimulationFrame = null, correctionState = null, sessionMode = SESSION_MODES.IDLE, ringAdjustments = null }) {
+function StableSceneContent({ simRuntimeClient, graph, displayNodes, onSelect, selectedKey, onAutoFocus, onTelemetryChange, onCombatAction, touchInput, deviceTier, authenticated = false, flightConfig = null, remotePilots = [], projectiles = [], presentationMode = true, multiplayerMode = false, simulationSeed = 'tcentral-main', simulationGravitySources = [], onSimulationFrame = null, correctionState = null, sessionMode = SESSION_MODES.IDLE, ringAdjustments = null }) {
   const epochSummary = useMemo(() => summarizeEpochRelativity(graph.epochAnchor), [graph]);
   const graphByKey = useMemo(() => Object.fromEntries(graph.nodes.map((node) => [node.key, node])), [graph]);
   const positions = useMemo(() => getNodePositionMap(graph), [graph]);
@@ -947,6 +953,7 @@ function StableSceneContent({ graph, displayNodes, onSelect, selectedKey, onAuto
       ))}
 
       <FlightRig
+        simRuntimeClient={simRuntimeClient}
         gravitySources={gravitySources}
         onNearestChange={onAutoFocus}
         onTelemetryChange={onTelemetryChange}
@@ -1010,10 +1017,13 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
     escapeVelocity: 0,
     quantum: summarizeQuantumState(createQuantumState(12)),
     position: [0, 0, 18],
+    runtime: { status: SIM_RUNTIME_STATUS.ONLINE, degradedReason: null },
+    continuityHeartbeat: null,
   });
 
   const [prayerSeedState, setPrayerSeedState] = useState({ status: '', ok: true });
   const [validatorSummary, setValidatorSummary] = useState(null);
+  const simRuntimeClient = useMemo(() => createSimulationRuntimeClient(), []);
   const identity = useMemo(() => resolveMultiplayerIdentity(steamUser), [steamUser]);
   const [progress, setProgress] = useState(defaultProgressState());
   const [accountProfile, setAccountProfile] = useState(() => buildAccountSnapshot({ identity: { id: 'boot', displayName: 'Boot Pilot', kind: 'guest', authenticated: false }, progress: defaultProgressState() }));
@@ -1095,6 +1105,9 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
     controlVector: [0, 0, 0],
     dt: 1 / 60,
     simulationSeed: process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main',
+    heartbeat: null,
+    runtimeStatus: SIM_RUNTIME_STATUS.ONLINE,
+    degradedReason: null,
   });
   const predictionHistoryRef = useRef([]);
 
@@ -1120,6 +1133,9 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       controlVector: Array.isArray(frame?.controlVector) ? frame.controlVector : latestSimulationFrameRef.current.controlVector,
       dt: Number.isFinite(frame?.dt) ? frame.dt : latestSimulationFrameRef.current.dt,
       simulationSeed: frame?.simulationSeed || latestSimulationFrameRef.current.simulationSeed,
+      heartbeat: frame?.heartbeat || latestSimulationFrameRef.current.heartbeat || null,
+      runtimeStatus: frame?.runtimeStatus || latestSimulationFrameRef.current.runtimeStatus || SIM_RUNTIME_STATUS.ONLINE,
+      degradedReason: frame?.degradedReason || latestSimulationFrameRef.current.degradedReason || null,
     };
     latestSimulationFrameRef.current = normalizedFrame;
     predictionHistoryRef.current = [...predictionHistoryRef.current.slice(-179), normalizedFrame];
@@ -1212,6 +1228,9 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           controlVector: Array.isArray(latestSimulationFrameRef.current?.controlVector) ? latestSimulationFrameRef.current.controlVector : [0, 0, 0],
           dt: Number.isFinite(latestSimulationFrameRef.current?.dt) ? latestSimulationFrameRef.current.dt : 1 / 60,
           simulationSeed: latestSimulationFrameRef.current?.simulationSeed || simulationSeed || process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main',
+          runtime: telemetry.runtime || { status: SIM_RUNTIME_STATUS.ONLINE, degradedReason: null },
+          continuityHeartbeat: telemetry.continuityHeartbeat || latestSimulationFrameRef.current?.heartbeat || null,
+          continuityHealthSnapshot: telemetry.continuityHeartbeat?.continuityHealthSnapshot || null,
         };
         const response = await fetch('/api/multiplayer/state', {
           method: 'POST',
@@ -1234,17 +1253,12 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
               const replayInputs = predictionHistoryRef.current
                 .filter((entry) => Number(entry.frameIndex) > Number(authoritativeSelf.frameIndex || 0))
                 .slice(-48);
-              const replayed = replayInputs.reduce((acc, frame) => stepFrame({
-                position: acc.position,
-                velocity: acc.velocity,
-                controlVector: frame.controlVector,
-                dt: frame.dt,
-                worldSeed: simulationSeed,
+              const replayed = simRuntimeClient.replayAuthoritativeState({
+                frames: replayInputs,
+                authoritativePosition: authoritativeSelf.position,
+                authoritativeVelocity: authoritativeSelf.velocity,
+                simulationSeed,
                 gravitySources: simulationGravitySources,
-                profile: 'multiplayer',
-              }), {
-                position: authoritativeSelf.position,
-                velocity: authoritativeSelf.velocity,
               });
               setCorrectionState({ position: replayed.position, velocity: replayed.velocity });
             } else {
@@ -1270,7 +1284,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       stopRealtime();
       window.clearInterval(id);
     };
-  }, [lobbyMode, serverSession, telemetry, serverStatus.label, setAuthoritativeState, setServerSession, setServerStatus]);
+  }, [lobbyMode, serverSession, telemetry, serverStatus.label, setAuthoritativeState, setServerSession, setServerStatus, simRuntimeClient, simulationSeed, simulationGravitySources]);
 
   useEffect(() => {
     if (lobbyMode !== 'hub' || !serverSession?.room) {
@@ -1427,7 +1441,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
     window.open('https://matrixcoinexchange.com', '_blank', 'noopener,noreferrer');
   };
 
-  const singularityState = useMemo(() => resolveStarSingularity({
+  const singularityEnvelope = useMemo(() => simRuntimeClient.resolveSingularitySnapshot({
     gravity: telemetry.gravity,
     horizonFactor: telemetry.horizonFactor,
     coherencePercent: telemetry.quantum?.coherencePercent || 50,
@@ -1439,7 +1453,14 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
     speed: telemetry.speed,
     epochPhase: (telemetry.epoch?.phasePercent ?? epochSummary.phasePercent) / 100,
     nearestKey: telemetry.nearest || activeNode?.key || 'deep_blackhole',
-  }), [telemetry, activeNode, epochSummary.phasePercent]);
+    simulationSeed,
+    frameIndex: telemetry.frameIndex || 0,
+    position: telemetry.position,
+    velocity: telemetry.velocity,
+    controlVector: telemetry.controlVector,
+    dt: telemetry.dt,
+  }), [simRuntimeClient, telemetry, activeNode, epochSummary.phasePercent, simulationSeed]);
+  const singularityState = singularityEnvelope.singularity;
 
   const dynamicState = useMemo(() => buildDynamicEngineState({ telemetry, flightConfig, operations, singularity: singularityState, entropic: entropicEconomy }), [telemetry, flightConfig, operations, singularityState, entropicEconomy]);
 
@@ -1813,6 +1834,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       <div className="stable-world-canvas polished-canvas cinematic-polished-canvas">
         <Canvas camera={{ position: [0, 8, 26], fov: deviceTier.isMobile ? 52 : (presentationMode ? 49 : 46) }} dpr={deviceTier.dpr} gl={{ antialias: !deviceTier.isMobile }}>
           <StableSceneContent
+            simRuntimeClient={simRuntimeClient}
             graph={graph}
             displayNodes={displayNodes}
             onSelect={handleSelect}
