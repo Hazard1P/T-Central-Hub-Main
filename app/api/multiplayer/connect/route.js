@@ -4,7 +4,8 @@ import { joinAuthoritativeRoom, pruneAuthoritativeRooms } from '@/lib/authoritat
 import { hasDurableMultiplayer, joinDurableRoom } from '@/lib/durableMultiplayerStore';
 import { resolveGameAuthContext } from '@/lib/auth/resolveGameAuthContext';
 import { awardMultiplayerProgressionEvent } from '@/lib/multiplayerProgression';
-import { SESSION_MODES, buildRingAdjustmentOutputs, normalizeSessionMode, transitionSessionMode } from '@/lib/sessionModeEngine';
+import { SESSION_MODES, buildRingAdjustmentOutputs, getSessionModeSnapshot, normalizeSessionMode, transitionSessionMode } from '@/lib/sessionModeEngine';
+import { createModeBridgeTransfer, rehydrateModeBridgeState, validateModeBridgeTransfer } from '@/lib/persistence/modeBridgeState';
 
 const ROOM_NAME_PATTERN = /^[a-zA-Z0-9_-]{1,64}$/;
 const GUEST_ID_PATTERN = /^[a-zA-Z0-9_-]{3,64}$/;
@@ -62,6 +63,43 @@ function resolveIdentity(body = {}, authContext) {
 }
 
 
+
+
+function isBridgeTransition(fromMode, toMode) {
+  return (fromMode === SESSION_MODES.SINGLE_PLAYER && toMode === SESSION_MODES.MULTI_PLAYER)
+    || (fromMode === SESSION_MODES.MULTI_PLAYER && toMode === SESSION_MODES.SINGLE_PLAYER);
+}
+
+function applyModeBridge(payload = {}, { roomName, identity, authContext, incomingTransfer, incomingState } = {}) {
+  const modeTransition = payload?.modeTransition || {};
+  const validation = validateModeBridgeTransfer({
+    transfer: incomingTransfer,
+    roomName,
+    sessionAnchor: identity?.id,
+    accountAnchor: authContext?.accountId || identity?.id,
+  });
+
+  if (!validation.ok) return { ok: false, status: validation.status, error: validation.error, details: validation.details };
+
+  const modeBridgeTransfer = createModeBridgeTransfer({
+    incomingTransfer,
+    modeTransition,
+    mode: payload?.mode,
+    roomName,
+    sessionAnchor: identity?.id,
+    accountAnchor: authContext?.accountId || identity?.id,
+    modeBridgeState: incomingState,
+  });
+
+  return {
+    ok: true,
+    payload: {
+      ...payload,
+      modeBridgeTransfer,
+      modeBridgeState: modeBridgeTransfer.state,
+    },
+  };
+}
 function resolveRequestedMode(body = {}) {
   return normalizeSessionMode(body?.mode || body?.lobbyMode, SESSION_MODES.MULTI_PLAYER);
 }
@@ -96,6 +134,21 @@ export async function POST(request) {
   const identity = resolveIdentity(body, authContext);
   const responseAuthContext = toApiAuthContext(authContext);
   const requestedMode = resolveRequestedMode(body);
+  const incomingTransfer = body?.modeBridgeTransfer && typeof body.modeBridgeTransfer === 'object' ? body.modeBridgeTransfer : null;
+  const incomingState = rehydrateModeBridgeState(body?.modeBridgeState || incomingTransfer?.state);
+
+  const modeSnapshot = getSessionModeSnapshot(roomName).mode || SESSION_MODES.IDLE;
+  if (isBridgeTransition(modeSnapshot, requestedMode)) {
+    const transferValidation = validateModeBridgeTransfer({
+      transfer: incomingTransfer,
+      roomName,
+      sessionAnchor: identity?.id,
+      accountAnchor: authContext?.accountId || identity?.id,
+    });
+    if (!transferValidation.ok) {
+      return NextResponse.json({ ok: false, error: transferValidation.error, details: transferValidation.details || null }, { status: transferValidation.status || 409 });
+    }
+  }
 
   const joinEventId = `connect-${roomName}-${identity.id}`;
   const progressionPromise = awardMultiplayerProgressionEvent({
@@ -128,7 +181,11 @@ export async function POST(request) {
         playerCount: result?.state?.playerCount || 0,
       }
     );
-    return NextResponse.json(payload, { status: result.status || 200 });
+    const bridgePayload = applyModeBridge(payload, { roomName, identity, authContext, incomingTransfer, incomingState });
+    if (!bridgePayload.ok) {
+      return NextResponse.json({ ok: false, error: bridgePayload.error, details: bridgePayload.details || null }, { status: bridgePayload.status || 409 });
+    }
+    return NextResponse.json(bridgePayload.payload, { status: result.status || 200 });
   }
 
   pruneAuthoritativeRooms();
@@ -153,5 +210,9 @@ export async function POST(request) {
       playerCount: result?.state?.playerCount || 0,
     }
   );
-  return NextResponse.json(payload);
+  const bridgePayload = applyModeBridge(payload, { roomName, identity, authContext, incomingTransfer, incomingState });
+  if (!bridgePayload.ok) {
+    return NextResponse.json({ ok: false, error: bridgePayload.error, details: bridgePayload.details || null }, { status: bridgePayload.status || 409 });
+  }
+  return NextResponse.json(bridgePayload.payload);
 }

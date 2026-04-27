@@ -9,13 +9,13 @@
     "dyson.csis": {
       "worldNodeKey": "csis",
       "missionNodeId": "mission-node-dyson-csis",
-      "pipelineSourceKey": "dyson_csis",
+      "pipelineSourceKey": "dyson.csis",
       "stateKey": "sphere.csis"
     },
     "dyson.synaptics": {
       "worldNodeKey": "ss",
       "missionNodeId": "mission-node-dyson-synaptics",
-      "pipelineSourceKey": "dyson_synaptics",
+      "pipelineSourceKey": "dyson.synaptics",
       "stateKey": "sphere.synaptics"
     }
   }

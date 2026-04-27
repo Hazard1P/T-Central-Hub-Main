@@ -13,7 +13,8 @@
     "check:dyson-continuity": "node scripts/check-dyson-continuity.mjs",
     "release:notes": "node scripts/generate-dyson-release-notes.mjs",
     "migrate:dyson-state": "node scripts/migrate-dyson-state.mjs",
-    "ci:continuity": "npm run check:dyson-continuity && npm run release:notes"
+    "ci:continuity": "npm run check:dyson-continuity && npm run release:notes",
+    "release:entropy-pdf": "node scripts/generate-entropy-frontpage-pdf.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^9.121.4",
