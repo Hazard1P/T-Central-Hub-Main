@@ -7,6 +7,11 @@ import { summarizePrayerSeeds } from '@/lib/prayerSeedEngine';
 import { readDonationLedger, summarizeDonationLedger } from '@/lib/donationLedger';
 import { resolveGameAuthContext } from '@/lib/auth/resolveGameAuthContext';
 import { trackServerEvent } from '@/lib/server/vercelTelemetry';
+import {
+  getDysonRingIntegrityStatus,
+  startDysonRingIntegrityService,
+  upsertDysonRingContinuitySnapshot,
+} from '@/lib/dysonContinuity';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +20,8 @@ function resolveLobbyMode(value) {
 }
 
 export async function GET(request) {
+  startDysonRingIntegrityService();
+
   const cookieStore = cookies();
   const authContext = resolveGameAuthContext(cookieStore);
 
@@ -41,6 +48,7 @@ export async function GET(request) {
   });
 
   const dysonRings = summarizeCsisDysonState(csisDysonState);
+  const dysonRingIntegrity = upsertDysonRingContinuitySnapshot(dysonRings);
   const donations = summarizeDonationLedger(readDonationLedger());
 
   await trackServerEvent('api_universe_session', {
@@ -63,6 +71,10 @@ export async function GET(request) {
     privacy,
     epoch: summarizeEpochRelativity(epochAnchor),
     dysonRings,
+    dysonRingIntegrity: {
+      ...getDysonRingIntegrityStatus(),
+      ...dysonRingIntegrity,
+    },
     prayerSeeds: summarizePrayerSeeds([], 'solar_system'),
     donations,
     ring1Metering: dysonRings.ring1,
