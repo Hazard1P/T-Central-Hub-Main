@@ -31,6 +31,10 @@ import { SESSION_MODES } from '@/lib/sessionModeEngine';
 import { FLIGHT_CONTROL_COPY } from '@/lib/siteContent';
 
 const UI_VISUAL_DEBUG = false;
+const FLIGHT_PRESETS = Object.freeze({
+  assisted: { thrustScale: 1, inertialDampers: true, chaseZoom: 1, routeAssist: true },
+  freeFlight: { thrustScale: 1.35, inertialDampers: false, chaseZoom: 1.2, routeAssist: false }
+});
 
 function useDeviceTier() {
   const [tier, setTier] = useState({ isMobile: false, dpr: [1, 1.6], stars: 7600, sparkles: 220, meteors: 18 });
@@ -443,13 +447,16 @@ function DysonSphereStructure({ node, sessionMode = SESSION_MODES.IDLE, ringAdju
       {profile === 'csis' ? <CsisFirewallShell sweep={csisState.firewallSweep || 0} /> : null}
       {profile === 'csis' ? (
         <Html center distanceFactor={16} position={[0, 2.6, 0]}>
-          <div className={`dyson-logic-tag ${dysonTagVariantClass}`.trim()}>
-            <strong>CSIS dual ring</strong>
-            <span>Ring I: network linkage · Ring II: foundation firewall</span>
-          <div className="dyson-logic-tag">
+          <>
+            <div className={`dyson-logic-tag ${dysonTagVariantClass}`.trim()}>
+              <strong>CSIS dual ring</strong>
+              <span>Ring I: network linkage · Ring II: foundation firewall</span>
+            </div>
+            <div className="dyson-logic-tag">
             <strong>Canada Strings of Intelligence Dispersal tri-ring</strong>
             <span>Ring 1: intelligence dispersal · Ring 2: routing · Ring 3: entropy regeneration</span>
-          </div>
+            </div>
+          </>
         </Html>
       ) : null}
       {isSynaptics ? (
@@ -1009,7 +1016,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   const { universe, presence, updatePresence, refresh } = useSteamSession();
   const [selected, setSelected] = useState(null);
   const [touchInput, setTouchInput] = useState({ x: 0, y: 0, z: 0, boost: 0 });
-  const [flightConfig, setFlightConfig] = useState({ thrustScale: 1, inertialDampers: true, chaseZoom: 1, routeAssist: true });
+  const [flightConfig, setFlightConfig] = useState(FLIGHT_PRESETS.assisted);
   const [flightDeckOpen, setFlightDeckOpen] = useState(true);
   const [presentationMode, setPresentationMode] = useState(true);
   const [correctionState, setCorrectionState] = useState(null);
@@ -1814,6 +1821,14 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
               </button>
               <button className={`stable-route-button compact ${flightConfig.routeAssist ? 'is-live' : ''}`} onClick={() => setFlightConfig((current) => ({ ...current, routeAssist: !current.routeAssist }))}>
                 {flightConfig.routeAssist ? 'Route assist on' : 'Route assist off'}
+              </button>
+            </div>
+            <div className="stable-chip-row alt flight-command-toggle-row">
+              <button className="stable-route-button compact" onClick={() => setFlightConfig(FLIGHT_PRESETS.assisted)}>
+                Assisted preset
+              </button>
+              <button className="stable-route-button compact" onClick={() => setFlightConfig(FLIGHT_PRESETS.freeFlight)}>
+                Free-flight preset
               </button>
             </div>
             <div className="flight-slider-grid">
