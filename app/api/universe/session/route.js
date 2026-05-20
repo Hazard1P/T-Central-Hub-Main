@@ -1,8 +1,7 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { summarizeCsisDysonState } from '@/lib/csisDysonSphereEngine';
 import { summarizeEpochRelativity } from '@/lib/epochDysonEngine';
-import { computeCsisDysonState, summarizeCsisDysonState } from '@/lib/csisDysonSphereEngine';
-import { createEpochAnchor, summarizeEpochRelativity } from '@/lib/epochDysonEngine';
 import { computeRegisteredDysonStates } from '@/lib/dysonSphereRegistry';
 import { createPrivacySummary } from '@/lib/universePrivacyEngine';
 import { summarizePrayerSeeds } from '@/lib/prayerSeedEngine';
@@ -79,9 +78,9 @@ export async function GET(request) {
     },
   });
 
+  const csisDysonState = dysonStates['dyson.csis'] || {};
   const dysonRings = summarizeCsisDysonState(csisDysonState);
   const dysonRingIntegrity = upsertDysonRingContinuitySnapshot(dysonRings);
-  const dysonRings = dysonStates['dyson.csis'] || {};
   const donations = summarizeDonationLedger(readDonationLedger());
 
   await trackServerEvent('api_universe_session', {
