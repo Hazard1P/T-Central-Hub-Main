@@ -4,6 +4,7 @@ import { getHomeLaunchCards, getHomeStatusPills } from '@/lib/siteContent';
 import { buildUniverseGraph } from '@/lib/universeEngine';
 import { getEconomyReadModel } from '@/lib/economyReadModel';
 import MainAreaGatewayStatus from '@/components/MainAreaGatewayStatus';
+import Link from 'next/link';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
@@ -35,10 +36,10 @@ export default async function HomePage() {
           </p>
 
           <div className="entry-actions">
-            <a className="button primary" href="/system">Enter system</a>
-            <a className="button secondary" href="/servers/arma3-cth">Open primary route</a>
-            <a className="button secondary" href="/status">View status</a>
-            <a className="button secondary" href="/hub-form">Open hub form</a>
+            <Link className="button primary" href="/system">Enter system</Link>
+            <Link className="button secondary" href="/servers/arma3-cth">Open primary route</Link>
+            <Link className="button secondary" href="/status">View status</Link>
+            <Link className="button secondary" href="/hub-form">Open hub form</Link>
           </div>
 
           <div className="entry-status-bar refined">
@@ -109,10 +110,10 @@ export default async function HomePage() {
           </article>
 
           <div className="entry-link-row compact">
-            <a href="/privacy-policy">Privacy policy</a>
-            <a href="/terms-and-conditions">Terms and conditions</a>
-            <a href="/report-player">Report player</a>
-            <a href="/donate">Support</a>
+            <Link href="/privacy-policy">Privacy policy</Link>
+            <Link href="/terms-and-conditions">Terms and conditions</Link>
+            <Link href="/report-player">Report player</Link>
+            <Link href="/donate">Support</Link>
           </div>
         </div>
 
@@ -122,7 +123,11 @@ export default async function HomePage() {
               <span className="entry-panel-kicker">{card.kicker}</span>
               <strong>{card.title}</strong>
               <p>{card.copy}</p>
-              <a className="button secondary" href={card.href}>Open route</a>
+              {card.href.startsWith('/') ? (
+                <Link className="button secondary" href={card.href}>Open route</Link>
+              ) : (
+                <a className="button secondary" href={card.href}>Open route</a>
+              )}
             </article>
           ))}
           <article className="content-card entry-panel polished minimal-route-card">
@@ -131,7 +136,7 @@ export default async function HomePage() {
             <p>
               Open the donation page to compare one-time and recurring support models, plus the benefits of PayPal integration for the T-Central Hub.
             </p>
-            <a className="button secondary" href="/donate">Open donation page</a>
+            <Link className="button secondary" href="/donate">Open donation page</Link>
           </article>
           <article className="content-card entry-panel polished minimal-route-card">
             <span className="entry-panel-kicker">External Route</span>

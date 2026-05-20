@@ -1,6 +1,7 @@
 'use client';
 
 import { useSteamSession } from '@/components/SteamSessionProvider';
+import Link from 'next/link';
 
 export default function SteamLoginHud() {
   const { steamUser: session, googleUser, support, universe, loading, presence } = useSteamSession();
@@ -56,12 +57,12 @@ export default function SteamLoginHud() {
                   Profile
                 </a>
               ) : null}
-              <a className="steam-mini-link" href="/report-player">
+              <Link className="steam-mini-link" href="/report-player">
                 Report player
-              </a>
-              <a className="steam-mini-link" href="/hub-form">
+              </Link>
+              <Link className="steam-mini-link" href="/hub-form">
                 Hub form
-              </a>
+              </Link>
               {session ? <a className="steam-mini-link" href="/api/auth/steam/logout">Sign out Steam</a> : null}
               {googleUser ? <a className="steam-mini-link" href="/api/auth/google/logout">Sign out Google</a> : null}
             </>

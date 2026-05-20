@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { FLIGHT_CONTROL_COPY } from '@/lib/siteContent';
+import Link from 'next/link';
 
 export default function SystemLauncher({ onEnter }) {
   const [entering, setEntering] = useState(false);
@@ -24,9 +25,9 @@ export default function SystemLauncher({ onEnter }) {
           <button className="button primary" onClick={handleEnter}>
             {entering ? 'Initializing…' : 'Launch navigation system'}
           </button>
-          <a className="button secondary" href="/servers/arma3-cth">
+          <Link className="button secondary" href="/servers/arma3-cth">
             Arma3 CTH
-          </a>
+          </Link>
         </div>
 
         <div className="system-launcher-grid">
