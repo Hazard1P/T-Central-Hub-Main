@@ -1230,6 +1230,29 @@ button { font: inherit; }
   box-shadow: 0 12px 22px rgba(111,223,255,0.32);
 }
 
+
+.hud-bottom-fixed .hud-bottom-fixed-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 999px;
+  padding: 9px 14px;
+  min-width: 92px;
+  background: linear-gradient(135deg, rgba(127,231,255,0.92), rgba(106,174,255,0.88));
+  color: #031019;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: transform .18s ease, box-shadow .18s ease, opacity .18s ease;
+  box-shadow: 0 8px 18px rgba(111,223,255,0.22);
+}
+
+.hud-bottom-fixed .hud-bottom-fixed-link:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 22px rgba(111,223,255,0.32);
+}
+
 .cockpit-overlay {
   position: absolute;
   inset: 0;

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Html, OrbitControls, Stars, Trail, Line } from '@react-three/drei';
@@ -1100,7 +1101,7 @@ function FixedNav({ onCenter, onPilotToggle, freeFly, freeplayMode, onFreeplayTo
       <button onClick={onCenter}>Center</button>
       <button onClick={onPilotToggle}>{freeFly ? 'Exit Pilot' : 'Pilot'}</button>
       <button onClick={onFreeplayToggle} disabled={!freeFly}>{freeplayMode ? 'Freeplay On' : 'Freeplay Off'}</button>
-      <a href="/report-player"><button>Report</button></a>
+      <Link href="/report-player" className="hud-bottom-fixed-link">Report</Link>
     </div>
   );
 }
