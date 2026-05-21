@@ -9,6 +9,7 @@ import { readDonationLedger, summarizeDonationLedger } from '@/lib/donationLedge
 import { resolveGameAuthContext } from '@/lib/auth/resolveGameAuthContext';
 import { trackServerEvent } from '@/lib/server/vercelTelemetry';
 import { continuityHealthService } from '@/lib/continuity/continuityHealthService';
+import { readLatestContinuityDrillReport } from '@/lib/continuity/continuityDrillService';
 import {
   getDysonRingIntegrityStatus,
   startDysonRingIntegrityService,
@@ -34,6 +35,7 @@ export async function GET(request) {
 
   const continuityRuntime = continuityHealthService.start();
   const launchGenesis = runLaunchGenesisPipeline({ authContext, lobbyMode });
+  const continuityDrill = await readLatestContinuityDrillReport();
 
   if (!launchGenesis.ok) {
     await trackServerEvent('api_universe_launch_prereq_blocked', {
@@ -113,6 +115,7 @@ export async function GET(request) {
     donations,
     ring1Metering: dysonRings.ring1,
     continuityHealth: continuityRuntime.snapshot,
+    continuityDrill,
     launchGate: {
       authoritative: 'runtime',
       ciGateScript: 'scripts/check-dyson-continuity.mjs',
