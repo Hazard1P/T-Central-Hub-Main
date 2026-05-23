@@ -21,12 +21,6 @@
         ]
       },
       {
-        "name": "mission_integrations_csis",
-        "sphereSources": [
-          "dyson.csis"
-        ]
-      },
-      {
         "name": "mission_integrations_synaptics",
         "sphereSources": [
           "dyson.synaptics"
