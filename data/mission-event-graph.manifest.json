@@ -25,7 +25,7 @@
         "optional": true,
         "requires": [
           "cross_sphere_bridge_enabled"
-        ]
+        ],
         "id": "coordination.relay_handoff",
         "semantics": "optional",
         "description": "Shared event topic for cross-sphere relay coordination without mandatory execution dependency."
