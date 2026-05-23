@@ -24,18 +24,46 @@ function fail(issues) {
   process.exit(1);
 }
 
+function verifyCheckpointIntegrity(snapshot) {
+  if (!snapshot || typeof snapshot !== 'object') return false;
+
+  const hasTimestamp = Number.isFinite(Number(snapshot.timestampUnix));
+  const hasRingHealth = snapshot.ringHealth && typeof snapshot.ringHealth === 'object' && !Array.isArray(snapshot.ringHealth);
+  const hasDurability = ['durable', 'degraded', 'ephemeral'].includes(snapshot.durabilityStatus);
+  const hasTargets = Array.isArray(snapshot.storageTargets) && snapshot.storageTargets.length > 0;
+
+  return hasTimestamp && hasRingHealth && hasDurability && hasTargets;
+}
+
 const continuity = await loadJson('data/dyson-continuity.manifest.json');
 const worldState = await loadJson('data/world-state.manifest.json');
 const missionGraph = await loadJson('data/mission-event-graph.manifest.json');
 const simPipeline = await loadJson('data/simulation-pipeline.manifest.json');
 const progression = await loadJson('data/dyson-progression.manifest.json');
 const crossref = await loadJsonIfPresent('data/dyson-crossref.manifest.json');
+const continuitySnapshots = await loadJsonIfPresent('data/continuity-health.snapshots.json');
 
 const canonicalIds = Array.isArray(continuity?.canonicalSphereIds) ? continuity.canonicalSphereIds : [];
 const issues = [];
 const stages = simPipeline?.tickPipeline?.stages || [];
 const requiredStagePrefixes = ['gravity_sources', 'mission_integrations'];
 const missionNodesById = new Map((missionGraph?.graph?.nodes || []).map((node) => [node?.id, node]));
+
+const latestCheckpoint = Array.isArray(continuitySnapshots) ? continuitySnapshots[0] : null;
+if (!latestCheckpoint) {
+  issues.push('missing continuity-health checkpoint snapshot');
+} else {
+  if (!verifyCheckpointIntegrity(latestCheckpoint)) {
+    issues.push('latest checkpoint integrity verification failed');
+  }
+
+  const durableHealthy = (latestCheckpoint.storageTargets || []).some(
+    (target) => target?.durability === 'durable' && (target?.write?.status === 'success' || target?.read?.status === 'success')
+  );
+  if (!durableHealthy) {
+    issues.push('no durable checkpoint target is healthy');
+  }
+}
 
 for (const edge of missionGraph?.graph?.edges || []) {
   const fromNode = missionNodesById.get(edge?.from);

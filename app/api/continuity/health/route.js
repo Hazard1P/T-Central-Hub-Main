@@ -10,13 +10,14 @@ export async function GET() {
   const continuityDrill = await readLatestContinuityDrillReport();
 
   return NextResponse.json({
-    ok: true,
+    ok,
+    warnings,
     continuityHealth: snapshot,
     continuityDrill,
     launchGate: {
       authoritative: 'runtime',
       ciGateScript: 'scripts/check-dyson-continuity.mjs',
-      status: snapshot.gateStatus,
+      status: ringHealthy && !durableRecoverable ? 'blocked' : snapshot.gateStatus,
     },
   });
 }
