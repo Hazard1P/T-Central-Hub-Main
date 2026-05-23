@@ -6,6 +6,9 @@ import { useSteamSession } from '@/components/SteamSessionProvider';
 export default function SystemStatusStrip() {
   const fallbackPills = getSystemStatusPills();
   const { universe, presence } = useSteamSession();
+  const continuityDrill = universe?.continuityDrill;
+  const drillLabel = continuityDrill?.result ? `Drill ${String(continuityDrill.result).toUpperCase()}` : 'Drill pending';
+
   const pills = universe?.epoch
     ? [
         { label: 'Epoch', value: universe.epoch.unix },
@@ -13,6 +16,7 @@ export default function SystemStatusStrip() {
         { label: 'Prayer seeds', value: universe?.prayerSeeds?.total ?? 0 },
         { label: 'Pilots', value: presence.length },
         { label: 'Support', value: universe?.donations?.confirmed ?? 0 },
+        { label: 'Continuity', value: drillLabel },
       ]
     : fallbackPills;
 

@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-05-21T20:41:33.440Z",
+  "checkpoint": {
+    "file": "data/dyson-state.snapshot.v3.json",
+    "modifiedAt": "2026-05-21T20:26:06.510Z",
+    "checksumSha256": "a15b942f8bfa6cf2f50b8a06529f0c78dd230a2dc1d6749b2315fca4cb4d9423",
+    "schemaVersion": 3,
+    "sphereCount": 2
+  },
+  "targetRpoSeconds": 86400,
+  "targetRtoMs": 3000,
+  "checkpointAgeSeconds": 926,
+  "restoreValidationMs": 0,
+  "result": "pass",
+  "checks": {
+    "checkpointWithinRpo": true,
+    "schemaValid": true,
+    "dryRunRestorePassed": true,
+    "restoreWithinRto": true
+  },
+  "errors": []
+}

@@ -33,6 +33,10 @@
     {
       "path": "/api/multiplayer/cleanup",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/continuity/drill",
+      "schedule": "0 * * * *"
     }
   ]
 }

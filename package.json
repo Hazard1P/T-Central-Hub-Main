@@ -14,7 +14,8 @@
     "release:notes": "node scripts/generate-dyson-release-notes.mjs",
     "migrate:dyson-state": "node scripts/migrate-dyson-state.mjs",
     "ci:continuity": "npm run check:dyson-continuity && npm run release:notes",
-    "release:entropy-pdf": "node scripts/generate-entropy-frontpage-pdf.mjs"
+    "release:entropy-pdf": "node scripts/generate-entropy-frontpage-pdf.mjs",
+    "drill:continuity": "node scripts/run-continuity-drill.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^9.121.4",
