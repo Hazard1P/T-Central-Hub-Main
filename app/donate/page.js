@@ -42,6 +42,22 @@ const paypalBenefits = [
   'Lower friction on mobile and desktop so more supporters can complete checkout.'
 ];
 
+
+const protectedPackages = [
+  {
+    name: 'One-time support',
+    text: 'Select a Steam-linked one-time package, review the anchor and solar-system defaults, then create the PayPal order through the protected checkout.',
+  },
+  {
+    name: 'Monthly supporter',
+    text: 'Choose the recurring lane to use the configured PayPal subscription plan and link the verified subscription to your account.',
+  },
+  {
+    name: 'Patron / core supporter',
+    text: 'Use the core supporter path for long-term backing while keeping receipts, subscription identifiers, and PayPal references visible in the account panel.',
+  },
+];
+
 const modelComparison = [
   {
     model: 'Subscription model',
@@ -133,8 +149,17 @@ export default function DonatePage() {
           <p className="eyebrow">Monthly support</p>
           <h3>Donate or subscribe through a protected Steam-linked flow</h3>
           <p className="muted">
-            Use the protected PayPal checkout below to create a server-side donation order or monthly membership bound to your authenticated Steam account, blackhole anchor, and solar system path.
+            Use the protected PayPal checkout below to pick an explicit package, create a server-side donation order or monthly membership, and bind the receipt to your authenticated Steam account, blackhole anchor, and solar system path.
           </p>
+
+          <div className="protected-package-summary">
+            {protectedPackages.map((supportPackage) => (
+              <div key={supportPackage.name} className="protected-package-summary-card">
+                <strong>{supportPackage.name}</strong>
+                <span>{supportPackage.text}</span>
+              </div>
+            ))}
+          </div>
 
           <div className="donate-button-stack">
             <a
