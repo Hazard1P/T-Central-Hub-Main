@@ -1,87 +1,64 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 
-function summarizeRing(ring) {
-  if (!ring) return 'No ring data';
-  const spin = typeof ring.spin === 'number' ? `${Math.round(ring.spin * 100)}% spin` : 'spin n/a';
-  return spin;
-}
+const dysonProfiles = [
+  { id: 'dyson.csis', label: 'CSIS defense sphere', ringOne: 100, ringTwo: 100, ringThree: 100 },
+  { id: 'dyson.synaptics', label: 'Synaptics tri-ring sphere', ringOne: 88, ringTwo: 93, ringThree: 97 },
+  { id: 'dyson.affiliates', label: 'Affiliates expansion sphere', ringOne: 64, ringTwo: 71, ringThree: 79 },
+];
 
-export default function AdminDysonAssetEditor() {
-  const [assets, setAssets] = useState([]);
-  const [status, setStatus] = useState('loading');
-
-  useEffect(() => {
-    let cancelled = false;
-
-    fetch('/api/admin/dyson-assets', { cache: 'no-store' })
-      .then(async (response) => {
-        const payload = await response.json().catch(() => null);
-        if (!response.ok) {
-          throw new Error(payload?.error || 'ADMIN_DYSON_ASSETS_UNAVAILABLE');
-        }
-        return payload;
-      })
-      .then((payload) => {
-        if (cancelled) return;
-        setAssets(Array.isArray(payload?.assets) ? payload.assets : []);
-        setStatus('ready');
-      })
-      .catch((error) => {
-        if (cancelled) return;
-        setAssets([]);
-        setStatus(error.message || 'ADMIN_DYSON_ASSETS_UNAVAILABLE');
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+export default function AdminDysonAssetEditor({ adminContext }) {
+  const [selectedId, setSelectedId] = useState(dysonProfiles[0].id);
+  const selectedProfile = useMemo(
+    () => dysonProfiles.find((profile) => profile.id === selectedId) || dysonProfiles[0],
+    [selectedId]
+  );
 
   return (
-    <section className="admin-dyson-asset-editor" aria-live="polite">
-      <div>
-        <p className="eyebrow">Admin Dyson assets</p>
-        <h3>Protected asset editor feed</h3>
-        <p className="muted">
-          Editable Dyson metadata is loaded only from the protected admin route and is not mixed into the public map payload.
-        </p>
+    <article className="content-card">
+      <p className="eyebrow">Authorized Dyson asset editor</p>
+      <h3>Server-approved admin workspace</h3>
+      <p className="muted">
+        This editor is only mounted after the server verifies the active account against the configured admin identity.
+      </p>
+
+      <div className="report-form">
+        <label htmlFor="dyson-profile-select">
+          <span>Dyson asset profile</span>
+          <select
+            id="dyson-profile-select"
+            value={selectedId}
+            onChange={(event) => setSelectedId(event.target.value)}
+          >
+            {dysonProfiles.map((profile) => (
+              <option key={profile.id} value={profile.id}>{profile.label}</option>
+            ))}
+          </select>
+        </label>
       </div>
 
-      {status !== 'ready' ? (
-        <p className="muted">{status === 'loading' ? 'Loading protected Dyson assets…' : status}</p>
-      ) : (
-        <div className="admin-dyson-asset-list">
-          {assets.map((asset) => (
-            <article key={asset.sphere_key} className="admin-dyson-asset-card">
-              <header>
-                <strong>{asset.label}</strong>
-                <span>{asset.database_row_id || asset.source_key}</span>
-              </header>
-              <p>{asset.description}</p>
-              <dl>
-                <div>
-                  <dt>Ring 1</dt>
-                  <dd>{summarizeRing(asset.ring_factors?.ring1)}</dd>
-                </div>
-                <div>
-                  <dt>Ring 2</dt>
-                  <dd>{summarizeRing(asset.ring_factors?.ring2)}</dd>
-                </div>
-                <div>
-                  <dt>Ring 3</dt>
-                  <dd>{summarizeRing(asset.ring_factors?.ring3)}</dd>
-                </div>
-                <div>
-                  <dt>Updated</dt>
-                  <dd>{asset.updated_at || 'Not persisted'}</dd>
-                </div>
-              </dl>
-            </article>
-          ))}
+      <div className="arma-brief-grid" aria-label="Dyson ring integrity preview">
+        <div className="content-card">
+          <p className="eyebrow">Ring 1</p>
+          <h3>{selectedProfile.ringOne}%</h3>
+          <p className="muted">Collector and intelligence metering surface.</p>
         </div>
-      )}
-    </section>
+        <div className="content-card">
+          <p className="eyebrow">Ring 2</p>
+          <h3>{selectedProfile.ringTwo}%</h3>
+          <p className="muted">Ingress, egress, and database routing surface.</p>
+        </div>
+        <div className="content-card">
+          <p className="eyebrow">Ring 3</p>
+          <h3>{selectedProfile.ringThree}%</h3>
+          <p className="muted">Entropy regeneration and encryption surface.</p>
+        </div>
+      </div>
+
+      <p className="muted">
+        Signed in as {adminContext?.authContext?.displayName || 'admin'} through {adminContext?.authContext?.provider || 'unknown'}.
+      </p>
+    </article>
   );
 }

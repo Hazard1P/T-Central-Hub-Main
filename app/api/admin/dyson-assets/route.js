@@ -1,50 +1,29 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { decryptJson } from '@/lib/security';
-import { buildUniverseGraph } from '@/lib/universeEngine';
-import { toAdminDysonAssetCollection } from '@/lib/dysonAssetResponses';
+import { resolveAdminContext, toAdminAuthErrorResponse } from '@/lib/auth/resolveAdminContext';
+import { listDysonAssets, upsertDysonAsset } from './store';
 
-export const dynamic = 'force-dynamic';
-
-function readAdminSession() {
-  const cookieStore = cookies();
-  const raw = cookieStore.get('steam_session')?.value || cookieStore.get('google_session')?.value;
-  if (!raw) return null;
-
-  try {
-    const session = decryptJson(raw);
-    if (session?.is_admin || session?.isAdmin || session?.role === 'admin') {
-      return session;
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
+function adminError(adminContext) {
+  return NextResponse.json(toAdminAuthErrorResponse(adminContext), { status: adminContext.status });
 }
 
 export async function GET() {
-  const adminSession = readAdminSession();
-  if (!adminSession) {
-    return NextResponse.json({ ok: false, error: 'ADMIN_AUTH_REQUIRED' }, { status: 401 });
+  const adminContext = resolveAdminContext(cookies());
+  if (!adminContext.authorized) return adminError(adminContext);
+
+  return NextResponse.json({ assets: listDysonAssets() });
+}
+
+export async function POST(request) {
+  const adminContext = resolveAdminContext(cookies());
+  if (!adminContext.authorized) return adminError(adminContext);
+
+  const payload = await request.json().catch(() => null);
+  const result = upsertDysonAsset(payload);
+
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: result.status });
   }
 
-  const graph = buildUniverseGraph(Date.now(), {
-    lobbyMode: 'hub',
-    authenticated: true,
-  });
-  const dysonAssets = graph.nodes.filter((node) => node.kind === 'dyson');
-
-  return NextResponse.json({
-    ok: true,
-    response_shape: 'admin_dyson_asset.v1',
-    assets: toAdminDysonAssetCollection(dysonAssets, {
-      routeLinks: graph.routeLinks,
-      actor: {
-        accountId: adminSession.steamid || adminSession.sub || null,
-        displayName: adminSession.personaname || adminSession.name || adminSession.email || null,
-      },
-    }),
-    generatedAt: new Date().toISOString(),
-  });
+  return NextResponse.json({ asset: result.asset }, { status: 201 });
 }
