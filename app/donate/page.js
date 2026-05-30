@@ -42,6 +42,22 @@ const paypalBenefits = [
   'Lower friction on mobile and desktop so more supporters can complete checkout.'
 ];
 
+
+const protectedPackages = [
+  {
+    name: 'One-time support',
+    text: 'Select a Steam-linked one-time package, review the anchor and solar-system defaults, then create the PayPal order through the protected checkout.',
+  },
+  {
+    name: 'Monthly supporter',
+    text: 'Choose the recurring lane to use the configured PayPal subscription plan and link the verified subscription to your account.',
+  },
+  {
+    name: 'Patron / core supporter',
+    text: 'Use the core supporter path for long-term backing while keeping receipts, subscription identifiers, and PayPal references visible in the account panel.',
+  },
+];
+
 const modelComparison = [
   {
     model: 'Subscription model',
