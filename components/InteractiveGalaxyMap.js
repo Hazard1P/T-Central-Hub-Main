@@ -251,9 +251,14 @@ function ArmaBlackHole({ onSelect }) {
   );
 }
 
-function DysonSphere({ anchor, onSelect }) {
-  const dysonAnchor = useMemo(() => resolveDysonAnchorPayload(anchor), [anchor]);
-  const { position, label, anchorLabel, color, href, sublabel, anchorSublabel, description, external } = dysonAnchor;
+function DysonSphere({ asset, position = [5.15, 2.5, -0.45], onSelect }) {
+  const safeAsset = asset || {};
+  const resolvedPosition = safeAsset.position || position;
+  const resolvedColor = safeAsset.color || '#ffd15c';
+  const resolvedLabel = safeAsset.label || 'S.S';
+  const resolvedDescription = safeAsset.description || 'Opens SynapticSystems.ca.';
+  const routeMetadata = safeAsset.route_metadata || {};
+  const resolvedHref = routeMetadata.href || routeMetadata.route || 'https://synapticsystems.ca';
   const group = useRef();
   const ringA = useRef();
   const ringB = useRef();
@@ -269,22 +274,22 @@ function DysonSphere({ anchor, onSelect }) {
   return (
     <group
       ref={group}
-      position={position}
+      position={resolvedPosition}
       onClick={(e) => {
         e.stopPropagation();
         onSelect({
-          label,
-          href,
-          position,
-          sublabel,
-          description,
-          external
+          label: resolvedLabel,
+          href: resolvedHref,
+          position: resolvedPosition,
+          sublabel: routeMetadata.sublabel || 'External site',
+          description: resolvedDescription,
+          external: routeMetadata.external ?? true
         });
       }}
     >
       <mesh>
         <sphereGeometry args={[0.42, 28, 28]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1.8} />
+        <meshStandardMaterial color={resolvedColor} emissive={resolvedColor} emissiveIntensity={1.8} />
       </mesh>
 
       <mesh ref={ringA}>
@@ -293,7 +298,7 @@ function DysonSphere({ anchor, onSelect }) {
       </mesh>
       <mesh ref={ringB} rotation={[1.1, 0.3, 0.2]}>
         <torusGeometry args={[1.18, 0.025, 16, 140]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1.1} />
+        <meshStandardMaterial color={resolvedColor} emissive={resolvedColor} emissiveIntensity={1.1} />
       </mesh>
       <mesh ref={ringC} rotation={[0.2, 0.7, 1.0]}>
         <torusGeometry args={[1.45, 0.02, 16, 140]} />
@@ -306,17 +311,17 @@ function DysonSphere({ anchor, onSelect }) {
           className="map-anchor-label clickable"
           onClick={() =>
             onSelect({
-              label,
-              href,
-              position,
-              sublabel,
-              description,
-              external
+              label: resolvedLabel,
+              href: resolvedHref,
+              position: resolvedPosition,
+              sublabel: routeMetadata.sublabel || 'External site',
+              description: resolvedDescription,
+              external: routeMetadata.external ?? true
             })
           }
         >
-          <span className="anchor-title">{anchorLabel}</span>
-          <span className="anchor-copy">{anchorSublabel}</span>
+          <span className="anchor-title">{resolvedLabel}</span>
+          <span className="anchor-copy">Dyson sphere link</span>
         </button>
       </Html>
     </group>
@@ -469,8 +474,9 @@ function Node({ node, active, onHover, onLeave, onSelect }) {
   );
 }
 
-function Scene({ dysonAnchor, onSelect }) {
+function Scene({ dysonAssets = [], onSelect }) {
   const [active, setActive] = useState('Rust Bi-Weekly');
+  const primaryDysonAsset = dysonAssets.find((asset) => asset.sphere_key === 'ss') || dysonAssets[0];
 
   return (
     <>
@@ -493,7 +499,7 @@ function Scene({ dysonAnchor, onSelect }) {
         </group>
 
         <ArmaBlackHole onSelect={onSelect} />
-        <DysonSphere anchor={dysonAnchor} onSelect={onSelect} />
+        <DysonSphere asset={primaryDysonAsset} onSelect={onSelect} />
         <ShiningStar onSelect={onSelect} />
 
         {SERVER_NODES.map((node) => (
@@ -556,26 +562,28 @@ function FocusPanel({ item, onClose, onOpen }) {
 export default function InteractiveGalaxyMap() {
   const router = useRouter();
   const [selected, setSelected] = useState(null);
-  const [dysonAnchor, setDysonAnchor] = useState(() => resolveDysonAnchorPayload(FALLBACK_DYSON_ANCHOR));
+  const [dysonAssets, setDysonAssets] = useState([]);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadDysonAnchor() {
-      try {
-        const response = await fetch('/api/dyson-map-anchors', { cache: 'no-store' });
-        if (!response.ok) return;
-        const payload = await response.json();
-        const [resolvedAnchor] = Array.isArray(payload?.anchors) ? payload.anchors : [];
-        if (!cancelled && resolvedAnchor) {
-          setDysonAnchor(resolveDysonAnchorPayload(resolvedAnchor));
-        }
-      } catch {
-        // Keep the public fallback anchor when the backing asset or read path is unavailable.
-      }
-    }
-
-    loadDysonAnchor();
+    fetch('/api/dyson-assets', { cache: 'no-store' })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload) => {
+        if (cancelled || !Array.isArray(payload?.assets)) return;
+        setDysonAssets(payload.assets.map((asset) => ({
+          sphere_key: asset.sphere_key,
+          label: asset.label,
+          position: asset.position,
+          color: asset.color,
+          description: asset.description,
+          route_metadata: asset.route_metadata,
+          route_links: asset.route_links,
+        })));
+      })
+      .catch(() => {
+        if (!cancelled) setDysonAssets([]);
+      });
 
     return () => {
       cancelled = true;
@@ -605,7 +613,7 @@ export default function InteractiveGalaxyMap() {
 
       <div className="interactive-map-stage redesigned">
         <Canvas camera={{ position: [0, 1.5, 11], fov: 46 }}>
-          <Scene dysonAnchor={dysonAnchor} onSelect={setSelected} />
+          <Scene dysonAssets={dysonAssets} onSelect={setSelected} />
         </Canvas>
         <FocusPanel item={selected} onClose={() => setSelected(null)} onOpen={openItem} />
       </div>
