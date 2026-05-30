@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSteamSession } from '@/components/SteamSessionProvider';
+import { getDonationRouteOptions } from '@/lib/donationRouteOptions';
 
 function buildSdkSrc({ clientId, currency, mode }) {
   const params = new URLSearchParams({
@@ -99,7 +100,7 @@ export default function DonateSupportClient() {
   const [solarSystemKey, setSolarSystemKey] = useState('solar_system');
   const [donationSummary, setDonationSummary] = useState(null);
   const [checkoutMode, setCheckoutMode] = useState('donation');
-  const [selectedPackageId, setSelectedPackageId] = useState('one-time-support');
+  const { blackholeAnchors, solarSystems } = useMemo(() => getDonationRouteOptions(), []);
 
   useEffect(() => {
     fetch('/api/donations/paypal/config', { cache: 'no-store' })
@@ -277,36 +278,26 @@ export default function DonateSupportClient() {
           </div>
         </div>
 
-        <div className="support-package-grid" aria-label="Select a support package">
-          {supportPackages.map((supportPackage) => {
-            const isSubscriptionPackage = supportPackage.mode === 'subscription';
-            const isUnavailable = isSubscriptionPackage && config && !config.subscriptionEnabled;
-            const isSelected = selectedPackage.id === supportPackage.id;
+        <p className="support-link-status">
+          Linked support receipts remain available on this device for {SUPPORT_RECEIPT_MAX_AGE_DAYS} days after verification.
+        </p>
 
-            return (
-              <button
-                key={supportPackage.id}
-                type="button"
-                className={`support-package-card ${isSelected ? 'active' : ''}`}
-                onClick={() => selectSupportPackage(supportPackage)}
-                disabled={isUnavailable}
-                aria-pressed={isSelected}
-              >
-                <span className="support-package-eyebrow">{supportPackage.eyebrow}</span>
-                <strong>{supportPackage.name}</strong>
-                <span className="support-package-description">{supportPackage.description}</span>
-                <span className="support-package-price">
-                  {supportPackage.mode === 'donation'
-                    ? `${supportPackage.amount} ${config?.currency || 'USD'} one time`
-                    : config?.subscriptionPlanId || 'Configured PayPal subscription plan'}
-                </span>
-                <span className="support-package-details">
-                  {supportPackage.details.join(' • ')}
-                </span>
-                {isUnavailable ? <span className="support-package-warning">Subscription plan not configured</span> : null}
-              </button>
-            );
-          })}
+        <div className="support-mode-switcher">
+          <button
+            type="button"
+            className={`support-mode-button ${availableMode === 'donation' ? 'active' : ''}`}
+            onClick={() => setCheckoutMode('donation')}
+          >
+            One-time donation
+          </button>
+          <button
+            type="button"
+            className={`support-mode-button ${availableMode === 'subscription' ? 'active' : ''}`}
+            onClick={() => setCheckoutMode('subscription')}
+            disabled={!config?.subscriptionEnabled}
+          >
+            Monthly membership
+          </button>
         </div>
 
         {availableMode === 'donation' ? (
@@ -318,19 +309,21 @@ export default function DonateSupportClient() {
             <label className="donation-field">
               <span>Blackhole anchor</span>
               <select value={anchorSlug} onChange={(event) => setAnchorSlug(event.target.value)}>
-                <option value="deep_blackhole">Deep Blackhole</option>
-                <option value="arma3-cth">ARMA 3 Route</option>
-                <option value="rust-vanilla">Rust Vanilla</option>
-                <option value="matrixcoinexchange">MatrixCoinExchange</option>
+                {blackholeAnchors.map((anchor) => (
+                  <option key={anchor.anchorSlug} value={anchor.anchorSlug}>
+                    {anchor.label}
+                  </option>
+                ))}
               </select>
             </label>
             <label className="donation-field">
               <span>Solar system</span>
               <select value={solarSystemKey} onChange={(event) => setSolarSystemKey(event.target.value)}>
-                <option value="solar_system">Primary Solar System</option>
-                <option value="rust_system">Rust System</option>
-                <option value="arma_system">ARMA System</option>
-                <option value="dyson_shell">Dyson Shell</option>
+                {solarSystems.map((system) => (
+                  <option key={system.solarSystemKey} value={system.solarSystemKey}>
+                    {system.label}
+                  </option>
+                ))}
               </select>
             </label>
           </div>
