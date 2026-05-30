@@ -3,9 +3,47 @@
 
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Html, OrbitControls, Stars, Trail } from '@react-three/drei';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import * as THREE from 'three';
+
+
+const FALLBACK_DYSON_ANCHOR = {
+  id: 'ss',
+  label: 'S.S',
+  anchorLabel: 'S.S',
+  color: '#ffd15c',
+  position: [5.15, 2.5, -0.45],
+  href: 'https://synapticsystems.ca',
+  sublabel: 'External site',
+  anchorSublabel: 'Dyson sphere link',
+  description: 'Opens SynapticSystems.ca.',
+  external: true
+};
+
+function resolveDysonAnchorPayload(anchor) {
+  const candidate = anchor && typeof anchor === 'object' ? anchor : {};
+  const fallback = FALLBACK_DYSON_ANCHOR;
+  const position = Array.isArray(candidate.position) && candidate.position.length >= 3
+    ? [0, 1, 2].map((index) => {
+        const value = Number(candidate.position[index]);
+        return Number.isFinite(value) ? value : fallback.position[index];
+      })
+    : [...fallback.position];
+
+  return {
+    id: typeof candidate.id === 'string' && candidate.id.trim() ? candidate.id : fallback.id,
+    label: typeof candidate.label === 'string' && candidate.label.trim() ? candidate.label : fallback.label,
+    anchorLabel: typeof candidate.anchorLabel === 'string' && candidate.anchorLabel.trim() ? candidate.anchorLabel : fallback.anchorLabel,
+    color: typeof candidate.color === 'string' && candidate.color.trim() ? candidate.color : fallback.color,
+    position,
+    href: typeof candidate.href === 'string' && candidate.href.trim() ? candidate.href : fallback.href,
+    sublabel: typeof candidate.sublabel === 'string' && candidate.sublabel.trim() ? candidate.sublabel : fallback.sublabel,
+    anchorSublabel: typeof candidate.anchorSublabel === 'string' && candidate.anchorSublabel.trim() ? candidate.anchorSublabel : fallback.anchorSublabel,
+    description: typeof candidate.description === 'string' && candidate.description.trim() ? candidate.description : fallback.description,
+    external: Boolean(candidate.external ?? fallback.external)
+  };
+}
 
 const SERVER_NODES = [
   {
@@ -213,7 +251,9 @@ function ArmaBlackHole({ onSelect }) {
   );
 }
 
-function DysonSphere({ position = [5.15, 2.5, -0.45], onSelect }) {
+function DysonSphere({ anchor, onSelect }) {
+  const dysonAnchor = useMemo(() => resolveDysonAnchorPayload(anchor), [anchor]);
+  const { position, label, anchorLabel, color, href, sublabel, anchorSublabel, description, external } = dysonAnchor;
   const group = useRef();
   const ringA = useRef();
   const ringB = useRef();
@@ -233,50 +273,50 @@ function DysonSphere({ position = [5.15, 2.5, -0.45], onSelect }) {
       onClick={(e) => {
         e.stopPropagation();
         onSelect({
-          label: 'S.S',
-          href: 'https://synapticsystems.ca',
+          label,
+          href,
           position,
-          sublabel: 'External site',
-          description: 'Opens SynapticSystems.ca.',
-          external: true
+          sublabel,
+          description,
+          external
         });
       }}
     >
       <mesh>
         <sphereGeometry args={[0.42, 28, 28]} />
-        <meshStandardMaterial color="#ffd15c" emissive="#ffd15c" emissiveIntensity={1.8} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1.8} />
       </mesh>
 
       <mesh ref={ringA}>
         <torusGeometry args={[0.9, 0.03, 16, 140]} />
-        <meshStandardMaterial color="#ffe694" emissive="#ffe694" emissiveIntensity={1.2} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1.2} />
       </mesh>
       <mesh ref={ringB} rotation={[1.1, 0.3, 0.2]}>
         <torusGeometry args={[1.18, 0.025, 16, 140]} />
-        <meshStandardMaterial color="#ffd15c" emissive="#ffd15c" emissiveIntensity={1.1} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1.1} />
       </mesh>
       <mesh ref={ringC} rotation={[0.2, 0.7, 1.0]}>
         <torusGeometry args={[1.45, 0.02, 16, 140]} />
         <meshStandardMaterial color="#fff4c1" emissive="#fff4c1" emissiveIntensity={0.9} />
       </mesh>
 
-      <pointLight position={[0, 0, 0]} color="#ffd15c" intensity={16} distance={10} />
+      <pointLight position={[0, 0, 0]} color={color} intensity={16} distance={10} />
       <Html position={[0, -1.38, 0]} center>
         <button
           className="map-anchor-label clickable"
           onClick={() =>
             onSelect({
-              label: 'S.S',
-              href: 'https://synapticsystems.ca',
+              label,
+              href,
               position,
-              sublabel: 'External site',
-              description: 'Opens SynapticSystems.ca.',
-              external: true
+              sublabel,
+              description,
+              external
             })
           }
         >
-          <span className="anchor-title">S.S</span>
-          <span className="anchor-copy">Dyson sphere link</span>
+          <span className="anchor-title">{anchorLabel}</span>
+          <span className="anchor-copy">{anchorSublabel}</span>
         </button>
       </Html>
     </group>
@@ -351,7 +391,8 @@ function ShiningStar({ position = [7.15, 4.2, -0.6], onSelect }) {
   );
 }
 
-function ConstellationLines() {
+function ConstellationLines({ dysonAnchor }) {
+  const dysonPosition = dysonAnchor.position;
   const points = useMemo(() => SERVER_NODES.map((node) => new THREE.Vector3(...node.position)), []);
   const geometry = useMemo(() => {
     const ordered = [
@@ -361,12 +402,12 @@ function ConstellationLines() {
       new THREE.Vector3(0, -3.1, 0),
       new THREE.Vector3(-5.6, 2.4, 0.3),
       points[4],
-      new THREE.Vector3(5.15, 2.5, -0.45),
+      new THREE.Vector3(...dysonPosition),
       new THREE.Vector3(7.15, 4.2, -0.6)
     ];
     const curve = new THREE.CatmullRomCurve3(ordered, false, 'catmullrom', 0.25);
     return new THREE.BufferGeometry().setFromPoints(curve.getPoints(260));
-  }, [points]);
+  }, [dysonPosition, points]);
 
   return (
     <line geometry={geometry}>
@@ -428,7 +469,7 @@ function Node({ node, active, onHover, onLeave, onSelect }) {
   );
 }
 
-function Scene({ onSelect }) {
+function Scene({ dysonAnchor, onSelect }) {
   const [active, setActive] = useState('Rust Bi-Weekly');
 
   return (
@@ -443,16 +484,16 @@ function Scene({ onSelect }) {
       <group rotation={[-0.15, -0.08, 0]}>
         <SectorRing position={[-5.6, 2.4, 0.3]} radius={3.15} color="#58dfff" label="Arma Sector" />
         <SectorRing position={[0, -3.1, 0]} radius={3.8} color="#b78dff" label="Rust Sector" />
-        <SectorRing position={[5.15, 2.5, -0.45]} radius={2.65} color="#ffd15c" label="Support Sector" />
+        <SectorRing position={dysonAnchor.position} radius={2.65} color={dysonAnchor.color} label="Support Sector" />
 
-        <ConstellationLines />
+        <ConstellationLines dysonAnchor={dysonAnchor} />
 
         <group onClick={(e) => { e.stopPropagation(); onSelect({ label: 'Rust Cluster', href: '/servers/rust-vanilla', position: [0, -3.1, 0], sublabel: 'Lower singularity anchor', description: 'Rust server cluster anchor.' }); }}>
           <BlackHole />
         </group>
 
         <ArmaBlackHole onSelect={onSelect} />
-        <DysonSphere onSelect={onSelect} />
+        <DysonSphere anchor={dysonAnchor} onSelect={onSelect} />
         <ShiningStar onSelect={onSelect} />
 
         {SERVER_NODES.map((node) => (
@@ -515,6 +556,31 @@ function FocusPanel({ item, onClose, onOpen }) {
 export default function InteractiveGalaxyMap() {
   const router = useRouter();
   const [selected, setSelected] = useState(null);
+  const [dysonAnchor, setDysonAnchor] = useState(() => resolveDysonAnchorPayload(FALLBACK_DYSON_ANCHOR));
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadDysonAnchor() {
+      try {
+        const response = await fetch('/api/dyson-map-anchors', { cache: 'no-store' });
+        if (!response.ok) return;
+        const payload = await response.json();
+        const [resolvedAnchor] = Array.isArray(payload?.anchors) ? payload.anchors : [];
+        if (!cancelled && resolvedAnchor) {
+          setDysonAnchor(resolveDysonAnchorPayload(resolvedAnchor));
+        }
+      } catch {
+        // Keep the public fallback anchor when the backing asset or read path is unavailable.
+      }
+    }
+
+    loadDysonAnchor();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const openItem = (item) => {
     if (!item) return;
@@ -539,7 +605,7 @@ export default function InteractiveGalaxyMap() {
 
       <div className="interactive-map-stage redesigned">
         <Canvas camera={{ position: [0, 1.5, 11], fov: 46 }}>
-          <Scene onSelect={setSelected} />
+          <Scene dysonAnchor={dysonAnchor} onSelect={setSelected} />
         </Canvas>
         <FocusPanel item={selected} onClose={() => setSelected(null)} onOpen={openItem} />
       </div>
