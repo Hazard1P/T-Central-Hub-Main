@@ -211,6 +211,10 @@ export default function DonateSupportClient() {
           </div>
         </div>
 
+        <p className="support-link-status">
+          Linked support receipts remain available on this device for {SUPPORT_RECEIPT_MAX_AGE_DAYS} days after verification.
+        </p>
+
         <div className="support-mode-switcher">
           <button
             type="button"
