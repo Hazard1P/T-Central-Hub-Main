@@ -130,36 +130,33 @@ export default function DonatePage() {
 
       <section className="donate-action-grid">
         <article className="content-card donate-primary-card">
-          <p className="eyebrow">Monthly support</p>
-          <h3>Donate or subscribe through a protected Steam-linked flow</h3>
+          <p className="eyebrow">Account-linked protected flow</p>
+          <h3>Donate or subscribe through the protected Steam-linked checkout</h3>
           <p className="muted">
-            Use the protected PayPal checkout below to create a server-side donation order or monthly membership bound to your authenticated Steam account, blackhole anchor, and solar system path.
+            Use the primary protected PayPal flow below to create a server-side donation order or monthly membership bound to your authenticated Steam account, blackhole anchor, and solar system path.
           </p>
-
-          <div className="donate-button-stack">
-            <a
-              className="button primary"
-              href="https://paypal.me/TCentralG"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Open PayPal fallback
-            </a>
-          </div>
 
           <DonateSupportClient />
         </article>
 
         <article className="content-card donate-secondary-card">
-          <p className="eyebrow">Flexible support</p>
-          <h3>Donate any amount directly</h3>
+          <p className="eyebrow">Secondary fallback flow</p>
+          <h3>Use PayPal.Me for flexible direct support</h3>
           <p className="muted">
-            Prefer to choose your own amount instead of joining the recurring lane? Use the PayPal.Me link below for a direct contribution.
+            Prefer to choose your own amount, send a direct gift, or use a simpler fallback path? PayPal.Me is available for flexible direct support, but it may not automatically bind your contribution to the Steam-linked account used by the protected flow.
           </p>
 
           <div className="donate-button-stack">
             <a
-              className="button primary"
+              className="button secondary"
+              href="https://paypal.me/TCentralG"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open PayPal.Me fallback
+            </a>
+            <a
+              className="button secondary"
               href="https://paypal.me/TCentralG"
               target="_blank"
               rel="noreferrer"
@@ -172,7 +169,7 @@ export default function DonatePage() {
             <strong>Supporter note</strong>
             <p>
               Whether you give once or support monthly, you are helping the T-Central hub stay active, improve faster,
-              and keep building toward a larger long-term experience.
+              and keep building toward a larger long-term experience. Use the protected flow when you want account-linked support tracking.
             </p>
           </div>
         </article>
