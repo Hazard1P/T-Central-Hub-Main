@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getServerBySlug } from '@/lib/serverData';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const server = getServerBySlug('arma3-cth');
   if (!server) {

@@ -180,7 +180,7 @@ export default function DonatePage() {
               ))}
             </ul>
           </article>
-        ))}
+        </div>
       </section>
 
       <section className="donate-action-grid">
@@ -231,14 +231,8 @@ export default function DonatePage() {
                 Donate any amount
               </a>
             </div>
-            <div className="donate-note-box">
-              <strong>Supporter note</strong>
-              <p>
-                Whether you give once or support monthly, you are helping the T-Central hub stay active, improve faster, and keep building toward a larger long-term experience.
-              </p>
-            </div>
-          </article>
-        </div>
+          </div>
+        </article>
       </section>
     </main>
   );

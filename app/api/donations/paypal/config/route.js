@@ -7,6 +7,8 @@ import {
   isPayPalSubscriptionConfigured,
 } from '@/lib/paypal';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const planId = getPayPalSubscriptionPlanId();
 

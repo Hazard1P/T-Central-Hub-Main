@@ -1,5 +1,7 @@
 import { mergeStatusesWithDefaults } from '@/lib/serverData';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const url = process.env.STATUS_SOURCE_URL;
 
