@@ -5943,3 +5943,172 @@ button { font: inherit; }
     margin-left: 0;
   }
 }
+
+.admin-dyson-editor {
+  min-height: 100vh;
+  padding: 7rem clamp(1rem, 4vw, 4rem) 4rem;
+  background: radial-gradient(circle at top left, rgba(143, 243, 255, 0.16), transparent 32rem), #050711;
+  color: #eef7ff;
+}
+
+.admin-dyson-editor__hero,
+.admin-dyson-editor__panel,
+.admin-dyson-editor__notice,
+.admin-dyson-editor__error {
+  border: 1px solid rgba(159, 230, 255, 0.18);
+  border-radius: 24px;
+  background: rgba(8, 14, 30, 0.78);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+}
+
+.admin-dyson-editor__hero {
+  margin: 0 auto 1rem;
+  max-width: 1180px;
+  padding: clamp(1.5rem, 4vw, 3rem);
+}
+
+.admin-dyson-editor__hero h1,
+.admin-dyson-editor__panel h2 {
+  margin: 0.2rem 0 0.75rem;
+}
+
+.admin-dyson-editor__notice,
+.admin-dyson-editor__error {
+  margin: 0.75rem auto;
+  max-width: 1180px;
+  padding: 0.85rem 1rem;
+}
+
+.admin-dyson-editor__error,
+.admin-dyson-editor small {
+  color: #ff9fba;
+}
+
+.admin-dyson-editor__grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.75fr) minmax(320px, 1.35fr) minmax(260px, 0.9fr);
+  gap: 1rem;
+  margin: 1rem auto 0;
+  max-width: 1180px;
+}
+
+.admin-dyson-editor__panel {
+  padding: 1.25rem;
+}
+
+.admin-dyson-editor__asset-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.admin-dyson-editor__asset-list button,
+.admin-dyson-editor button[type='submit'],
+.admin-dyson-editor__reset button {
+  border: 1px solid rgba(159, 230, 255, 0.24);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  cursor: pointer;
+  padding: 0.8rem 1rem;
+}
+
+.admin-dyson-editor__asset-list button {
+  display: grid;
+  gap: 0.25rem;
+  text-align: left;
+}
+
+.admin-dyson-editor__asset-list button.is-active,
+.admin-dyson-editor button[type='submit'] {
+  border-color: rgba(143, 243, 255, 0.78);
+  background: linear-gradient(135deg, rgba(143, 243, 255, 0.2), rgba(255, 214, 125, 0.14));
+}
+
+.admin-dyson-editor__asset-list span,
+.admin-dyson-editor__preview dt,
+.admin-dyson-editor__reset p {
+  color: #a9bbd3;
+  font-size: 0.85rem;
+}
+
+.admin-dyson-editor__section-head {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.admin-dyson-editor__vector-grid,
+.admin-dyson-editor__parameters {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 1rem;
+}
+
+.admin-dyson-editor__vector-grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.admin-dyson-editor label {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.admin-dyson-editor input,
+.admin-dyson-editor textarea {
+  border: 1px solid rgba(159, 230, 255, 0.18);
+  border-radius: 12px;
+  background: rgba(1, 4, 12, 0.72);
+  color: inherit;
+  padding: 0.72rem 0.85rem;
+}
+
+.admin-dyson-editor__checkbox {
+  align-items: center;
+  display: flex !important;
+  justify-content: space-between;
+}
+
+.admin-dyson-editor__checkbox input,
+.admin-dyson-editor__reset input {
+  height: 1rem;
+  width: 1rem;
+}
+
+.admin-dyson-editor__preview dl {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.admin-dyson-editor__preview dl div {
+  border-bottom: 1px solid rgba(159, 230, 255, 0.12);
+  padding-bottom: 0.7rem;
+}
+
+.admin-dyson-editor__preview dt,
+.admin-dyson-editor__preview dd {
+  margin: 0;
+}
+
+.admin-dyson-editor__reset {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 1.25rem;
+}
+
+.admin-dyson-editor__danger {
+  border-color: rgba(255, 117, 150, 0.64) !important;
+  color: #ffb5c8 !important;
+}
+
+.admin-dyson-editor button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@media (max-width: 980px) {
+  .admin-dyson-editor__grid,
+  .admin-dyson-editor__vector-grid {
+    grid-template-columns: 1fr;
+  }
+}

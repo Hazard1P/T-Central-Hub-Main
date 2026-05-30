@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { signValue } from '@/lib/security';
+import { resolveAdminContext } from '@/lib/auth/resolveAdminContext';
 import { DYSON_CONTINUITY_SCHEMA_VERSION } from '@/lib/dysonContinuity';
 import { restoreService } from '@/lib/continuity/restoreService';
 import { resolveAdminContext } from '@/lib/auth/resolveAdminContext';
@@ -12,6 +12,7 @@ function safeEqual(a, b) {
   if (left.length !== right.length) return false;
   return crypto.timingSafeEqual(left, right);
 }
+
 function isSignedInternalRequest(request, checkpointId, expectedBuildId) {
   const token = request.headers.get('x-internal-restore-token');
   if (!token) return false;
@@ -50,12 +51,16 @@ export async function POST(request) {
     if (expectedBuildId !== currentBuildId) {
       return NextResponse.json({ ok: false, error: 'BUILD_ID_MISMATCH', currentBuildId, expectedBuildId }, { status: 409 });
     }
+  }
 
-    if (!isSignedInternalRequest(request, checkpointId, expectedBuildId)) {
-      const adminContext = resolveAdminContext(cookies());
-      if (!adminContext.isAdmin) {
-        return NextResponse.json({ ok: false, error: adminContext.code }, { status: adminContext.status });
-      }
+  const signedInternalRequest = expectedBuildId && isSignedInternalRequest(request, checkpointId, expectedBuildId);
+  if (!signedInternalRequest) {
+    const adminContext = await resolveAdminContext();
+    if (!adminContext.ok) {
+      return NextResponse.json(
+        { ok: false, error: adminContext.reason, admin: adminContext },
+        { status: adminContext.status },
+      );
     }
   }
 

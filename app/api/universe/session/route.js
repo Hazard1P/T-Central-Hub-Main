@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import { summarizeCsisDysonState } from '@/lib/csisDysonSphereEngine';
 import { summarizeEpochRelativity } from '@/lib/epochDysonEngine';
 import { computeRegisteredDysonStates } from '@/lib/dysonSphereRegistry';
+import { toPublicDysonAssetCollection } from '@/lib/dysonAssetResponses';
+import { WORLD_LAYOUT } from '@/lib/worldLayout';
 import { createPrivacySummary } from '@/lib/universePrivacyEngine';
 import { summarizePrayerSeeds } from '@/lib/prayerSeedEngine';
 import { readDonationLedger, summarizeDonationLedger } from '@/lib/donationLedger';
@@ -82,6 +84,7 @@ export async function GET(request) {
 
   const csisDysonState = dysonStates['dyson.csis'] || {};
   const dysonRings = summarizeCsisDysonState(csisDysonState);
+  const publicDysonAssets = toPublicDysonAssetCollection(WORLD_LAYOUT.filter((node) => node.kind === 'dyson'));
   const dysonRingIntegrity = upsertDysonRingContinuitySnapshot(dysonRings);
   const donations = summarizeDonationLedger(readDonationLedger());
 
@@ -105,15 +108,14 @@ export async function GET(request) {
     lobbyMode,
     privacy,
     epoch: summarizeEpochRelativity(epochAnchor),
-    dysonRings,
+    dysonAssets: publicDysonAssets,
     dysonRingIntegrity: {
       ...getDysonRingIntegrityStatus(),
       ...dysonRingIntegrity,
     },
-    dysonSpheres: dysonStates,
+    dysonSpheres: publicDysonAssets,
     prayerSeeds: summarizePrayerSeeds([], 'solar_system'),
     donations,
-    ring1Metering: dysonRings.ring1,
     continuityHealth: continuityRuntime.snapshot,
     continuityDrill,
     launchGate: {
