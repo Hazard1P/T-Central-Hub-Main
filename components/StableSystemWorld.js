@@ -33,7 +33,7 @@ import { FLIGHT_CONTROL_COPY } from '@/lib/siteContent';
 const UI_VISUAL_DEBUG = false;
 const FLIGHT_PRESETS = Object.freeze({
   assisted: { thrustScale: 1, inertialDampers: true, chaseZoom: 1, routeAssist: true },
-  freeFlight: { thrustScale: 1.35, inertialDampers: false, chaseZoom: 1.2, routeAssist: false }
+  freeFlight: { thrustScale: 1.45, inertialDampers: false, chaseZoom: 1.24, routeAssist: false, mouseLook: true, sixAxis: true }
 });
 
 function useDeviceTier() {
@@ -604,7 +604,7 @@ function NodeVisual({ node, onSelect, selectedKey, graphNode, condensedLabels = 
   );
 }
 
-function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTelemetryChange, onCombatAction, touchInput, isMobile = false, authenticated = false, epochSummary = null, flightConfig = null, multiplayerMode = false, simulationSeed = 'tcentral-main', simulationGravitySources = [], onSimulationFrame = null, correctionState = null }) {
+function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTelemetryChange, onCombatAction, touchInput, isMobile = false, authenticated = false, epochSummary = null, flightConfig = null, multiplayerMode = false, simulationSeed = 'tcentral-main', simulationGravitySources = [], onSimulationFrame = null, correctionState = null, resetTick = 0 }) {
   const groupRef = useRef(null);
   const hullGlowRef = useRef(null);
   const engineCoreRef = useRef(null);
@@ -616,15 +616,37 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
   const { camera } = useThree();
 
   useEffect(() => {
-    const down = (event) => { keys.current[event.code] = true; };
+    const down = (event) => {
+      keys.current[event.code] = true;
+      if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) {
+        event.preventDefault();
+      }
+    };
     const up = (event) => { keys.current[event.code] = false; };
+    const look = (event) => {
+      if (!flightConfig?.mouseLook && !document.pointerLockElement) return;
+      yaw.current -= event.movementX * 0.0022;
+      pitch.current -= event.movementY * 0.0018;
+      const limit = Math.PI / 2.35;
+      pitch.current = Math.max(-limit, Math.min(limit, pitch.current));
+    };
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
+    window.addEventListener('mousemove', look);
     return () => {
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
+      window.removeEventListener('mousemove', look);
     };
-  }, []);
+  }, [flightConfig?.mouseLook]);
+
+  useEffect(() => {
+    velocity.current.set(0, 0, 0);
+    yaw.current = 0;
+    pitch.current = -0.08;
+    roll.current = 0;
+    if (groupRef.current) groupRef.current.position.set(0, 0.2, 18);
+  }, [resetTick]);
 
   const quantumRef = useRef(createQuantumState(12));
   const fireLatch = useRef(false);
@@ -644,7 +666,7 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
     frameCounter.current += 1;
     const rawMove = new THREE.Vector3(
       (keys.current.KeyD || keys.current.ArrowRight ? 1 : 0) - (keys.current.KeyA || keys.current.ArrowLeft ? 1 : 0) + (touchInput.x || 0),
-      (keys.current.Space ? 1 : 0) - (keys.current.ShiftLeft || keys.current.ShiftRight ? 1 : 0) + (touchInput.y || 0),
+      (keys.current.Space || keys.current.KeyR ? 1 : 0) - (keys.current.ShiftLeft || keys.current.ShiftRight || keys.current.KeyF ? 1 : 0) + (touchInput.y || 0),
       (keys.current.KeyS || keys.current.ArrowDown ? 1 : 0) - (keys.current.KeyW || keys.current.ArrowUp ? 1 : 0) + (touchInput.z || 0),
     );
 
@@ -656,9 +678,14 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
     } else if (!fireActive) {
       fireLatch.current = false;
     }
-    const thrustScale = (flightConfig?.thrustScale || 1) * (boostActive ? 1.65 : 1);
+    const thrustScale = (flightConfig?.thrustScale || 1) * (boostActive ? 1.75 : 1);
+    const targetRoll = (keys.current.KeyA || keys.current.ArrowLeft ? 0.32 : 0) + (keys.current.KeyD || keys.current.ArrowRight ? -0.32 : 0);
+    roll.current += (targetRoll - roll.current) * 0.08;
+    const lookQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch.current, yaw.current, roll.current, 'YXZ'));
+    const orientedMove = rawMove.clone();
+    if (flightConfig?.sixAxis || flightConfig?.mouseLook) orientedMove.applyQuaternion(lookQuat);
     const dt = Math.min(delta, 1 / 24);
-    const controlVector = [rawMove.x * thrustScale, rawMove.y * thrustScale, rawMove.z * thrustScale];
+    const controlVector = [orientedMove.x * thrustScale, orientedMove.y * thrustScale, orientedMove.z * thrustScale];
     const stepped = simRuntimeClient.stepSnapshot({
       mode: multiplayerMode ? 'multiplayer' : 'singleplayer',
       frameIndex: frameCounter.current,
@@ -668,7 +695,7 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
       positionVector: groupRef.current.position.clone(),
       velocityVector: velocity.current.clone(),
       controlVector,
-      inputVector: rawMove.clone().multiplyScalar(thrustScale),
+      inputVector: orientedMove.clone().multiplyScalar(thrustScale),
       dt,
       gravitySources: multiplayerMode ? simulationGravitySources : gravitySources,
       isMobile,
@@ -698,9 +725,9 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
     }
 
     const speed = velocity.current.length();
-    const direction = speed > 0.08 ? velocity.current.clone().normalize() : new THREE.Vector3(0, 0, -1);
-    const targetQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), direction);
-    groupRef.current.quaternion.slerp(targetQuat, 0.08);
+    const direction = speed > 0.08 ? velocity.current.clone().normalize() : new THREE.Vector3(0, 0, -1).applyQuaternion(lookQuat);
+    const targetQuat = flightConfig?.mouseLook ? lookQuat : new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), direction);
+    groupRef.current.quaternion.slerp(targetQuat, 0.1);
 
     const gravityMagnitude = Number(stepped.gravityMagnitude || 0);
     const nearest = stepped.nearest || null;
@@ -732,9 +759,11 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
     const zoom = flightConfig?.chaseZoom || 1;
     const routeAssistLift = flightConfig?.routeAssist ? 0.9 : 0.25;
     const cameraOffset = new THREE.Vector3(0, 3.6 + routeAssistLift, 10.4 * zoom + horizonFactor * 2.8);
+    if (flightConfig?.mouseLook) cameraOffset.applyQuaternion(lookQuat);
     const cameraTarget = groupRef.current.position.clone().add(cameraOffset);
-    camera.position.lerp(cameraTarget, 0.06);
-    camera.lookAt(groupRef.current.position.clone().add(new THREE.Vector3(0, 0.4, -1.1)));
+    camera.position.lerp(cameraTarget, 0.07);
+    const lookAhead = groupRef.current.position.clone().add(new THREE.Vector3(0, 0.35, -5.5).applyQuaternion(lookQuat));
+    camera.lookAt(flightConfig?.mouseLook ? lookAhead : groupRef.current.position.clone().add(new THREE.Vector3(0, 0.4, -1.1)));
 
     if (nearest && lastNearest.current !== nearest.key && nearest.distance < nearest.source.influenceRadius) {
       lastNearest.current = nearest.key;
@@ -905,7 +934,7 @@ function ProjectileSwarm({ projectiles = [] }) {
   );
 }
 
-function StableSceneContent({ simRuntimeClient, graph, displayNodes, onSelect, selectedKey, onAutoFocus, onTelemetryChange, onCombatAction, touchInput, deviceTier, authenticated = false, flightConfig = null, remotePilots = [], projectiles = [], presentationMode = true, multiplayerMode = false, simulationSeed = 'tcentral-main', simulationGravitySources = [], onSimulationFrame = null, correctionState = null, sessionMode = SESSION_MODES.IDLE, ringAdjustments = null }) {
+function StableSceneContent({ simRuntimeClient, graph, displayNodes, onSelect, selectedKey, onAutoFocus, onTelemetryChange, onCombatAction, touchInput, deviceTier, authenticated = false, flightConfig = null, remotePilots = [], projectiles = [], presentationMode = true, multiplayerMode = false, simulationSeed = 'tcentral-main', simulationGravitySources = [], onSimulationFrame = null, correctionState = null, resetTick = 0, sessionMode = SESSION_MODES.IDLE, ringAdjustments = null }) {
   const epochSummary = useMemo(() => summarizeEpochRelativity(graph.epochAnchor), [graph]);
   const graphByKey = useMemo(() => Object.fromEntries(graph.nodes.map((node) => [node.key, node])), [graph]);
   const positions = useMemo(() => getNodePositionMap(graph), [graph]);
@@ -983,6 +1012,7 @@ function StableSceneContent({ simRuntimeClient, graph, displayNodes, onSelect, s
         simulationGravitySources={simulationGravitySources}
         onSimulationFrame={onSimulationFrame}
         correctionState={correctionState}
+        resetTick={resetTick}
       />
     </>
   );
@@ -1018,6 +1048,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   const [touchInput, setTouchInput] = useState({ x: 0, y: 0, z: 0, boost: 0 });
   const [flightConfig, setFlightConfig] = useState(FLIGHT_PRESETS.assisted);
   const [flightDeckOpen, setFlightDeckOpen] = useState(true);
+  const [flightResetTick, setFlightResetTick] = useState(0);
   const [presentationMode, setPresentationMode] = useState(true);
   const [correctionState, setCorrectionState] = useState(null);
   const lastPresenceBroadcast = useRef(0);
@@ -1830,6 +1861,9 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
               <button className="stable-route-button compact" onClick={() => setFlightConfig(FLIGHT_PRESETS.freeFlight)}>
                 Free-flight preset
               </button>
+              <button className="stable-route-button compact" onClick={() => setFlightResetTick((tick) => tick + 1)}>
+                Reset ship
+              </button>
             </div>
             <div className="flight-slider-grid">
               <label>
@@ -1844,6 +1878,11 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             <p className="stable-flight-note">
               {FLIGHT_CONTROL_COPY.fullSummary}
             </p>
+            <div className="free-flight-control-grid">
+              <article><strong>Move</strong><span>W/S forward-back · A/D strafe · Space/R rise · Shift/F descend</span></article>
+              <article><strong>Look</strong><span>Move mouse over the scene. Free-flight follows the ship nose, not only the world grid.</span></article>
+              <article><strong>Boost</strong><span>Hold Ctrl for high-thrust travel through the hub routes.</span></article>
+            </div>
             <div className="stable-chip-row alt">
               <button className="stable-route-button compact" onClick={() => handleCombatAction({ type: 'fire' })} disabled={lobbyMode !== 'hub' || !serverSession?.token}>
                 Fire pulse
