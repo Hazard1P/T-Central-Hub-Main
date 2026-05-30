@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSteamSession } from '@/components/SteamSessionProvider';
+import { getDonationRouteOptions } from '@/lib/donationRouteOptions';
 
 function buildSdkSrc({ clientId, currency, mode }) {
   const params = new URLSearchParams({
@@ -68,6 +69,7 @@ export default function DonateSupportClient() {
   const [solarSystemKey, setSolarSystemKey] = useState('solar_system');
   const [donationSummary, setDonationSummary] = useState(null);
   const [checkoutMode, setCheckoutMode] = useState('donation');
+  const { blackholeAnchors, solarSystems } = useMemo(() => getDonationRouteOptions(), []);
 
   useEffect(() => {
     fetch('/api/donations/paypal/config', { cache: 'no-store' })
@@ -236,19 +238,21 @@ export default function DonateSupportClient() {
             <label className="donation-field">
               <span>Blackhole anchor</span>
               <select value={anchorSlug} onChange={(event) => setAnchorSlug(event.target.value)}>
-                <option value="deep_blackhole">Deep Blackhole</option>
-                <option value="arma3-cth">ARMA 3 Route</option>
-                <option value="rust-vanilla">Rust Vanilla</option>
-                <option value="matrixcoinexchange">MatrixCoinExchange</option>
+                {blackholeAnchors.map((anchor) => (
+                  <option key={anchor.anchorSlug} value={anchor.anchorSlug}>
+                    {anchor.label}
+                  </option>
+                ))}
               </select>
             </label>
             <label className="donation-field">
               <span>Solar system</span>
               <select value={solarSystemKey} onChange={(event) => setSolarSystemKey(event.target.value)}>
-                <option value="solar_system">Primary Solar System</option>
-                <option value="rust_system">Rust System</option>
-                <option value="arma_system">ARMA System</option>
-                <option value="dyson_shell">Dyson Shell</option>
+                {solarSystems.map((system) => (
+                  <option key={system.solarSystemKey} value={system.solarSystemKey}>
+                    {system.label}
+                  </option>
+                ))}
               </select>
             </label>
           </div>
