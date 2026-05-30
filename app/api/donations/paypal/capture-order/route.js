@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { decryptJson, encryptJson, signValue } from '@/lib/security';
 import { shouldUseSecureCookies } from '@/lib/runtimeConfig';
+import { SUPPORT_RECEIPT_MAX_AGE_SECONDS } from '@/lib/supportSessionConfig';
 import { persistDonationLedger, readDonationLedger, summarizeDonationLedger, upsertDonationRecord } from '@/lib/donationLedger';
 import { confirmDonationCapture, getDonationsBySteamId } from '@/lib/server/donationStore';
 import { capturePayPalOrder, isPayPalConfigured } from '@/lib/paypal';
@@ -111,7 +112,7 @@ export async function POST(request) {
         secure: shouldUseSecureCookies(request),
         sameSite: 'lax',
         path: '/',
-        maxAge: 60 * 60 * 24 * 90,
+        maxAge: SUPPORT_RECEIPT_MAX_AGE_SECONDS,
       });
     }
 

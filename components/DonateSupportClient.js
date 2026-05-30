@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSteamSession } from '@/components/SteamSessionProvider';
+import { SUPPORT_RECEIPT_MAX_AGE_DAYS } from '@/lib/supportSessionConfig';
 
 function buildSdkSrc({ clientId, currency, mode }) {
   const params = new URLSearchParams({
@@ -208,6 +209,10 @@ export default function DonateSupportClient() {
             <small>{donationSummary?.totalAmount ? `${donationSummary.totalAmount} ${config?.currency || 'USD'} confirmed` : 'No confirmed donations yet'}</small>
           </div>
         </div>
+
+        <p className="support-link-status">
+          Linked support receipts remain available on this device for {SUPPORT_RECEIPT_MAX_AGE_DAYS} days after verification.
+        </p>
 
         <div className="support-mode-switcher">
           <button
