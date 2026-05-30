@@ -3,7 +3,7 @@
 
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Html, OrbitControls, Stars, Trail } from '@react-three/drei';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import * as THREE from 'three';
 
@@ -213,7 +213,14 @@ function ArmaBlackHole({ onSelect }) {
   );
 }
 
-function DysonSphere({ position = [5.15, 2.5, -0.45], onSelect }) {
+function DysonSphere({ asset, position = [5.15, 2.5, -0.45], onSelect }) {
+  const safeAsset = asset || {};
+  const resolvedPosition = safeAsset.position || position;
+  const resolvedColor = safeAsset.color || '#ffd15c';
+  const resolvedLabel = safeAsset.label || 'S.S';
+  const resolvedDescription = safeAsset.description || 'Opens SynapticSystems.ca.';
+  const routeMetadata = safeAsset.route_metadata || {};
+  const resolvedHref = routeMetadata.href || routeMetadata.route || 'https://synapticsystems.ca';
   const group = useRef();
   const ringA = useRef();
   const ringB = useRef();
@@ -229,22 +236,22 @@ function DysonSphere({ position = [5.15, 2.5, -0.45], onSelect }) {
   return (
     <group
       ref={group}
-      position={position}
+      position={resolvedPosition}
       onClick={(e) => {
         e.stopPropagation();
         onSelect({
-          label: 'S.S',
-          href: 'https://synapticsystems.ca',
-          position,
-          sublabel: 'External site',
-          description: 'Opens SynapticSystems.ca.',
-          external: true
+          label: resolvedLabel,
+          href: resolvedHref,
+          position: resolvedPosition,
+          sublabel: routeMetadata.sublabel || 'External site',
+          description: resolvedDescription,
+          external: routeMetadata.external ?? true
         });
       }}
     >
       <mesh>
         <sphereGeometry args={[0.42, 28, 28]} />
-        <meshStandardMaterial color="#ffd15c" emissive="#ffd15c" emissiveIntensity={1.8} />
+        <meshStandardMaterial color={resolvedColor} emissive={resolvedColor} emissiveIntensity={1.8} />
       </mesh>
 
       <mesh ref={ringA}>
@@ -253,7 +260,7 @@ function DysonSphere({ position = [5.15, 2.5, -0.45], onSelect }) {
       </mesh>
       <mesh ref={ringB} rotation={[1.1, 0.3, 0.2]}>
         <torusGeometry args={[1.18, 0.025, 16, 140]} />
-        <meshStandardMaterial color="#ffd15c" emissive="#ffd15c" emissiveIntensity={1.1} />
+        <meshStandardMaterial color={resolvedColor} emissive={resolvedColor} emissiveIntensity={1.1} />
       </mesh>
       <mesh ref={ringC} rotation={[0.2, 0.7, 1.0]}>
         <torusGeometry args={[1.45, 0.02, 16, 140]} />
@@ -266,16 +273,16 @@ function DysonSphere({ position = [5.15, 2.5, -0.45], onSelect }) {
           className="map-anchor-label clickable"
           onClick={() =>
             onSelect({
-              label: 'S.S',
-              href: 'https://synapticsystems.ca',
-              position,
-              sublabel: 'External site',
-              description: 'Opens SynapticSystems.ca.',
-              external: true
+              label: resolvedLabel,
+              href: resolvedHref,
+              position: resolvedPosition,
+              sublabel: routeMetadata.sublabel || 'External site',
+              description: resolvedDescription,
+              external: routeMetadata.external ?? true
             })
           }
         >
-          <span className="anchor-title">S.S</span>
+          <span className="anchor-title">{resolvedLabel}</span>
           <span className="anchor-copy">Dyson sphere link</span>
         </button>
       </Html>
@@ -428,8 +435,9 @@ function Node({ node, active, onHover, onLeave, onSelect }) {
   );
 }
 
-function Scene({ onSelect }) {
+function Scene({ dysonAssets = [], onSelect }) {
   const [active, setActive] = useState('Rust Bi-Weekly');
+  const primaryDysonAsset = dysonAssets.find((asset) => asset.sphere_key === 'ss') || dysonAssets[0];
 
   return (
     <>
@@ -452,7 +460,7 @@ function Scene({ onSelect }) {
         </group>
 
         <ArmaBlackHole onSelect={onSelect} />
-        <DysonSphere onSelect={onSelect} />
+        <DysonSphere asset={primaryDysonAsset} onSelect={onSelect} />
         <ShiningStar onSelect={onSelect} />
 
         {SERVER_NODES.map((node) => (
@@ -515,6 +523,33 @@ function FocusPanel({ item, onClose, onOpen }) {
 export default function InteractiveGalaxyMap() {
   const router = useRouter();
   const [selected, setSelected] = useState(null);
+  const [dysonAssets, setDysonAssets] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch('/api/dyson-assets', { cache: 'no-store' })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload) => {
+        if (cancelled || !Array.isArray(payload?.assets)) return;
+        setDysonAssets(payload.assets.map((asset) => ({
+          sphere_key: asset.sphere_key,
+          label: asset.label,
+          position: asset.position,
+          color: asset.color,
+          description: asset.description,
+          route_metadata: asset.route_metadata,
+          route_links: asset.route_links,
+        })));
+      })
+      .catch(() => {
+        if (!cancelled) setDysonAssets([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const openItem = (item) => {
     if (!item) return;
@@ -539,7 +574,7 @@ export default function InteractiveGalaxyMap() {
 
       <div className="interactive-map-stage redesigned">
         <Canvas camera={{ position: [0, 1.5, 11], fov: 46 }}>
-          <Scene onSelect={setSelected} />
+          <Scene dysonAssets={dysonAssets} onSelect={setSelected} />
         </Canvas>
         <FocusPanel item={selected} onClose={() => setSelected(null)} onOpen={openItem} />
       </div>
