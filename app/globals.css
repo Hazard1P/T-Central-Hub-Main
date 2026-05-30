@@ -6112,3 +6112,139 @@ button { font: inherit; }
     grid-template-columns: 1fr;
   }
 }
+
+/* Donate landing shell refinements */
+.entry-telemetry-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.telemetry-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.045);
+}
+
+.telemetry-card span {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.telemetry-card strong {
+  color: var(--text);
+  font-size: clamp(18px, 2.4vw, 26px);
+  line-height: 1;
+}
+
+.donate-entry {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255,209,92,0.12), transparent 24%),
+    radial-gradient(circle at 78% 18%, rgba(131,235,255,0.14), transparent 28%),
+    linear-gradient(180deg, rgba(4,10,16,0.94), rgba(3,8,16,1));
+}
+
+.donate-entry .entry-universe-canvas {
+  opacity: 0.7;
+}
+
+.donate-entry .donate-shell {
+  grid-template-columns: minmax(0, 1.03fr) minmax(340px, 0.97fr);
+}
+
+.donate-entry .entry-hero-copy h1 {
+  max-width: 900px;
+}
+
+.donate-entry .donate-hero-panel,
+.donate-entry .donate-panel-grid {
+  align-self: start;
+}
+
+.donate-entry .donate-support-brief,
+.donate-entry .donate-protected-flow {
+  margin-top: 18px;
+}
+
+.donate-entry .donate-impact-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.donate-entry .donate-impact-grid span {
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.045);
+  color: #dff5ff;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.donate-entry .donate-panel-grid {
+  grid-template-columns: 1fr;
+}
+
+.donate-entry .minimal-route-card strong {
+  display: block;
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.donate-entry .donate-package-panel,
+.donate-entry .donate-paypal-panel,
+.donate-entry .donate-direct-route-card,
+.donate-entry .donate-protected-flow {
+  overflow: hidden;
+}
+
+.donate-entry .donate-paypal-panel,
+.donate-entry .donate-direct-route-card {
+  background:
+    radial-gradient(circle at 92% 12%, rgba(255,209,92,0.13), transparent 34%),
+    linear-gradient(180deg, rgba(8,18,32,0.9), rgba(8,18,32,0.7));
+}
+
+.donate-entry .support-link-card {
+  margin: 16px 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.donate-entry .support-link-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.donate-entry .paypal-live-shell {
+  margin-top: 16px;
+  background: rgba(0,0,0,0.18);
+}
+
+.donate-entry .donate-note-box {
+  margin-top: 14px;
+}
+
+@media (max-width: 1100px) {
+  .entry-telemetry-grid,
+  .donate-entry .support-link-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .entry-telemetry-grid,
+  .donate-entry .donate-impact-grid,
+  .donate-entry .support-link-grid {
+    grid-template-columns: 1fr;
+  }
+}
