@@ -1,5 +1,6 @@
-import PageShell from '@/components/PageShell';
+import CinematicUniverseCanvas from '@/components/CinematicUniverseCanvas';
 import DonateSupportClient from '@/components/DonateSupportClient';
+import Link from 'next/link';
 
 export const metadata = { title: 'Donate' };
 
@@ -32,6 +33,15 @@ const supportLanes = [
     text: 'This lane is built for players who want to back the world, the servers, and the long-term vision behind the hub.',
     features: ['Ideal for core supporters', 'Fits future patron-style perks', 'Built to grow with the project']
   }
+];
+
+const supportStatus = ['PayPal protected flow', 'Steam-linked receipts', 'Fallback route open', 'Monthly and one-time lanes'];
+
+const supportTelemetry = [
+  { label: 'Support modes', value: '2' },
+  { label: 'Checkout provider', value: 'PayPal' },
+  { label: 'Account binding', value: 'Steam' },
+  { label: 'Direct route', value: 'Live' }
 ];
 
 const paypalBenefits = [
@@ -75,69 +85,98 @@ const modelComparison = [
 
 export default function DonatePage() {
   return (
-    <PageShell
-      eyebrow="Support T-Central"
-      title="Back the hub, the servers, and the people building it."
-      text="This page is tuned for supporters, regular players, and patron-style backers who want to help T-Central keep growing in a lasting way."
-    >
-      <section className="support-banner">
-        <div className="support-banner-copy">
-          <p className="eyebrow">Why support matters</p>
-          <h3>Every contribution helps the hub stay active, improve faster, and grow further.</h3>
-          <p className="muted">
-            Support goes toward server uptime, feature work, website upgrades, visual polish, moderation workflows, and the long-term expansion of the T-Central ecosystem.
+    <main className="entry-page cosmic-entry-page landing-entry donate-entry">
+      <CinematicUniverseCanvas mode="landing" className="entry-universe-canvas" />
+      <div className="cosmic-overlay cinematic" />
+
+      <section className="entry-shell simplified donate-shell">
+        <div className="entry-copy entry-hero-copy cosmic-hero-panel entry-hero-panel simplified-panel donate-hero-panel">
+          <p className="eyebrow">Support T-Central</p>
+          <h1>Back the hub, the servers, and the people building it.</h1>
+          <p className="muted max-copy">
+            This page is tuned for supporters, regular players, and patron-style backers who want to help T-Central keep growing in a lasting way.
           </p>
-        </div>
 
-        <div className="support-impact-grid">
-          {impactPoints.map((point) => (
-            <div key={point} className="impact-pill">
-              {point}
-            </div>
-          ))}
-        </div>
-      </section>
+          <div className="entry-actions">
+            <a className="button primary" href="#protected-paypal-flow">Open protected PayPal flow</a>
+            <a className="button secondary" href="https://paypal.me/TCentralG" target="_blank" rel="noreferrer">
+              Donate with PayPal.Me
+            </a>
+            <Link className="button secondary" href="/">Return to gateway</Link>
+          </div>
 
-      <section className="support-lanes-grid">
-        {supportLanes.map((lane) => (
-          <article key={lane.name} className="content-card support-lane-card">
-            <div className="lane-topline">
-              <span className="lane-badge">{lane.badge}</span>
-              <span className="lane-name">{lane.name}</span>
-            </div>
-            <h3>{lane.title}</h3>
-            <p className="muted">{lane.text}</p>
-            <ul className="lane-feature-list">
-              {lane.features.map((feature) => (
-                <li key={feature}>{feature}</li>
+          <div className="entry-status-bar refined">
+            {supportStatus.map((item) => <span key={item}>{item}</span>)}
+          </div>
+
+          <div className="entry-telemetry-grid">
+            {supportTelemetry.map((item) => (
+              <article className="telemetry-card" key={item.label}>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+              </article>
+            ))}
+          </div>
+
+          <article className="content-card entry-panel polished minimal-route-card donate-support-brief">
+            <span className="entry-panel-kicker">Why support matters</span>
+            <strong>Every contribution helps the hub stay active, improve faster, and grow further.</strong>
+            <p>
+              Support goes toward server uptime, feature work, website upgrades, visual polish, moderation workflows, and the long-term expansion of the T-Central ecosystem.
+            </p>
+            <div className="donate-impact-grid">
+              {impactPoints.map((point) => (
+                <span key={point}>{point}</span>
               ))}
-            </ul>
+            </div>
           </article>
-        ))}
-      </section>
 
-      <section className="content-card patron-appeal-card">
-        <p className="eyebrow">Why PayPal integration helps</p>
-        <h3>Built to support both subscriptions and one-time donations.</h3>
-        <p className="muted">
-          Integrating PayPal into the central hub gives supporters a familiar checkout path while giving the team a durable way to run recurring and flexible funding models side by side.
-        </p>
-        <ul className="lane-feature-list">
-          {paypalBenefits.map((benefit) => (
-            <li key={benefit}>{benefit}</li>
+          <article className="content-card entry-panel polished minimal-route-card donate-protected-flow" id="protected-paypal-flow">
+            <span className="entry-panel-kicker">Protected PayPal flow</span>
+            <strong>Donate or subscribe through a Steam-linked checkout area.</strong>
+            <p>
+              Use the protected PayPal checkout below to create a server-side donation order or monthly membership bound to your authenticated Steam account, blackhole anchor, and solar system path.
+            </p>
+            <DonateSupportClient />
+          </article>
+        </div>
+
+        <div className="entry-panel-grid enhanced simplified-grid donate-panel-grid">
+          {supportLanes.map((lane) => (
+            <article key={lane.name} className="content-card entry-panel polished minimal-route-card donate-package-panel">
+              <span className="entry-panel-kicker">{lane.badge}</span>
+              <strong>{lane.title}</strong>
+              <p>{lane.text}</p>
+              <ul className="lane-feature-list">
+                {lane.features.map((feature) => (
+                  <li key={feature}>{feature}</li>
+                ))}
+              </ul>
+            </article>
           ))}
-        </ul>
-      </section>
 
-      <section className="support-lanes-grid">
-        {modelComparison.map((item) => (
-          <article key={item.model} className="content-card support-lane-card">
-            <p className="eyebrow">{item.model}</p>
-            <h3>{item.bestFor}</h3>
-            <p className="muted">{item.value}</p>
+          {modelComparison.map((item) => (
+            <article key={item.model} className="content-card entry-panel polished minimal-route-card donate-package-panel">
+              <span className="entry-panel-kicker">{item.model}</span>
+              <strong>{item.bestFor}</strong>
+              <p>{item.value}</p>
+              <ul className="lane-feature-list">
+                {item.examples.map((example) => (
+                  <li key={example}>{example}</li>
+                ))}
+              </ul>
+            </article>
+          ))}
+
+          <article className="content-card entry-panel polished minimal-route-card donate-paypal-panel">
+            <span className="entry-panel-kicker">Why PayPal integration helps</span>
+            <strong>Built to support both subscriptions and one-time donations.</strong>
+            <p>
+              Integrating PayPal into the central hub gives supporters a familiar checkout path while giving the team a durable way to run recurring and flexible funding models side by side.
+            </p>
             <ul className="lane-feature-list">
-              {item.examples.map((example) => (
-                <li key={example}>{example}</li>
+              {paypalBenefits.map((benefit) => (
+                <li key={benefit}>{benefit}</li>
               ))}
             </ul>
           </article>
@@ -187,18 +226,20 @@ export default function DonatePage() {
               Whether you give once or support monthly, you are helping the T-Central hub stay active, improve faster,
               and keep building toward a larger long-term experience. Use the protected flow when you want account-linked support tracking.
             </p>
-          </div>
-        </article>
+            <div className="entry-actions">
+              <a className="button primary" href="https://paypal.me/TCentralG" target="_blank" rel="noreferrer">
+                Donate any amount
+              </a>
+            </div>
+            <div className="donate-note-box">
+              <strong>Supporter note</strong>
+              <p>
+                Whether you give once or support monthly, you are helping the T-Central hub stay active, improve faster, and keep building toward a larger long-term experience.
+              </p>
+            </div>
+          </article>
+        </div>
       </section>
-
-      <section className="content-card patron-appeal-card">
-        <p className="eyebrow">For supporters and patrons</p>
-        <h3>Back the direction, not just the current version.</h3>
-        <p className="muted">
-          T-Central is being built as more than a basic server page. Supporters and patron-style backers help push the project
-          toward better systems, stronger visuals, smoother experiences, and a more complete long-term community hub.
-        </p>
-      </section>
-    </PageShell>
+    </main>
   );
 }
