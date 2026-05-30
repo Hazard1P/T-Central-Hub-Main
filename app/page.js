@@ -40,6 +40,7 @@ export default async function HomePage() {
             <Link className="button secondary" href="/servers/arma3-cth">Open primary route</Link>
             <Link className="button secondary" href="/status">View status</Link>
             <Link className="button secondary" href="/hub-form">Open hub form</Link>
+            <Link className="button secondary" href="/admin/dyson">Admin Dyson Controls</Link>
           </div>
 
           <div className="entry-status-bar refined">
