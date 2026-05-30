@@ -6314,3 +6314,45 @@ button { font: inherit; }
     grid-template-columns: 1fr;
   }
 }
+
+/* Deployment revision: free-flight deck and front-page matched hub form */
+.free-flight-control-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+.free-flight-control-grid article {
+  border: 1px solid rgba(133, 231, 255, 0.22);
+  border-radius: 16px;
+  padding: 10px;
+  background: linear-gradient(145deg, rgba(7, 20, 36, 0.88), rgba(12, 34, 58, 0.54));
+  box-shadow: inset 0 0 22px rgba(73, 207, 255, 0.06);
+}
+.free-flight-control-grid strong,
+.free-flight-control-grid span { display: block; }
+.free-flight-control-grid strong { color: #dffaff; margin-bottom: 4px; }
+.free-flight-control-grid span { color: rgba(222, 239, 255, 0.72); font-size: 12px; line-height: 1.35; }
+.hub-form-entry-page .entry-universe-canvas { filter: saturate(1.12) contrast(1.08); }
+.hub-form-entry-shell { align-items: start; }
+.hub-form-hero-panel { min-height: auto; }
+.hub-form-entry-shell .hub-form-shell { width: min(1120px, 100%); grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr); }
+.hub-form-entry-shell .hub-form-card,
+.hub-form-entry-shell .hub-board-feed {
+  border: 1px solid rgba(147, 231, 255, 0.2);
+  border-radius: 28px;
+  background: radial-gradient(circle at 12% 0%, rgba(98, 213, 255, 0.14), transparent 38%), linear-gradient(145deg, rgba(8, 18, 34, 0.92), rgba(8, 25, 44, 0.78));
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.34), inset 0 0 34px rgba(94, 217, 255, 0.05);
+  backdrop-filter: blur(18px);
+}
+.hub-form-entry-shell .hub-form-card,
+.hub-form-entry-shell .hub-board-feed { padding: 22px; }
+.hub-form-grid { grid-template-columns: 1fr 220px; }
+.hub-form-grid .full { grid-column: 1 / -1; }
+.hub-form-grid button { width: fit-content; }
+.hub-board-post { background: linear-gradient(145deg, rgba(8, 20, 35, 0.9), rgba(13, 39, 64, 0.72)); border-color: rgba(138, 233, 255, 0.18); }
+@media (max-width: 920px) {
+  .free-flight-control-grid,
+  .hub-form-entry-shell .hub-form-shell,
+  .hub-form-grid { grid-template-columns: 1fr; }
+}
