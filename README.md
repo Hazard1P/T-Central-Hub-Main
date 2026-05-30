@@ -24,6 +24,12 @@ Copy `.env.example` to `.env.local` for development, or configure the same value
 - `NEXT_PUBLIC_APP_URL`
 - `APP_URL`
 - `SESSION_SECRET`
+- `DYSON_ADMIN_ACCOUNT_ID`
+
+
+### Optional admin hardening
+- `DYSON_ADMIN_PROVIDER` can be set to `steam` or `google` when the configured `DYSON_ADMIN_ACCOUNT_ID` should only be accepted from one auth provider.
+- Only one admin account ID is supported by design; add more only if a future requirement calls for it.
 
 ### Required for durable contact/report storage in production
 - `NEXT_PUBLIC_SUPABASE_URL`
