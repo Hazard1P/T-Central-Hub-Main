@@ -6,7 +6,10 @@ const nextConfig = {
   images: {
     unoptimized: true
   },
-  productionBrowserSourceMaps: false
+  productionBrowserSourceMaps: false,
+  experimental: {
+    cpus: 1
+  }
 };
 
 module.exports = nextConfig;
