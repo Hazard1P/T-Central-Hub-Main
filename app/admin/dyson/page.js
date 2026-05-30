@@ -1,84 +1,91 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
-import { resolveGameAuthContext } from '@/lib/auth/resolveGameAuthContext';
+import AdminDysonAssetEditor from '@/components/AdminDysonAssetEditor';
+import PageShell from '@/components/PageShell';
+import { resolveAdminContext } from '@/lib/auth/resolveAdminContext';
 
-function hasAdminAccess(authContext) {
-  const steamUser = authContext?.steamUser;
-  const googleUser = authContext?.googleUser;
+export const dynamic = 'force-dynamic';
+export const metadata = { title: 'Dyson Admin' };
 
-  return Boolean(
-    steamUser?.is_admin ||
-    steamUser?.isAdmin ||
-    steamUser?.role === 'admin' ||
-    googleUser?.is_admin ||
-    googleUser?.isAdmin ||
-    googleUser?.role === 'admin'
+const loginRoutes = [
+  { href: '/api/auth/steam/login?redirectTo=/admin/dyson', label: 'Sign in with Steam' },
+  { href: '/api/auth/google/login?redirectTo=/admin/dyson', label: 'Sign in with Google' },
+];
+
+function AdminPanel({ eyebrow, title, text, children }) {
+  return (
+    <article className="content-card">
+      <p className="eyebrow">{eyebrow}</p>
+      <h3>{title}</h3>
+      <p className="muted">{text}</p>
+      {children}
+    </article>
   );
 }
 
-export default function AdminDysonPage() {
-  const authContext = resolveGameAuthContext(cookies());
-  const isAuthenticated = Boolean(authContext.authenticated);
-  const isAdmin = hasAdminAccess(authContext);
-  const displayName = authContext.displayName || 'Admin operator';
+function LoginRequiredPanel() {
+  return (
+    <AdminPanel
+      eyebrow="Authentication required"
+      title="Sign in before opening Dyson administration"
+      text="Dyson asset administration is protected on the server. Authenticate with an existing account route before the editor can be mounted."
+    >
+      <div className="system-news-list">
+        {loginRoutes.map((route) => (
+          <Link className="system-news-link" href={route.href} key={route.href}>
+            <span>{route.label}</span>
+            <small>Return to /admin/dyson after login</small>
+          </Link>
+        ))}
+      </div>
+    </AdminPanel>
+  );
+}
+
+function AccessDeniedPanel({ adminContext }) {
+  const reason = adminContext.reason === 'ADMIN_NOT_CONFIGURED'
+    ? 'No admin account is configured for this deployment.'
+    : 'Your signed-in account is not the configured admin account.';
 
   return (
-    <main className="content-page admin-dyson-page">
-      <div className="content-backdrop" />
+    <AdminPanel
+      eyebrow="Access denied"
+      title="This account cannot edit Dyson assets"
+      text={`${reason} The editor is intentionally not mounted for this request.`}
+    >
+      <ul className="arma-list">
+        <li>Provider: {adminContext.authContext.provider || 'unknown'}</li>
+        <li>Account: {adminContext.authContext.displayName || adminContext.authContext.accountId || 'unknown'}</li>
+      </ul>
+    </AdminPanel>
+  );
+}
 
-      <nav className="content-bubbles" aria-label="Admin navigation">
-        <Link className="bubble-link" href="/">Return to gateway</Link>
-        <Link className="bubble-link" href="/system">Enter system</Link>
-        <Link className="bubble-link" href="/status">View status</Link>
-      </nav>
+function getEditorAdminContext(adminContext) {
+  return {
+    ok: adminContext.ok,
+    authContext: {
+      provider: adminContext.authContext.provider,
+      displayName: adminContext.authContext.displayName,
+      identityKind: adminContext.authContext.identityKind,
+    },
+  };
+}
 
-      <section className="page-hero">
-        <p className="eyebrow">Authenticated Admin Entry</p>
-        <h1>Admin Dyson Controls</h1>
-        <p className="muted">
-          Protected command access for Dyson continuity operations. Parameter-edit controls remain off the public homepage and are only surfaced after an authenticated admin session is verified.
-        </p>
-      </section>
+export default function AdminDysonPage() {
+  const cookieStore = cookies();
+  const adminContext = resolveAdminContext(cookieStore);
+  const editorAdminContext = adminContext.ok === true ? getEditorAdminContext(adminContext) : null;
 
-      <section className="page-section">
-        <div className="info-grid two">
-          <article className="content-card entry-panel polished minimal-route-card">
-            <span className="entry-panel-kicker">Access Status</span>
-            <strong>{isAdmin ? 'Admin session verified' : isAuthenticated ? 'Signed in, admin role required' : 'Authentication required'}</strong>
-            <p>
-              {isAdmin
-                ? `${displayName} is cleared for the Dyson admin command surface.`
-                : isAuthenticated
-                  ? `${displayName} is signed in, but this route requires an admin role before Dyson controls are shown.`
-                  : 'Sign in with the configured admin Steam account to unlock the Dyson control surface.'}
-            </p>
-            <div className="entry-actions">
-              {isAdmin ? (
-                <Link className="button primary" href="/system">Open command view</Link>
-              ) : (
-                <a className="button primary" href="/api/auth/steam/login?redirectTo=/admin/dyson">Authenticate admin</a>
-              )}
-              <Link className="button secondary" href="/">Back to gateway</Link>
-            </div>
-          </article>
-
-          <article className="content-card entry-panel polished minimal-route-card">
-            <span className="entry-panel-kicker">Dyson Continuity</span>
-            <strong>{isAdmin ? 'Protected controls ready' : 'Controls locked'}</strong>
-            <p>
-              {isAdmin
-                ? 'Use the protected admin session as the entry point for Dyson continuity actions and operational reviews.'
-                : 'No parameter-edit controls are exposed here until the request is backed by an authenticated admin session.'}
-            </p>
-            <div className="entry-actions">
-              {isAdmin ? (
-                <a className="button secondary" href="/api/continuity/health" target="_blank" rel="noreferrer">Open continuity health</a>
-              ) : null}
-              <Link className="button secondary" href="/status">Review public status</Link>
-            </div>
-          </article>
-        </div>
-      </section>
-    </main>
+  return (
+    <PageShell
+      eyebrow="Admin · Dyson assets"
+      title="Dyson asset controls"
+      text="Server-side account resolution protects the Dyson editor before any client component is allowed to mount."
+    >
+      {!adminContext.authenticated ? <LoginRequiredPanel /> : null}
+      {adminContext.authenticated && !adminContext.ok ? <AccessDeniedPanel adminContext={adminContext} /> : null}
+      {adminContext.ok === true ? <AdminDysonAssetEditor adminContext={editorAdminContext} /> : null}
+    </PageShell>
   );
 }
