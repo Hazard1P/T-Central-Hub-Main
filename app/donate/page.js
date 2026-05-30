@@ -52,6 +52,22 @@ const paypalBenefits = [
   'Lower friction on mobile and desktop so more supporters can complete checkout.'
 ];
 
+
+const protectedPackages = [
+  {
+    name: 'One-time support',
+    text: 'Select a Steam-linked one-time package, review the anchor and solar-system defaults, then create the PayPal order through the protected checkout.',
+  },
+  {
+    name: 'Monthly supporter',
+    text: 'Choose the recurring lane to use the configured PayPal subscription plan and link the verified subscription to your account.',
+  },
+  {
+    name: 'Patron / core supporter',
+    text: 'Use the core supporter path for long-term backing while keeping receipts, subscription identifiers, and PayPal references visible in the account panel.',
+  },
+];
+
 const modelComparison = [
   {
     model: 'Subscription model',
@@ -164,12 +180,51 @@ export default function DonatePage() {
               ))}
             </ul>
           </article>
+        ))}
+      </section>
 
-          <article className="content-card entry-panel polished minimal-route-card donate-direct-route-card">
-            <span className="entry-panel-kicker">Fallback direct donation route</span>
-            <strong>Donate any amount directly.</strong>
+      <section className="donate-action-grid">
+        <article className="content-card donate-primary-card">
+          <p className="eyebrow">Account-linked protected flow</p>
+          <h3>Donate or subscribe through the protected Steam-linked checkout</h3>
+          <p className="muted">
+            Use the primary protected PayPal flow below to create a server-side donation order or monthly membership bound to your authenticated Steam account, blackhole anchor, and solar system path.
+          </p>
+
+          <DonateSupportClient />
+        </article>
+
+        <article className="content-card donate-secondary-card">
+          <p className="eyebrow">Secondary fallback flow</p>
+          <h3>Use PayPal.Me for flexible direct support</h3>
+          <p className="muted">
+            Prefer to choose your own amount, send a direct gift, or use a simpler fallback path? PayPal.Me is available for flexible direct support, but it may not automatically bind your contribution to the Steam-linked account used by the protected flow.
+          </p>
+
+          <div className="donate-button-stack">
+            <a
+              className="button secondary"
+              href="https://paypal.me/TCentralG"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open PayPal.Me fallback
+            </a>
+            <a
+              className="button secondary"
+              href="https://paypal.me/TCentralG"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Donate any amount
+            </a>
+          </div>
+
+          <div className="donate-note-box">
+            <strong>Supporter note</strong>
             <p>
-              Prefer to choose your own amount instead of joining the recurring lane? Use the PayPal.Me link below for a direct contribution.
+              Whether you give once or support monthly, you are helping the T-Central hub stay active, improve faster,
+              and keep building toward a larger long-term experience. Use the protected flow when you want account-linked support tracking.
             </p>
             <div className="entry-actions">
               <a className="button primary" href="https://paypal.me/TCentralG" target="_blank" rel="noreferrer">

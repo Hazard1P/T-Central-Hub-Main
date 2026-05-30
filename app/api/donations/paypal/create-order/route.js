@@ -4,6 +4,23 @@ import { decryptJson } from '@/lib/security';
 import { persistDonationLedger, readDonationLedger, summarizeDonationLedger, upsertDonationRecord } from '@/lib/donationLedger';
 import { createDonationIntentRow } from '@/lib/server/donationStore';
 import { createPayPalOrder, getPayPalCurrency, isPayPalConfigured } from '@/lib/paypal';
+import { FALLBACK_DONATION_ANCHOR, FALLBACK_DONATION_SOLAR_SYSTEM, getDonationRouteOptions } from '@/lib/donationRouteOptions';
+
+function getAllowedDonationValues() {
+  const { blackholeAnchors, solarSystems } = getDonationRouteOptions();
+  return {
+    anchorSlugs: new Set(blackholeAnchors.map((anchor) => anchor.anchorSlug)),
+    solarSystemKeys: new Set(solarSystems.map((system) => system.solarSystemKey)),
+  };
+}
+
+function sanitizeDonationKey(value, fallback) {
+  return String(value || fallback)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, '')
+    .slice(0, 64) || fallback;
+}
 
 function normalizeDonationPayload(body = {}) {
   const rawAmount = String(body.amount ?? '').trim();
@@ -20,17 +37,11 @@ function normalizeDonationPayload(body = {}) {
   const fallbackCurrency = getPayPalCurrency().toUpperCase();
   const currency = /^[A-Z]{3}$/.test(currencyInput) ? currencyInput : fallbackCurrency;
 
-  const anchorSlug = String(body.anchorSlug || 'deep_blackhole')
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]/g, '')
-    .slice(0, 64) || 'deep_blackhole';
-
-  const solarSystemKey = String(body.solarSystemKey || 'solar_system')
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]/g, '')
-    .slice(0, 64) || 'solar_system';
+  const { anchorSlugs, solarSystemKeys } = getAllowedDonationValues();
+  const sanitizedAnchorSlug = sanitizeDonationKey(body.anchorSlug, FALLBACK_DONATION_ANCHOR.anchorSlug);
+  const sanitizedSolarSystemKey = sanitizeDonationKey(body.solarSystemKey, FALLBACK_DONATION_SOLAR_SYSTEM.solarSystemKey);
+  const anchorSlug = anchorSlugs.has(sanitizedAnchorSlug) ? sanitizedAnchorSlug : FALLBACK_DONATION_ANCHOR.anchorSlug;
+  const solarSystemKey = solarSystemKeys.has(sanitizedSolarSystemKey) ? sanitizedSolarSystemKey : FALLBACK_DONATION_SOLAR_SYSTEM.solarSystemKey;
 
   return {
     amount: numericAmount.toFixed(2),

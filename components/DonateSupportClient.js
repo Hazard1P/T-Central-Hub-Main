@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSteamSession } from '@/components/SteamSessionProvider';
+import { getDonationRouteOptions } from '@/lib/donationRouteOptions';
 
 function buildSdkSrc({ clientId, currency, mode }) {
   const params = new URLSearchParams({
@@ -45,6 +46,37 @@ function loadPayPalSdk({ clientId, currency, mode }) {
   });
 }
 
+
+const supportPackages = [
+  {
+    id: 'one-time-support',
+    name: 'One-time support',
+    eyebrow: 'Single gift',
+    mode: 'donation',
+    amount: '10.00',
+    anchorSlug: 'deep_blackhole',
+    solarSystemKey: 'solar_system',
+    description: 'Send a Steam-linked one-time donation through the protected PayPal order flow.',
+    details: ['Sets a $10.00 default', 'Deep Blackhole anchor', 'Primary Solar System path'],
+  },
+  {
+    id: 'monthly-supporter',
+    name: 'Monthly supporter',
+    eyebrow: 'Recurring',
+    mode: 'subscription',
+    description: 'Start the configured PayPal subscription plan and link the verified membership to this Steam account.',
+    details: ['Uses configured PayPal plan', 'Verifies via /api/support/link', 'Best for steady server support'],
+  },
+  {
+    id: 'core-patron',
+    name: 'Patron / core supporter',
+    eyebrow: 'Core backing',
+    mode: 'subscription',
+    description: 'Choose the patron-style lane for core supporters while keeping the same account-linked subscription verification.',
+    details: ['Account-linked support receipt', 'Active subscription tracking', 'Built for long-term backers'],
+  },
+];
+
 function LoginCallout({ currentPath = '/donate' }) {
   return (
     <div className="content-card donate-note-box">
@@ -68,6 +100,7 @@ export default function DonateSupportClient() {
   const [solarSystemKey, setSolarSystemKey] = useState('solar_system');
   const [donationSummary, setDonationSummary] = useState(null);
   const [checkoutMode, setCheckoutMode] = useState('donation');
+  const { blackholeAnchors, solarSystems } = useMemo(() => getDonationRouteOptions(), []);
 
   useEffect(() => {
     fetch('/api/donations/paypal/config', { cache: 'no-store' })
@@ -81,10 +114,34 @@ export default function DonateSupportClient() {
       .catch(() => setDonationSummary(null));
   }, []);
 
+  const selectedPackage = useMemo(
+    () => supportPackages.find((supportPackage) => supportPackage.id === selectedPackageId) || supportPackages[0],
+    [selectedPackageId]
+  );
+
   const availableMode = useMemo(() => {
     if (checkoutMode === 'subscription' && !config?.subscriptionEnabled) return 'donation';
     return checkoutMode;
   }, [checkoutMode, config]);
+
+  const activeSubscriptionIdentifier = support?.subscriptionId || (support?.identifierType === 'subscription' ? support?.identifier : null);
+  const linkedSupportReceipt = Boolean(support?.reference || support?.identifier);
+  const latestDonation = donationSummary?.latest || null;
+  const confirmedDonationText = donationSummary?.confirmed
+    ? `${donationSummary.confirmed} confirmed / ${donationSummary.totalAmount} ${config?.currency || latestDonation?.currency || 'USD'}`
+    : 'No confirmed one-time donation yet';
+  const paypalReference = support?.reference || support?.verification?.identifier || support?.identifier || null;
+
+  const selectSupportPackage = (supportPackage) => {
+    setSelectedPackageId(supportPackage.id);
+    setCheckoutMode(supportPackage.mode);
+
+    if (supportPackage.mode === 'donation') {
+      setAmount(supportPackage.amount);
+      setAnchorSlug(supportPackage.anchorSlug);
+      setSolarSystemKey(supportPackage.solarSystemKey);
+    }
+  };
 
   useEffect(() => {
     const activeContainer = availableMode === 'subscription' ? subscriptionContainerRef.current : orderContainerRef.current;
@@ -157,7 +214,7 @@ export default function DonateSupportClient() {
                   setStatus(payload?.error || 'Capture failed');
                   return;
                 }
-                setDonationSummary(payload?.ledger || null);
+                setDonationSummary(payload?.summary || payload?.cacheSummary || null);
                 setStatus(`Donation confirmed for ${payload?.capture?.amount || amount} ${payload?.capture?.currency || config.currency}.`);
                 refresh();
               },
@@ -197,17 +254,33 @@ export default function DonateSupportClient() {
           </div>
 
           <div className="support-link-panel">
-            <span className="support-link-label">Support status</span>
-            <strong>{support ? 'Linked' : 'Awaiting support receipt'}</strong>
-            <small>{support?.reference || 'No active support receipt yet'}</small>
+            <span className="support-link-label">Linked support receipt</span>
+            <strong>{linkedSupportReceipt ? 'Linked to this Steam account' : 'No receipt linked'}</strong>
+            <small>{support?.linkedAt ? `Linked ${new Date(support.linkedAt).toLocaleString()}` : 'Complete PayPal checkout to attach a receipt'}</small>
           </div>
 
           <div className="support-link-panel">
-            <span className="support-link-label">Confirmed donations</span>
-            <strong>{donationSummary?.confirmed ?? 0}</strong>
-            <small>{donationSummary?.totalAmount ? `${donationSummary.totalAmount} ${config?.currency || 'USD'} confirmed` : 'No confirmed donations yet'}</small>
+            <span className="support-link-label">Active subscription identifier</span>
+            <strong>{activeSubscriptionIdentifier ? 'Subscription active' : 'No subscription identifier'}</strong>
+            <small>{activeSubscriptionIdentifier || 'Choose a monthly package to create one'}</small>
+          </div>
+
+          <div className="support-link-panel">
+            <span className="support-link-label">Confirmed one-time donation</span>
+            <strong>{donationSummary?.confirmed ?? 0} confirmed</strong>
+            <small>{confirmedDonationText}</small>
+          </div>
+
+          <div className="support-link-panel">
+            <span className="support-link-label">PayPal reference</span>
+            <strong>{paypalReference ? 'Reference available' : 'No PayPal reference yet'}</strong>
+            <small>{paypalReference || 'PayPal order, capture, or subscription reference will appear after checkout'}</small>
           </div>
         </div>
+
+        <p className="support-link-status">
+          Linked support receipts remain available on this device for {SUPPORT_RECEIPT_MAX_AGE_DAYS} days after verification.
+        </p>
 
         <div className="support-mode-switcher">
           <button
@@ -236,27 +309,29 @@ export default function DonateSupportClient() {
             <label className="donation-field">
               <span>Blackhole anchor</span>
               <select value={anchorSlug} onChange={(event) => setAnchorSlug(event.target.value)}>
-                <option value="deep_blackhole">Deep Blackhole</option>
-                <option value="arma3-cth">ARMA 3 Route</option>
-                <option value="rust-vanilla">Rust Vanilla</option>
-                <option value="matrixcoinexchange">MatrixCoinExchange</option>
+                {blackholeAnchors.map((anchor) => (
+                  <option key={anchor.anchorSlug} value={anchor.anchorSlug}>
+                    {anchor.label}
+                  </option>
+                ))}
               </select>
             </label>
             <label className="donation-field">
               <span>Solar system</span>
               <select value={solarSystemKey} onChange={(event) => setSolarSystemKey(event.target.value)}>
-                <option value="solar_system">Primary Solar System</option>
-                <option value="rust_system">Rust System</option>
-                <option value="arma_system">ARMA System</option>
-                <option value="dyson_shell">Dyson Shell</option>
+                {solarSystems.map((system) => (
+                  <option key={system.solarSystemKey} value={system.solarSystemKey}>
+                    {system.label}
+                  </option>
+                ))}
               </select>
             </label>
           </div>
         ) : (
           <div className="donate-note-box">
-            <strong>Monthly membership</strong>
+            <strong>{selectedPackage.name}</strong>
             <p>
-              This subscription is created through PayPal and then verified against your Steam-linked pilot so your support status stays attached to your account.
+              This subscription uses the configured PayPal plan ID ({config?.subscriptionPlanId || 'not configured yet'}) and is then verified against your Steam-linked pilot so your support status stays attached to your account.
             </p>
           </div>
         )}
