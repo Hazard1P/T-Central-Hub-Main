@@ -100,6 +100,7 @@ export default function DonateSupportClient() {
   const [solarSystemKey, setSolarSystemKey] = useState('solar_system');
   const [donationSummary, setDonationSummary] = useState(null);
   const [checkoutMode, setCheckoutMode] = useState('donation');
+  const [selectedPackageId, setSelectedPackageId] = useState(supportPackages[0].id);
   const { blackholeAnchors, solarSystems } = useMemo(() => getDonationRouteOptions(), []);
 
   useEffect(() => {

@@ -1,0 +1,44 @@
+[
+  {
+    "gateStatus": "open",
+    "ringHealth": {
+      "dyson.csis": {
+        "status": "healthy",
+        "stateVersion": 4
+      },
+      "dyson.synaptics": {
+        "status": "healthy",
+        "stateVersion": 4
+      }
+    },
+    "crossSphereIntegrity": 1,
+    "timestampUnix": 1780095600,
+    "durabilityStatus": "durable",
+    "storageTargets": [
+      {
+        "target": "localSnapshotFile",
+        "durability": "durable",
+        "write": {
+          "status": "success",
+          "lastSuccessUnix": 1780095600
+        },
+        "read": {
+          "status": "success",
+          "lastSuccessUnix": 1780095600
+        }
+      },
+      {
+        "target": "runtimeMemory",
+        "durability": "ephemeral",
+        "write": {
+          "status": "success",
+          "lastSuccessUnix": 1780095600
+        },
+        "read": {
+          "status": "success",
+          "lastSuccessUnix": 1780095600
+        }
+      }
+    ]
+  }
+]
