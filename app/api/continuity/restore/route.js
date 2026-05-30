@@ -1,9 +1,10 @@
 import crypto from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { decryptJson, signValue } from '@/lib/security';
+import { signValue } from '@/lib/security';
 import { DYSON_CONTINUITY_SCHEMA_VERSION } from '@/lib/dysonContinuity';
 import { restoreService } from '@/lib/continuity/restoreService';
+import { resolveAdminContext } from '@/lib/auth/resolveAdminContext';
 
 function safeEqual(a, b) {
   const left = Buffer.from(String(a || ''), 'utf8');
@@ -11,19 +12,6 @@ function safeEqual(a, b) {
   if (left.length !== right.length) return false;
   return crypto.timingSafeEqual(left, right);
 }
-
-function isAdminRequest() {
-  const cookieStore = cookies();
-  const raw = cookieStore.get('steam_session')?.value;
-  if (!raw) return false;
-  try {
-    const session = decryptJson(raw);
-    return Boolean(session?.is_admin || session?.isAdmin || session?.role === 'admin');
-  } catch {
-    return false;
-  }
-}
-
 function isSignedInternalRequest(request, checkpointId, expectedBuildId) {
   const token = request.headers.get('x-internal-restore-token');
   if (!token) return false;
@@ -63,8 +51,11 @@ export async function POST(request) {
       return NextResponse.json({ ok: false, error: 'BUILD_ID_MISMATCH', currentBuildId, expectedBuildId }, { status: 409 });
     }
 
-    if (!(isAdminRequest() || isSignedInternalRequest(request, checkpointId, expectedBuildId))) {
-      return NextResponse.json({ ok: false, error: 'UNAUTHORIZED_RESTORE' }, { status: 401 });
+    if (!isSignedInternalRequest(request, checkpointId, expectedBuildId)) {
+      const adminContext = resolveAdminContext(cookies());
+      if (!adminContext.isAdmin) {
+        return NextResponse.json({ ok: false, error: adminContext.code }, { status: adminContext.status });
+      }
     }
   }
 

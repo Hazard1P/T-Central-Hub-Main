@@ -4,6 +4,7 @@
 - `NEXT_PUBLIC_APP_URL`
 - `SESSION_SECRET`
 - `STEAM_API_KEY` if you want enriched Steam profiles
+- `DYSON_ADMIN_ACCOUNT_ID` for the single account allowed to use admin-only Dyson operations
 
 ## Optional environment variables
 - `SUPPORT_LINK_SECRET`
@@ -14,6 +15,7 @@
 - `NEXT_PUBLIC_MULTIPLAYER_MAX_SLOTS`
 - `NEXT_PUBLIC_WORLD_RINGS`
 - `NEXT_PUBLIC_WORLD_RING_DENSITY`
+- `DYSON_ADMIN_PROVIDER` to restrict the admin account check to one auth provider, such as `steam` or `google`
 
 ## Recommended Vercel project settings
 - Framework preset: Next.js
