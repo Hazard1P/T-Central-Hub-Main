@@ -36,6 +36,25 @@ const FLIGHT_PRESETS = Object.freeze({
   freeFlight: { thrustScale: 1.45, inertialDampers: false, chaseZoom: 1.24, routeAssist: false, mouseLook: true, sixAxis: true }
 });
 
+async function disconnectMultiplayerSession(session) {
+  if (!session?.token || !session?.id || !session?.room) return;
+
+  try {
+    await fetch('/api/multiplayer/disconnect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
+      body: JSON.stringify({
+        roomName: session.room,
+        id: session.id,
+        token: session.token,
+      }),
+    });
+  } catch (error) {
+    console.warn('Unable to disconnect multiplayer session cleanly.', error);
+  }
+}
+
 function useDeviceTier() {
   const [tier, setTier] = useState({ isMobile: false, dpr: [1, 1.6], stars: 7600, sparkles: 220, meteors: 18 });
 
@@ -611,6 +630,9 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
   const enginePortRef = useRef(null);
   const engineStarboardRef = useRef(null);
   const velocity = useRef(new THREE.Vector3(0, 0, 0));
+  const yaw = useRef(0);
+  const pitch = useRef(-0.08);
+  const roll = useRef(0);
   const keys = useRef({});
   const lastNearest = useRef(null);
   const { camera } = useThree();
