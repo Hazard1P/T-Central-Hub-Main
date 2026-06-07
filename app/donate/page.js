@@ -52,6 +52,32 @@ const paypalBenefits = [
   'Lower friction on mobile and desktop so more supporters can complete checkout.'
 ];
 
+const legalDisclosureLinks = [
+  { href: '/terms-and-conditions', label: 'Terms' },
+  { href: '/privacy-policy', label: 'Privacy' },
+  { href: '/eula', label: 'EULA' },
+  { href: '/multiplayer-policy', label: 'Multiplayer Policy' },
+  { href: '/contact', label: 'Contact' }
+];
+
+function PaymentLegalDisclosure() {
+  return (
+    <aside className="donate-legal-disclosure" aria-label="Payment legal disclosure">
+      <strong>Payment disclosure</strong>
+      <p>
+        One-time donations and recurring subscriptions are processed by PayPal. Monthly memberships recur until
+        cancelled through PayPal or the account-management path provided. Donations/support do not guarantee in-game
+        currency, stored value, external payout, or real-world return. PayPal.Me fallback may not automatically bind to
+        the Steam-linked account. Refund/support questions should use <Link href="/contact">contact</Link>.
+      </p>
+      <nav className="donate-legal-links" aria-label="Donation legal links">
+        {legalDisclosureLinks.map((link) => (
+          <Link key={link.href} href={link.href}>{link.label}</Link>
+        ))}
+      </nav>
+    </aside>
+  );
+}
 
 const protectedPackages = [
   {
@@ -219,6 +245,8 @@ export default function DonatePage() {
               Donate any amount
             </a>
           </div>
+
+          <PaymentLegalDisclosure />
 
           <div className="donate-note-box">
             <strong>Supporter note</strong>
