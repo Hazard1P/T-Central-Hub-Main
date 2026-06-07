@@ -6,14 +6,19 @@ import { Html, OrbitControls, Stars, Trail } from '@react-three/drei';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import * as THREE from 'three';
+import { WORLD_MAP_DATA, getWorldMapAssetByKey } from '@/lib/worldLayout';
 
+
+const SS_MAP_ASSET = getWorldMapAssetByKey('ss');
+const CSIS_MAP_ASSET = getWorldMapAssetByKey('csis');
+const SOLAR_SYSTEM_MAP_ASSET = getWorldMapAssetByKey(WORLD_MAP_DATA.anchor.key);
 
 const FALLBACK_DYSON_ANCHOR = {
   id: 'ss',
-  label: 'S.S',
-  anchorLabel: 'S.S',
-  color: '#ffd15c',
-  position: [5.15, 2.5, -0.45],
+  label: SS_MAP_ASSET?.label || 'S.S',
+  anchorLabel: SS_MAP_ASSET?.label || 'S.S',
+  color: SS_MAP_ASSET?.color || '#ffd15c',
+  position: SS_MAP_ASSET?.mapPosition || [5.15, 2.5, -0.45],
   href: 'https://synapticsystems.ca',
   sublabel: 'External site',
   anchorSublabel: 'Dyson sphere link',
@@ -46,62 +51,35 @@ function resolveDysonAnchorPayload(anchor) {
 }
 
 const SOLAR_SYSTEM_PLAYABLE_ANCHOR = {
-  label: 'Solar System',
+  key: SOLAR_SYSTEM_MAP_ASSET?.key || WORLD_MAP_DATA.anchor.key,
+  label: SOLAR_SYSTEM_MAP_ASSET?.label || 'Solar System',
   sublabel: 'Playable reference map · Arma3 CTH',
-  position: [0, 0.4, 0],
-  color: '#ffd46b',
+  position: SOLAR_SYSTEM_MAP_ASSET?.mapPosition || WORLD_MAP_DATA.anchor.mapPosition,
+  color: SOLAR_SYSTEM_MAP_ASSET?.color || '#ffd46b',
   href: '/servers/arma3-cth',
-  description: 'Primary web-playable solar-system anchor. Server routes and Dyson spheres attach as intelligence strings and datapoints.',
+  description: SOLAR_SYSTEM_MAP_ASSET?.description || 'Primary web-playable solar-system anchor. Server routes and Dyson spheres attach as intelligence strings and datapoints.',
   playableAnchor: true,
-  anchorRole: 'reference-map-solar-system',
+  anchorRole: WORLD_MAP_DATA.anchor.role,
 };
 
 const SERVER_NODES = [
+  ...WORLD_MAP_DATA.subSectorAssets
+    .filter((asset) => asset.associatedServer)
+    .sort((a, b) => b.priority - a.priority || a.label.localeCompare(b.label))
+    .map((asset) => ({
+      key: asset.key,
+      label: asset.label,
+      sublabel: asset.address,
+      position: asset.mapPosition,
+      color: asset.color,
+      href: asset.href || SOLAR_SYSTEM_PLAYABLE_ANCHOR.href,
+      description: `Sub-sector asset anchored to ${SOLAR_SYSTEM_PLAYABLE_ANCHOR.label}: ${asset.description}`,
+      playableEntry: false,
+      attachedTo: asset.anchorKey,
+      associatedServer: asset.associatedServer,
+    })),
   {
-    label: 'Arma3 CTH',
-    sublabel: 'tcentral.game.nfoservers.com:2302',
-    position: [-3.2, 2.15, 0.3],
-    color: '#8beaff',
-    href: SOLAR_SYSTEM_PLAYABLE_ANCHOR.href,
-    description: 'Attached playable-server datapoint resolved through the Solar System anchor.',
-    type: 'arma',
-    playableEntry: false,
-    attachedTo: 'solar_system'
-  },
-  {
-    label: 'Rust Bi-Weekly',
-    sublabel: 'tcentralrust.game.nfoservers.com:28015',
-    position: [1.4, -2.2, 0.7],
-    color: '#d8ff61',
-    href: SOLAR_SYSTEM_PLAYABLE_ANCHOR.href,
-    description: 'Attached Rust-family datapoint; not a separate playable map entry.',
-    cluster: 'rust',
-    playableEntry: false,
-    attachedTo: 'solar_system'
-  },
-  {
-    label: 'Rust Monthly',
-    sublabel: 'tcentralrust3.game.nfoservers.com:28015',
-    position: [-1.6, -2.75, -0.15],
-    color: '#ffd15c',
-    href: SOLAR_SYSTEM_PLAYABLE_ANCHOR.href,
-    description: 'Attached monthly Rust datapoint; not a separate playable map entry.',
-    cluster: 'rust',
-    playableEntry: false,
-    attachedTo: 'solar_system'
-  },
-  {
-    label: 'Rust Weekly',
-    sublabel: 'tcentralrust2.game.nfoservers.com:28015',
-    position: [3.05, -1.35, -0.3],
-    color: '#ff9fda',
-    href: SOLAR_SYSTEM_PLAYABLE_ANCHOR.href,
-    description: 'Attached weekly Rust datapoint; not a separate playable map entry.',
-    cluster: 'rust',
-    playableEntry: false,
-    attachedTo: 'solar_system'
-  },
-  {
+    key: 'player_reporting',
     label: 'Player Reporting',
     sublabel: 'Moderation route',
     position: [4.15, 0.8, 0.2],
@@ -109,7 +87,7 @@ const SERVER_NODES = [
     href: '/report-player',
     description: 'Moderation datapoint attached to the playable reference map.',
     playableEntry: false,
-    attachedTo: 'solar_system'
+    attachedTo: SOLAR_SYSTEM_PLAYABLE_ANCHOR.key,
   }
 ];
 
@@ -399,7 +377,7 @@ function AnchorStringLines({ anchor = SOLAR_SYSTEM_PLAYABLE_ANCHOR, dysonAnchor 
   const targets = useMemo(() => [
     ...SERVER_NODES,
     { label: 'Synaptics Dyson datapoint', position: dysonAnchor.position, color: dysonAnchor.color },
-    { label: 'Canada intelligence datapoint', position: [7.15, 4.2, -0.6], color: '#fff3a0' },
+    { label: 'Canada intelligence datapoint', position: CSIS_MAP_ASSET?.mapPosition || [7.15, 4.2, -0.6], color: CSIS_MAP_ASSET?.color || '#fff3a0' },
   ], [dysonAnchor]);
 
   return targets.map((target) => {
@@ -415,7 +393,7 @@ function AnchorStringLines({ anchor = SOLAR_SYSTEM_PLAYABLE_ANCHOR, dysonAnchor 
   });
 }
 
-function ShiningStar({ position = [7.15, 4.2, -0.6], onSelect }) {
+function ShiningStar({ position = CSIS_MAP_ASSET?.mapPosition || [7.15, 4.2, -0.6], onSelect }) {
   const core = useRef();
   const flareA = useRef();
   const flareB = useRef();
@@ -495,7 +473,7 @@ function ConstellationLines({ dysonAnchor }) {
       points[3],
       points[4],
       new THREE.Vector3(...dysonPosition),
-      new THREE.Vector3(7.15, 4.2, -0.6)
+      new THREE.Vector3(...(CSIS_MAP_ASSET?.mapPosition || [7.15, 4.2, -0.6]))
     ];
     const curve = new THREE.CatmullRomCurve3(ordered, false, 'catmullrom', 0.25);
     return new THREE.BufferGeometry().setFromPoints(curve.getPoints(260));
@@ -564,7 +542,13 @@ function Node({ node, active, onHover, onLeave, onSelect }) {
 function Scene({ dysonAssets = [], onSelect }) {
   const [active, setActive] = useState('Solar System');
   const primaryDysonAsset = dysonAssets.find((asset) => asset.sphere_key === 'ss') || dysonAssets[0];
-  const dysonAnchor = resolveDysonAnchorPayload(primaryDysonAsset);
+  const primaryDysonMapAsset = getWorldMapAssetByKey(primaryDysonAsset?.sphere_key || primaryDysonAsset?.id || 'ss');
+  const dysonAnchor = resolveDysonAnchorPayload({
+    ...primaryDysonAsset,
+    position: primaryDysonMapAsset?.mapPosition || primaryDysonAsset?.mapPosition || primaryDysonAsset?.position,
+    color: primaryDysonMapAsset?.color || primaryDysonAsset?.color,
+    label: primaryDysonMapAsset?.label || primaryDysonAsset?.label,
+  });
 
   return (
     <>
@@ -576,13 +560,13 @@ function Scene({ dysonAssets = [], onSelect }) {
       <Stars radius={70} depth={30} count={3200} factor={4.2} saturation={0} fade speed={0.8} />
 
       <group rotation={[-0.15, -0.08, 0]}>
-        <SectorRing position={SOLAR_SYSTEM_PLAYABLE_ANCHOR.position} radius={4.25} color="#ffd46b" label="Playable Solar Anchor" />
+        <SectorRing position={SOLAR_SYSTEM_PLAYABLE_ANCHOR.position} radius={4.25} color={SOLAR_SYSTEM_PLAYABLE_ANCHOR.color} label="Playable Solar Anchor" />
         <SectorRing position={dysonAnchor.position} radius={2.65} color={dysonAnchor.color} label="Dyson Datapoint" />
 
         <ConstellationLines dysonAnchor={dysonAnchor} />
         <AnchorStringLines dysonAnchor={dysonAnchor} />
 
-        <SolarSystemPlayableAnchor onSelect={onSelect} />
+        <SolarSystemPlayableAnchor anchor={SOLAR_SYSTEM_PLAYABLE_ANCHOR} onSelect={onSelect} />
         <group onClick={(e) => { e.stopPropagation(); onSelect({ ...SOLAR_SYSTEM_PLAYABLE_ANCHOR, label: 'Rust Cluster Datapoint', sublabel: 'String attached to Solar System', description: 'Rust server cluster rendered as a datapoint on the playable solar-system anchor.' }); }}>
           <BlackHole position={[1.15, -2.9, 0]} label="Rust Datapoint" sublabel="Solar string" />
         </group>
