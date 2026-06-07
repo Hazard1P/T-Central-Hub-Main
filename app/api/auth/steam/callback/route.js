@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { encryptJson } from '@/lib/security';
 import { getSteamAuthBaseUrl, shouldUseSecureSteamCookie } from '@/lib/steamAuthUrl';
-import { persistSteamFirstLoginEvent } from '@/lib/serverPersistence';
+import { ensurePlayerAccountLedger } from '@/lib/serverPersistence';
 
 function normalizeRedirectPath(value) {
   const raw = String(value || '').trim();
@@ -103,7 +103,7 @@ export async function GET(request) {
     }
   }
 
-  await persistSteamFirstLoginEvent(user);
+  await ensurePlayerAccountLedger({ steamUser: user });
 
   redirectUrl.searchParams.set('steam', 'linked');
   const response = NextResponse.redirect(redirectUrl);
