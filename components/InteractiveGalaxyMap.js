@@ -45,50 +45,71 @@ function resolveDysonAnchorPayload(anchor) {
   };
 }
 
+const SOLAR_SYSTEM_PLAYABLE_ANCHOR = {
+  label: 'Solar System',
+  sublabel: 'Playable reference map · Arma3 CTH',
+  position: [0, 0.4, 0],
+  color: '#ffd46b',
+  href: '/servers/arma3-cth',
+  description: 'Primary web-playable solar-system anchor. Server routes and Dyson spheres attach as intelligence strings and datapoints.',
+  playableAnchor: true,
+  anchorRole: 'reference-map-solar-system',
+};
+
 const SERVER_NODES = [
   {
     label: 'Arma3 CTH',
     sublabel: 'tcentral.game.nfoservers.com:2302',
-    position: [-5.6, 2.4, 0.3],
+    position: [-3.2, 2.15, 0.3],
     color: '#8beaff',
-    href: '/servers/arma3-cth',
-    description: 'Public tactical hill-control combat.',
-    type: 'arma'
+    href: SOLAR_SYSTEM_PLAYABLE_ANCHOR.href,
+    description: 'Attached playable-server datapoint resolved through the Solar System anchor.',
+    type: 'arma',
+    playableEntry: false,
+    attachedTo: 'solar_system'
   },
   {
     label: 'Rust Bi-Weekly',
     sublabel: 'tcentralrust.game.nfoservers.com:28015',
-    position: [0.45, -2.7, 0.7],
+    position: [1.4, -2.2, 0.7],
     color: '#d8ff61',
-    href: '/servers/rust-vanilla',
-    description: 'Bi-weekly wipe cycle.',
-    cluster: 'rust'
+    href: SOLAR_SYSTEM_PLAYABLE_ANCHOR.href,
+    description: 'Attached Rust-family datapoint; not a separate playable map entry.',
+    cluster: 'rust',
+    playableEntry: false,
+    attachedTo: 'solar_system'
   },
   {
     label: 'Rust Monthly',
     sublabel: 'tcentralrust3.game.nfoservers.com:28015',
-    position: [-2.35, -3.52, -0.15],
+    position: [-1.6, -2.75, -0.15],
     color: '#ffd15c',
-    href: '/servers/rust-monthly',
-    description: 'Monthly progression cycle.',
-    cluster: 'rust'
+    href: SOLAR_SYSTEM_PLAYABLE_ANCHOR.href,
+    description: 'Attached monthly Rust datapoint; not a separate playable map entry.',
+    cluster: 'rust',
+    playableEntry: false,
+    attachedTo: 'solar_system'
   },
   {
     label: 'Rust Weekly',
     sublabel: 'tcentralrust2.game.nfoservers.com:28015',
-    position: [2.72, -3.42, -0.3],
+    position: [3.05, -1.35, -0.3],
     color: '#ff9fda',
-    href: '/servers/rust-weekly',
-    description: 'Weekly fresh-start cycle.',
-    cluster: 'rust'
+    href: SOLAR_SYSTEM_PLAYABLE_ANCHOR.href,
+    description: 'Attached weekly Rust datapoint; not a separate playable map entry.',
+    cluster: 'rust',
+    playableEntry: false,
+    attachedTo: 'solar_system'
   },
   {
     label: 'Player Reporting',
     sublabel: 'Moderation route',
-    position: [5.85, -0.25, 0.2],
+    position: [4.15, 0.8, 0.2],
     color: '#ff8a8a',
     href: '/report-player',
-    description: 'Report rule violations.'
+    description: 'Moderation datapoint attached to the playable reference map.',
+    playableEntry: false,
+    attachedTo: 'solar_system'
   }
 ];
 
@@ -328,6 +349,72 @@ function DysonSphere({ asset, position = [5.15, 2.5, -0.45], onSelect }) {
   );
 }
 
+
+function SolarSystemPlayableAnchor({ anchor = SOLAR_SYSTEM_PLAYABLE_ANCHOR, onSelect }) {
+  const core = useRef();
+  const ringA = useRef();
+  const ringB = useRef();
+
+  useFrame((state, delta) => {
+    if (core.current) {
+      core.current.rotation.y += delta * 0.36;
+      core.current.scale.setScalar(1 + Math.sin(state.clock.elapsedTime * 1.9) * 0.06);
+    }
+    if (ringA.current) ringA.current.rotation.z += delta * 0.18;
+    if (ringB.current) ringB.current.rotation.x -= delta * 0.14;
+  });
+
+  return (
+    <group
+      position={anchor.position}
+      onClick={(e) => {
+        e.stopPropagation();
+        onSelect(anchor);
+      }}
+    >
+      <mesh ref={core}>
+        <sphereGeometry args={[0.72, 36, 36]} />
+        <meshStandardMaterial color={anchor.color} emissive={anchor.color} emissiveIntensity={2.1} roughness={0.28} />
+      </mesh>
+      <mesh ref={ringA} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[1.35, 0.035, 16, 160]} />
+        <meshBasicMaterial color="#fff0a8" transparent opacity={0.65} />
+      </mesh>
+      <mesh ref={ringB} rotation={[0.7, 0.2, 0.4]}>
+        <torusGeometry args={[1.85, 0.018, 12, 180]} />
+        <meshBasicMaterial color="#7fe7ff" transparent opacity={0.42} />
+      </mesh>
+      <pointLight position={[0, 0, 0]} color={anchor.color} intensity={22} distance={13} />
+      <Html position={[0, 1.55, 0]} center>
+        <button className="map-anchor-label clickable playable-anchor" onClick={() => onSelect(anchor)}>
+          <span className="anchor-title">Solar System Anchor</span>
+          <span className="anchor-copy">reference-map-solar-system</span>
+        </button>
+      </Html>
+    </group>
+  );
+}
+
+function AnchorStringLines({ anchor = SOLAR_SYSTEM_PLAYABLE_ANCHOR, dysonAnchor }) {
+  const targets = useMemo(() => [
+    ...SERVER_NODES,
+    { label: 'Synaptics Dyson datapoint', position: dysonAnchor.position, color: dysonAnchor.color },
+    { label: 'Canada intelligence datapoint', position: [7.15, 4.2, -0.6], color: '#fff3a0' },
+  ], [dysonAnchor]);
+
+  return targets.map((target) => {
+    const geometry = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(...anchor.position),
+      new THREE.Vector3(...target.position),
+    ]);
+    return (
+      <line key={`anchor-string-${target.label}`} geometry={geometry}>
+        <lineBasicMaterial color={target.color || '#6de8ff'} transparent opacity={0.38} />
+      </line>
+    );
+  });
+}
+
 function ShiningStar({ position = [7.15, 4.2, -0.6], onSelect }) {
   const core = useRef();
   const flareA = useRef();
@@ -401,11 +488,11 @@ function ConstellationLines({ dysonAnchor }) {
   const points = useMemo(() => SERVER_NODES.map((node) => new THREE.Vector3(...node.position)), []);
   const geometry = useMemo(() => {
     const ordered = [
+      new THREE.Vector3(...SOLAR_SYSTEM_PLAYABLE_ANCHOR.position),
+      points[0],
       points[1],
       points[2],
       points[3],
-      new THREE.Vector3(0, -3.1, 0),
-      new THREE.Vector3(-5.6, 2.4, 0.3),
       points[4],
       new THREE.Vector3(...dysonPosition),
       new THREE.Vector3(7.15, 4.2, -0.6)
@@ -460,7 +547,7 @@ function Node({ node, active, onHover, onLeave, onSelect }) {
 
       <Html center distanceFactor={8.5} position={[0, active ? 0.92 : 0.78, 0]}>
         <button
-          className={`map-node-label ${active ? 'active' : ''}`}
+          className={`map-node-label ${active ? 'active' : ''} ${node.playableEntry === false ? 'datapoint' : ''}`}
           onMouseEnter={() => onHover(node.label)}
           onMouseLeave={onLeave}
           onClick={() => onSelect(node)}
@@ -475,7 +562,7 @@ function Node({ node, active, onHover, onLeave, onSelect }) {
 }
 
 function Scene({ dysonAssets = [], onSelect }) {
-  const [active, setActive] = useState('Rust Bi-Weekly');
+  const [active, setActive] = useState('Solar System');
   const primaryDysonAsset = dysonAssets.find((asset) => asset.sphere_key === 'ss') || dysonAssets[0];
   const dysonAnchor = resolveDysonAnchorPayload(primaryDysonAsset);
 
@@ -489,19 +576,19 @@ function Scene({ dysonAssets = [], onSelect }) {
       <Stars radius={70} depth={30} count={3200} factor={4.2} saturation={0} fade speed={0.8} />
 
       <group rotation={[-0.15, -0.08, 0]}>
-        <SectorRing position={[-5.6, 2.4, 0.3]} radius={3.15} color="#58dfff" label="Arma Sector" />
-        <SectorRing position={[0, -3.1, 0]} radius={3.8} color="#b78dff" label="Rust Sector" />
-        <SectorRing position={dysonAnchor.position} radius={2.65} color={dysonAnchor.color} label="Support Sector" />
+        <SectorRing position={SOLAR_SYSTEM_PLAYABLE_ANCHOR.position} radius={4.25} color="#ffd46b" label="Playable Solar Anchor" />
+        <SectorRing position={dysonAnchor.position} radius={2.65} color={dysonAnchor.color} label="Dyson Datapoint" />
 
         <ConstellationLines dysonAnchor={dysonAnchor} />
+        <AnchorStringLines dysonAnchor={dysonAnchor} />
 
-        <group onClick={(e) => { e.stopPropagation(); onSelect({ label: 'Rust Cluster', href: '/servers/rust-vanilla', position: [0, -3.1, 0], sublabel: 'Lower singularity anchor', description: 'Rust server cluster anchor.' }); }}>
-          <BlackHole />
+        <SolarSystemPlayableAnchor onSelect={onSelect} />
+        <group onClick={(e) => { e.stopPropagation(); onSelect({ ...SOLAR_SYSTEM_PLAYABLE_ANCHOR, label: 'Rust Cluster Datapoint', sublabel: 'String attached to Solar System', description: 'Rust server cluster rendered as a datapoint on the playable solar-system anchor.' }); }}>
+          <BlackHole position={[1.15, -2.9, 0]} label="Rust Datapoint" sublabel="Solar string" />
         </group>
 
-        <ArmaBlackHole onSelect={onSelect} />
-        <DysonSphere asset={dysonAnchor} onSelect={onSelect} />
-        <ShiningStar onSelect={onSelect} />
+        <DysonSphere asset={{ ...dysonAnchor, route_metadata: { href: SOLAR_SYSTEM_PLAYABLE_ANCHOR.href, sublabel: 'Dyson datapoint on Solar System', external: false } }} onSelect={onSelect} />
+        <ShiningStar onSelect={(item) => onSelect({ ...item, href: SOLAR_SYSTEM_PLAYABLE_ANCHOR.href, external: false, sublabel: 'Intelligence datapoint on Solar System' })} />
 
         {SERVER_NODES.map((node) => (
           <Node
@@ -509,7 +596,7 @@ function Scene({ dysonAssets = [], onSelect }) {
             node={node}
             active={active === node.label}
             onHover={setActive}
-            onLeave={() => setActive('Rust Bi-Weekly')}
+            onLeave={() => setActive('Solar System')}
             onSelect={onSelect}
           />
         ))}
@@ -606,9 +693,9 @@ export default function InteractiveGalaxyMap() {
         <p className="eyebrow">3D system map</p>
         <h3>Free camera navigation with a cleaner focus-based interaction flow.</h3>
         <p className="muted">
-          The map no longer forces the camera into anchored warp positions. You can move freely, rotate, zoom,
-          and pan through the system yourself. Clicking any anchor or node now opens a focus panel so the
-          interaction feels more deliberate and easier to control.
+          The Solar System now acts as the playable reference-map anchor. Server routes and Dyson spheres render as
+          attached intelligence strings and datapoints, so the Arma playable handoff stays centralized instead
+          of presenting every datapoint as a standalone playable entry.
         </p>
       </div>
 
