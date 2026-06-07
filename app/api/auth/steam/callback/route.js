@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { encryptJson } from '@/lib/security';
 import { getSteamAuthBaseUrl, shouldUseSecureSteamCookie } from '@/lib/steamAuthUrl';
-import { ensurePlayerAccountForLogin } from '@/lib/serverPersistence';
+import { ensurePlayerAccountLedger } from '@/lib/serverPersistence';
 
 function normalizeRedirectPath(value) {
   const raw = String(value || '').trim();
@@ -103,16 +103,7 @@ export async function GET(request) {
     }
   }
 
-  try {
-    await ensurePlayerAccountForLogin({
-      provider: 'steam',
-      accountId: user.steamid,
-      displayName: user.personaname || 'Steam Pilot',
-      metadata: { source: 'steam_openid_callback' },
-    });
-  } catch {
-    // Login should still complete if account bootstrap telemetry/storage is temporarily unavailable.
-  }
+  await ensurePlayerAccountLedger({ steamUser: user });
 
   redirectUrl.searchParams.set('steam', 'linked');
   const response = NextResponse.redirect(redirectUrl);

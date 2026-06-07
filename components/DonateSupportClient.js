@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSteamSession } from '@/components/SteamSessionProvider';
 import { getDonationRouteOptions } from '@/lib/donationRouteOptions';
+import { SUPPORT_RECEIPT_MAX_AGE_DAYS } from '@/lib/supportSessionConfig';
 
 function buildSdkSrc({ clientId, currency, mode }) {
   const params = new URLSearchParams({
@@ -46,6 +47,32 @@ function loadPayPalSdk({ clientId, currency, mode }) {
   });
 }
 
+const legalLinks = [
+  { href: '/terms-and-conditions', label: 'Terms' },
+  { href: '/privacy-policy', label: 'Privacy' },
+  { href: '/eula', label: 'EULA' },
+  { href: '/multiplayer-policy', label: 'Multiplayer Policy' },
+  { href: '/contact', label: 'Contact' },
+];
+
+function PaymentLegalDisclosure() {
+  return (
+    <aside className="donate-legal-disclosure" aria-label="Payment legal disclosure">
+      <strong>Payment disclosure</strong>
+      <p>
+        One-time donations and recurring subscriptions are processed by PayPal. Monthly memberships recur until cancelled
+        through PayPal or the account-management path provided. Donations/support do not guarantee in-game currency,
+        stored value, external payout, or real-world return. PayPal.Me fallback may not automatically bind to the
+        Steam-linked account. Refund/support questions should use <a href="/contact">contact</a>.
+      </p>
+      <nav className="donate-legal-links" aria-label="Donation legal links">
+        {legalLinks.map((link) => (
+          <a key={link.href} href={link.href}>{link.label}</a>
+        ))}
+      </nav>
+    </aside>
+  );
+}
 
 const supportPackages = [
   {
@@ -161,9 +188,31 @@ export default function DonateSupportClient() {
         const buttonsConfig = availableMode === 'subscription'
           ? {
               style: { shape: 'rect', color: 'gold', layout: 'vertical', label: 'subscribe' },
-              createSubscription: (data, actions) => actions.subscription.create({
-                plan_id: config.subscriptionPlanId,
-              }),
+              createSubscription: async (data, actions) => {
+                setStatus('Creating Steam-bound subscription...');
+                const idempotencyKey = `subscription:${steamUser.steamid}:${Date.now()}`;
+                const response = await fetch('/api/donations/paypal/create-subscription', {
+                  method: 'POST',
+                  headers: {
+                    'content-type': 'application/json',
+                    'x-idempotency-key': idempotencyKey,
+                  },
+                  body: JSON.stringify({ planId: config.subscriptionPlanId, idempotencyKey }),
+                });
+                const payload = await response.json().catch(() => null);
+                if (response.ok && payload?.subscriptionId) {
+                  return payload.subscriptionId;
+                }
+
+                if (!actions?.subscription?.create) {
+                  throw new Error(payload?.error || 'Unable to create Steam-bound subscription');
+                }
+
+                return actions.subscription.create({
+                  plan_id: config.subscriptionPlanId,
+                  custom_id: String(steamUser.steamid),
+                });
+              },
               onApprove: async (data) => {
                 setStatus('Membership approved. Verifying and linking support...');
                 const response = await fetch('/api/support/link', {
@@ -344,6 +393,7 @@ export default function DonateSupportClient() {
         <div className="paypal-live-shell">
           <div ref={orderContainerRef} style={{ display: availableMode === 'donation' ? 'block' : 'none' }} />
           <div ref={subscriptionContainerRef} style={{ display: availableMode === 'subscription' ? 'block' : 'none' }} />
+          <PaymentLegalDisclosure />
         </div>
       ) : (
         <div className="content-card donate-note-box">

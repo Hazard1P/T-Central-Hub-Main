@@ -1,18 +1,22 @@
 create table if not exists public.player_account_ledger (
-  event_id text primary key,
+  id uuid primary key default gen_random_uuid(),
   identity_id text not null,
-  display_name text not null,
-  identity_kind text not null default 'guest',
-  authenticated boolean not null default false,
   event_type text not null,
-  progress jsonb not null default '{}'::jsonb,
-  progression jsonb not null default '{}'::jsonb,
-  metadata jsonb not null default '{}'::jsonb,
+  progress_delta jsonb,
+  progress jsonb,
+  progression jsonb,
+  metadata jsonb,
+  saved_at timestamptz not null default now(),
+  idempotency_key text not null,
+  content_hash text not null,
   created_at timestamptz not null default now()
 );
 
-create index if not exists player_account_ledger_identity_created_idx
-  on public.player_account_ledger (identity_id, created_at desc);
+create unique index if not exists player_account_ledger_idempotency_key_idx
+  on public.player_account_ledger (idempotency_key);
+
+create index if not exists player_account_ledger_identity_saved_at_idx
+  on public.player_account_ledger (identity_id, saved_at desc);
 
 create index if not exists player_account_ledger_event_type_idx
   on public.player_account_ledger (event_type);
