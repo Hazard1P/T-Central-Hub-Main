@@ -294,7 +294,7 @@ function DysonSphere({ asset, position = [5.15, 2.5, -0.45], onSelect }) {
 
       <mesh ref={ringA}>
         <torusGeometry args={[0.9, 0.03, 16, 140]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1.2} />
+        <meshStandardMaterial color={resolvedColor} emissive={resolvedColor} emissiveIntensity={1.2} />
       </mesh>
       <mesh ref={ringB} rotation={[1.1, 0.3, 0.2]}>
         <torusGeometry args={[1.18, 0.025, 16, 140]} />
@@ -305,7 +305,7 @@ function DysonSphere({ asset, position = [5.15, 2.5, -0.45], onSelect }) {
         <meshStandardMaterial color="#fff4c1" emissive="#fff4c1" emissiveIntensity={0.9} />
       </mesh>
 
-      <pointLight position={[0, 0, 0]} color={color} intensity={16} distance={10} />
+      <pointLight position={[0, 0, 0]} color={resolvedColor} intensity={16} distance={10} />
       <Html position={[0, -1.38, 0]} center>
         <button
           className="map-anchor-label clickable"
@@ -477,6 +477,7 @@ function Node({ node, active, onHover, onLeave, onSelect }) {
 function Scene({ dysonAssets = [], onSelect }) {
   const [active, setActive] = useState('Rust Bi-Weekly');
   const primaryDysonAsset = dysonAssets.find((asset) => asset.sphere_key === 'ss') || dysonAssets[0];
+  const dysonAnchor = resolveDysonAnchorPayload(primaryDysonAsset);
 
   return (
     <>
@@ -499,7 +500,7 @@ function Scene({ dysonAssets = [], onSelect }) {
         </group>
 
         <ArmaBlackHole onSelect={onSelect} />
-        <DysonSphere asset={primaryDysonAsset} onSelect={onSelect} />
+        <DysonSphere asset={dysonAnchor} onSelect={onSelect} />
         <ShiningStar onSelect={onSelect} />
 
         {SERVER_NODES.map((node) => (

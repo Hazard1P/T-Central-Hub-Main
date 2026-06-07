@@ -2,6 +2,7 @@ import Image from 'next/image';
 import PageShell from '@/components/PageShell';
 import ServerConnectActions from '@/components/ServerConnectActions';
 import { getServerBySlug } from '@/lib/serverData';
+import { getPlayableSectionPolicy } from '@/lib/playableSectionPolicy';
 
 export const metadata = { title: 'Arma3 CTH' };
 
@@ -23,6 +24,8 @@ export default function ArmaPage() {
   const server = getServerBySlug('arma3-cth');
   const serverIp = server?.ip || 'tcentral.game.nfoservers.com:2302';
   const integration = server?.integration;
+  const playablePolicy = getPlayableSectionPolicy({ selectedSlug: 'arma3-cth', identityScope: 'server-page' });
+  const selectedAllowance = playablePolicy.selected;
 
   return (
     <PageShell
@@ -111,6 +114,29 @@ export default function ArmaPage() {
         </article>
 
         <article className="content-card">
+          <p className="eyebrow">Playable section</p>
+          <h3>Human avatars, entities, and VR bridge</h3>
+          <p className="muted">
+            The Arma route is now declared as the playable anchor for the private game-hub map. The server allowance enables human avatar spawn,
+            human entity replication, VR observer attachment, encrypted session handoff, and continuity checkpoint restore without exposing private assets.
+          </p>
+          <div className="playable-allowance-grid">
+            <div className="playable-allowance-card">
+              <strong>Surface</strong>
+              <span>{selectedAllowance.playableSurface}</span>
+            </div>
+            <div className="playable-allowance-card">
+              <strong>Clients</strong>
+              <span>{selectedAllowance.allowedClients.join(', ')}</span>
+            </div>
+            <div className="playable-allowance-card">
+              <strong>Checkpoint</strong>
+              <span>{playablePolicy.checkpoint.scope}</span>
+            </div>
+          </div>
+        </article>
+
+        <article className="content-card">
           <p className="eyebrow">System integration</p>
           <h3>PBO + server ID wiring</h3>
           <ul className="arma-list">
@@ -125,6 +151,9 @@ export default function ArmaPage() {
               VIP system: {integration?.vipSystem?.enabled ? 'enabled' : 'pending'}
               {integration?.vipSystem?.tiers?.length ? ` (${integration.vipSystem.tiers.join(', ')})` : ''}
             </li>
+            <li>Encrypted playable handoff: {playablePolicy.encryption.sessionSignature}</li>
+            <li>Server allows: {selectedAllowance.allow.join(', ')}</li>
+            <li>Server denies: {selectedAllowance.deny.join(', ')}</li>
           </ul>
         </article>
       </div>
