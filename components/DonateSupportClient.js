@@ -161,9 +161,31 @@ export default function DonateSupportClient() {
         const buttonsConfig = availableMode === 'subscription'
           ? {
               style: { shape: 'rect', color: 'gold', layout: 'vertical', label: 'subscribe' },
-              createSubscription: (data, actions) => actions.subscription.create({
-                plan_id: config.subscriptionPlanId,
-              }),
+              createSubscription: async (data, actions) => {
+                setStatus('Creating Steam-bound subscription...');
+                const idempotencyKey = `subscription:${steamUser.steamid}:${Date.now()}`;
+                const response = await fetch('/api/donations/paypal/create-subscription', {
+                  method: 'POST',
+                  headers: {
+                    'content-type': 'application/json',
+                    'x-idempotency-key': idempotencyKey,
+                  },
+                  body: JSON.stringify({ planId: config.subscriptionPlanId, idempotencyKey }),
+                });
+                const payload = await response.json().catch(() => null);
+                if (response.ok && payload?.subscriptionId) {
+                  return payload.subscriptionId;
+                }
+
+                if (!actions?.subscription?.create) {
+                  throw new Error(payload?.error || 'Unable to create Steam-bound subscription');
+                }
+
+                return actions.subscription.create({
+                  plan_id: config.subscriptionPlanId,
+                  custom_id: String(steamUser.steamid),
+                });
+              },
               onApprove: async (data) => {
                 setStatus('Membership approved. Verifying and linking support...');
                 const response = await fetch('/api/support/link', {
