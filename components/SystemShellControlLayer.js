@@ -5,6 +5,7 @@ import SteamAccessPanel from '@/components/SteamAccessPanel';
 import SteamModeButtons from '@/components/SteamModeButtons';
 import WalletExchangePanel from '@/components/WalletExchangePanel';
 import BlackholeMapPanel from '@/components/BlackholeMapPanel';
+import DysonContinuityCheckpointPanel from '@/components/DysonContinuityCheckpointPanel';
 
 export default function SystemShellControlLayer({ steamUser, lobbyMode, onChange, activeNode }) {
   const [open, setOpen] = useState(true);
@@ -27,6 +28,7 @@ export default function SystemShellControlLayer({ steamUser, lobbyMode, onChange
           <SteamAccessPanel steamUser={steamUser} lobbyMode={lobbyMode} onChange={onChange} />
           <SteamModeButtons steamUser={steamUser} lobbyMode={lobbyMode} onChange={onChange} />
           <BlackholeMapPanel activeNode={activeNode} lobbyMode={lobbyMode} steamUser={steamUser} />
+          <DysonContinuityCheckpointPanel activeNode={activeNode} steamUser={steamUser} />
           <WalletExchangePanel activeNode={activeNode} lobbyMode={lobbyMode} />
         </div>
       ) : null}
