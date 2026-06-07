@@ -35,10 +35,16 @@ function toApiAuthContext(authContext) {
   };
 }
 
+function resolveScopedAccountId(authContext) {
+  if (!authContext?.provider || !authContext?.accountId) return null;
+  return `${String(authContext.provider).toLowerCase()}:${String(authContext.accountId)}`;
+}
+
 function resolveIdentity(body = {}, authContext) {
-  if (authContext?.authenticated && authContext?.accountId) {
+  const scopedAccountId = resolveScopedAccountId(authContext);
+  if (authContext?.authenticated && scopedAccountId) {
     return {
-      id: String(authContext.accountId),
+      id: scopedAccountId,
       displayName: sanitizeDisplayName(authContext.displayName, 'Pilot'),
       identityKind: authContext.identityKind || authContext.provider || 'member',
       authenticated: true,

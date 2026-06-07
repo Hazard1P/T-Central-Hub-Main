@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { encryptJson } from '@/lib/security';
 import { getGoogleAuthBaseUrl, shouldUseSecureGoogleCookie } from '@/lib/googleAuthUrl';
+import { ensurePlayerAccountForLogin } from '@/lib/serverPersistence';
 
 function normalizeRedirectPath(value) {
   const raw = String(value || '').trim();
@@ -91,6 +92,20 @@ export async function GET(request) {
       picture: profile.picture,
       email_verified: Boolean(profile.email_verified),
     };
+
+    try {
+      await ensurePlayerAccountForLogin({
+        provider: 'google',
+        accountId: user.sub,
+        displayName: user.name || user.email || 'Google Pilot',
+        metadata: {
+          source: 'google_oauth_callback',
+          emailVerified: user.email_verified,
+        },
+      });
+    } catch {
+      // Login should still complete if account bootstrap telemetry/storage is temporarily unavailable.
+    }
 
     redirectUrl.searchParams.set('google', 'linked');
     const response = NextResponse.redirect(redirectUrl);

@@ -94,9 +94,10 @@ export function SteamSessionProvider({ children }) {
   }, []);
 
   const updatePresence = useCallback((telemetry) => {
-    const identity = resolveMultiplayerIdentity(steamUser);
+    const identity = resolveMultiplayerIdentity(steamUser, googleUser);
     const snapshot = createPresenceSnapshot({
       steamUser,
+      googleUser,
       telemetry,
       scope: universe?.privacy,
       lobbyMode,
@@ -119,7 +120,7 @@ export function SteamSessionProvider({ children }) {
         channelRef.current.postMessage(snapshot);
       } catch {}
     }
-  }, [steamUser, universe, lobbyMode]);
+  }, [steamUser, googleUser, universe, lobbyMode]);
 
   useEffect(() => {
     refresh();

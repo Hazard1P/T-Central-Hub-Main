@@ -1100,7 +1100,7 @@ function TouchFlightPad({ onInputChange }) {
 export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null, onSelectionChange = null }) {
   const router = useRouter();
   const deviceTier = useDeviceTier();
-  const { universe, presence, updatePresence, refresh } = useSteamSession();
+  const { googleUser, universe, presence, updatePresence, refresh } = useSteamSession();
   const [selected, setSelected] = useState(null);
   const [touchInput, setTouchInput] = useState({ x: 0, y: 0, z: 0, boost: 0 });
   const [flightConfig, setFlightConfig] = useState(FLIGHT_PRESETS.assisted);
@@ -1127,7 +1127,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   const [prayerSeedState, setPrayerSeedState] = useState({ status: '', ok: true });
   const [validatorSummary, setValidatorSummary] = useState(null);
   const simRuntimeClient = useMemo(() => createSimulationRuntimeClient(), []);
-  const identity = useMemo(() => resolveMultiplayerIdentity(steamUser), [steamUser]);
+  const identity = useMemo(() => resolveMultiplayerIdentity(steamUser, googleUser), [steamUser, googleUser]);
   const [progress, setProgress] = useState(defaultProgressState());
   const [accountProfile, setAccountProfile] = useState(() => buildAccountSnapshot({ identity: { id: 'boot', displayName: 'Boot Pilot', kind: 'guest', authenticated: false }, progress: defaultProgressState() }));
   const {
@@ -1261,7 +1261,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       if (serverSession?.token) return;
 
       try {
-        const identity = resolveMultiplayerIdentity(steamUser);
+        const identity = resolveMultiplayerIdentity(steamUser, googleUser);
         const response = await fetch('/api/multiplayer/connect', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1283,7 +1283,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       active = false;
       cancelled = true;
     };
-  }, [lobbyMode, steamUser, setServerSession, setServerStatus]);
+  }, [lobbyMode, steamUser, googleUser, setServerSession, setServerStatus]);
 
   useEffect(() => {
     const previousSession = previousServerSessionRef.current;
@@ -1510,7 +1510,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       .catch(() => {});
 
     return () => { active = false; };
-  }, [identity.id, identity.displayName, identity.kind, identity.authenticated, steamUser]);
+  }, [identity.id, identity.displayName, identity.kind, identity.authenticated, steamUser, googleUser]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1530,7 +1530,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
     }).catch(() => {});
 
     return () => controller.abort();
-  }, [progress, identity, steamUser]);
+  }, [progress, identity, steamUser, googleUser]);
 
   useEffect(() => {
     if (lobbyMode !== 'hub') return;
@@ -1669,11 +1669,11 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           </p>
           <div className="focus-meta">
             <span>{lobbyMode === 'hub' ? 'Shared route layer · discrepant hub star online' : privateWorldAsset?.privateScope || getPrivateWorldKey(steamUser?.steamid)}</span>
-            <span>{steamUser?.personaname || identity.displayName || 'Guest'}</span>
+            <span>{steamUser?.personaname || googleUser?.name || identity.displayName || 'Guest'}</span>
           </div>
           <div className="stable-chip-row">
             <span>Gravity flight</span>
-            <span>{steamUser?.steamid ? 'Steam-linked shell' : 'Guest shell sync'}</span>
+            <span>{steamUser?.steamid ? 'Steam-linked shell' : googleUser?.sub ? 'Google-linked shell' : 'Guest shell sync'}</span>
             <span>{`${HYPERSPACE_SIGNATURE_PREFIX} state-space`}</span>
             <span>{universe?.privacy?.privacyTier || 'guest-public'}</span>
             <span>{lobbyMode === 'hub' ? 'Hub star sync' : `${privateWorldAsset?.replicaSystems?.length || 1}x epoch-rolling private systems`}</span>
@@ -1741,7 +1741,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           <h3>{perspective.role}</h3>
           <p className="muted">{perspective.note}</p>
           <div className="focus-meta">
-            <span>{steamUser?.personaname || 'Guest observer'}</span>
+            <span>{steamUser?.personaname || googleUser?.name || 'Guest observer'}</span>
             <span>{lobbyMode === 'hub' ? 'Shared world visibility' : 'Private world visibility'}</span>
           </div>
           <div className="stable-chip-row alt">
@@ -1961,7 +1961,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             onAutoFocus={handleAutoFocus}
             touchInput={touchInput}
             deviceTier={deviceTier}
-            authenticated={Boolean(steamUser?.steamid)}
+            authenticated={Boolean(steamUser?.steamid || googleUser?.sub)}
             onTelemetryChange={setTelemetry}
             onCombatAction={handleCombatAction}
             flightConfig={flightConfig}
