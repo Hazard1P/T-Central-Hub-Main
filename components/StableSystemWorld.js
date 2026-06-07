@@ -490,6 +490,40 @@ function DysonSphereStructure({ node, sessionMode = SESSION_MODES.IDLE, ringAdju
   );
 }
 
+
+function PlayableAnchorDatapoints({ node }) {
+  const metadata = node.playableMapMetadata;
+  const datapoints = Array.isArray(metadata?.datapoints) ? metadata.datapoints : [];
+  if (!metadata?.playableAnchor || datapoints.length === 0) return null;
+
+  return (
+    <group>
+      {datapoints.map((datapoint, index) => {
+        const angle = (Math.PI * 2 * index) / datapoints.length;
+        const radius = 3.6 + (index % 2) * 0.52;
+        const position = [Math.cos(angle) * radius, ((index % 3) - 1) * 0.28, Math.sin(angle) * radius * 0.72];
+        return (
+          <group key={`playable-datapoint-${datapoint.key}`} position={position}>
+            <mesh>
+              <sphereGeometry args={[datapoint.kind === 'dyson' ? 0.18 : 0.14, 12, 12]} />
+              <meshStandardMaterial color={datapoint.color || '#9fdcff'} emissive={datapoint.color || '#9fdcff'} emissiveIntensity={0.6} roughness={0.45} />
+            </mesh>
+            <line geometry={new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(-position[0], -position[1], -position[2])])}>
+              <lineBasicMaterial color={datapoint.color || '#9fdcff'} transparent opacity={0.28} />
+            </line>
+            <Html center distanceFactor={18} position={[0, 0.42, 0]}>
+              <div className="dyson-logic-tag playable-datapoint-tag">
+                <strong>{datapoint.label}</strong>
+                <span>{datapoint.kind} datapoint · {metadata.anchorRole}</span>
+              </div>
+            </Html>
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
 function SolarSubSystem({ node }) {
   const orbitRefs = useRef([]);
   const starRef = useRef(null);
@@ -541,10 +575,11 @@ function SolarSubSystem({ node }) {
           </mesh>
         </group>
       ))}
+      <PlayableAnchorDatapoints node={node} />
       <Html center distanceFactor={18} position={[0, 2.8 * radiusScale, 0]}>
         <div className="dyson-logic-tag">
-          <strong>{stellarProfile.spectralClass || 'G-class'} star</strong>
-          <span>{stellarProfile.temperatureK || 5778} K · L {stellarProfile.luminositySolar || 1}☉ · HZ {stellarProfile.habitableInnerAu || 0.95}-{stellarProfile.habitableOuterAu || 1.67} AU</span>
+          <strong>{node.playableAnchor ? 'Playable solar-system anchor' : (stellarProfile.spectralClass || 'G-class') + ' star'}</strong>
+          <span>{node.playableAnchor ? `${node.anchorRole} · ${node.playableMapMetadata?.datapoints?.length || 0} string datapoints` : `${stellarProfile.temperatureK || 5778} K · L ${stellarProfile.luminositySolar || 1}☉ · HZ ${stellarProfile.habitableInnerAu || 0.95}-${stellarProfile.habitableOuterAu || 1.67} AU`}</span>
         </div>
       </Html>
     </group>
@@ -1109,7 +1144,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   const graph = useMemo(() => buildUniverseGraph(Date.now(), { lobbyMode, roomName: process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main', extraNodes: privateWorldAsset?.nodes || [], extraRouteLinks: privateWorldAsset?.routeLinks || [] }), [privateWorldAsset, lobbyMode]);
   const epochSummary = useMemo(() => summarizeEpochRelativity(graph.epochAnchor), [graph]);
   const graphByKey = useMemo(() => Object.fromEntries(graph.nodes.map((node) => [node.key, node])), [graph]);
-  const displayNodes = useMemo(() => graph.nodes.filter((node) => ['blackhole', 'dyson', 'solar', 'node'].includes(node.kind)), [graph]);
+  const displayNodes = useMemo(() => graph.nodes.filter((node) => !node.playableDatapoint && ['blackhole', 'dyson', 'solar', 'node'].includes(node.kind)), [graph]);
 
   const markVisited = (nodeKey) => {
     if (!nodeKey) return;
