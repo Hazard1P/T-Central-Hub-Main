@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { isPayPalConfigured, verifyPayPalWebhook } from '@/lib/paypal';
+import { getPayPalSubscriptionDetails, isPayPalConfigured, verifyPayPalWebhook } from '@/lib/paypal';
 import {
   hasProcessedPayPalWebhookEvent,
   markPayPalWebhookEventProcessed,
   reconcilePayPalWebhookRecord,
 } from '@/lib/paypalWebhookStore';
+import { upsertSupportLedgerRecord } from '@/lib/server/supportLedgerStore';
 import { trackServerEvent } from '@/lib/server/vercelTelemetry';
 
 const SUPPORTED_WEBHOOK_EVENTS = new Set([
@@ -22,8 +23,11 @@ const SUPPORTED_WEBHOOK_EVENTS = new Set([
 function readResourceCustomId(resource = {}) {
   return (
     resource?.custom_id ||
-    resource?.subscriber?.payer_id ||
-    resource?.subscriber?.email_address ||
+    resource?.customId ||
+    resource?.metadata?.steamid ||
+    resource?.metadata?.steamId ||
+    resource?.metadata?.steamID ||
+    resource?.supplementary_data?.related_ids?.custom_id ||
     null
   );
 }
@@ -151,6 +155,11 @@ export async function POST(request) {
   }
 
   const parsed = parseWebhookRecord(event);
+  if (parsed.subscriptionId && !parsed.steamid) {
+    const subscription = await getPayPalSubscriptionDetails(parsed.subscriptionId).catch(() => null);
+    parsed.steamid = readResourceCustomId(subscription);
+  }
+
   const record = reconcilePayPalWebhookRecord({
     eventId,
     paypalEventType: parsed.eventType,
@@ -162,6 +171,24 @@ export async function POST(request) {
     amount: parsed.amount,
     currency: parsed.currency,
   });
+
+  if (record.identifier && record.steamid) {
+    await upsertSupportLedgerRecord({
+      provider: 'paypal',
+      identifierType: record.identifierType || record.verification?.identifierType,
+      identifier: record.identifier,
+      orderId: record.orderId,
+      captureId: record.captureId,
+      subscriptionId: record.subscriptionId,
+      steamid: record.steamid,
+      personaname: record.personaname,
+      status: record.status,
+      paypalEventType: parsed.eventType,
+      lastEventId: eventId,
+      verification: record.verification,
+      metadata: { amount: record.amount, currency: record.currency },
+    });
+  }
 
   markPayPalWebhookEventProcessed(eventId);
   await trackServerEvent('api_paypal_webhook', { outcome: 'processed', eventType });

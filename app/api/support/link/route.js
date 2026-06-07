@@ -9,6 +9,7 @@ import {
   getPayPalCaptureDetails,
 } from '@/lib/paypal';
 import { findPayPalWebhookRecord } from '@/lib/paypalWebhookStore';
+import { findSupportLedgerRecord, upsertSupportLedgerRecord } from '@/lib/server/supportLedgerStore';
 
 const ALLOWED_PROVIDER = 'paypal';
 const VERIFIABLE_IDENTIFIER_TYPES = new Set(['subscription', 'order', 'capture']);
@@ -43,10 +44,19 @@ function readSupportVerifications() {
   }
 }
 
-function findPriorVerification({ steamid, identifier, identifierType }) {
+async function findPriorVerification({ steamid, identifier, identifierType }) {
+  const supportLedgerRecord = await findSupportLedgerRecord({
+    provider: ALLOWED_PROVIDER,
+    identifierType,
+    identifier,
+  });
+  if (supportLedgerRecord?.steamid) {
+    return String(supportLedgerRecord.steamid) === String(steamid) ? supportLedgerRecord : { ...supportLedgerRecord, steamidMismatch: true };
+  }
+
   const durableRecord = findPayPalWebhookRecord({ identifierType, identifier });
-  if (durableRecord?.steamid && String(durableRecord.steamid) === String(steamid)) {
-    return durableRecord;
+  if (durableRecord?.steamid) {
+    return String(durableRecord.steamid) === String(steamid) ? durableRecord : { ...durableRecord, steamidMismatch: true };
   }
 
   const ledger = readSupportVerifications();
@@ -78,12 +88,35 @@ function findPriorVerification({ steamid, identifier, identifierType }) {
   });
 }
 
+
+function collectPayPalSubscriptionSteamIds(subscription = {}) {
+  return [
+    subscription?.custom_id,
+    subscription?.customId,
+    subscription?.metadata?.steamid,
+    subscription?.metadata?.steamId,
+    subscription?.metadata?.steamID,
+  ]
+    .filter(Boolean)
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+}
+
 async function verifyPayPalIdentifier({ identifier, identifierType, steamid }) {
   if (identifierType === 'subscription') {
     const subscription = await getPayPalSubscriptionDetails(identifier);
     const state = String(subscription?.status || '').toUpperCase();
     if (!['ACTIVE', 'APPROVAL_PENDING'].includes(state)) {
       return { ok: false, error: `Subscription is not active (${state || 'UNKNOWN'})` };
+    }
+
+    const linkedSteamIds = collectPayPalSubscriptionSteamIds(subscription);
+    if (linkedSteamIds.length === 0) {
+      return { ok: false, error: 'Subscription is missing Steam account binding metadata' };
+    }
+
+    if (!linkedSteamIds.includes(String(steamid))) {
+      return { ok: false, error: 'Subscription does not belong to this Steam account' };
     }
 
     return {
@@ -191,11 +224,21 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Steam login required before linking support' }, { status: 401 });
   }
 
-  const priorVerification = findPriorVerification({
-    steamid: steamUser.steamid,
-    identifier,
-    identifierType,
-  });
+  let priorVerification = null;
+  try {
+    priorVerification = await findPriorVerification({
+      steamid: steamUser.steamid,
+      identifier,
+      identifierType,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown support ledger error';
+    return NextResponse.json({ error: `Support ledger lookup failed: ${message}` }, { status: 502 });
+  }
+
+  if (priorVerification?.steamidMismatch) {
+    return NextResponse.json({ error: 'Support identifier is already linked to another Steam account' }, { status: 403 });
+  }
 
   let verification = null;
 
@@ -238,6 +281,27 @@ export async function POST(request) {
     verification,
     reference: signValue(`${provider}:${identifierType}:${identifier}:${steamUser.steamid}:${verification.verifiedAt}`),
   };
+
+  try {
+    await upsertSupportLedgerRecord({
+      provider,
+      planId,
+      identifier,
+      identifierType,
+      subscriptionId: identifierType === 'subscription' ? identifier : null,
+      orderId: identifierType === 'order' ? identifier : null,
+      captureId: identifierType === 'capture' ? identifier : null,
+      steamid: steamUser.steamid,
+      personaname: steamUser.personaname || null,
+      status: verification.state,
+      verification,
+      linkedAt: payload.linkedAt,
+      metadata: { reference: payload.reference },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown support ledger error';
+    return NextResponse.json({ error: `Unable to persist verified support ledger: ${message}` }, { status: 502 });
+  }
 
   const response = NextResponse.json({
     ok: true,
