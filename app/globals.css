@@ -489,6 +489,113 @@ button { font: inherit; }
   letter-spacing: -0.03em;
 }
 
+
+.legal-summary-card {
+  display: grid;
+  gap: 14px;
+  padding: 26px;
+  border-color: rgba(136, 196, 255, 0.22);
+  background:
+    radial-gradient(circle at top left, rgba(74, 163, 255, 0.18), transparent 38%),
+    rgba(255,255,255,0.055);
+}
+
+.legal-section-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 28px;
+}
+
+.legal-card {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-height: 100%;
+  padding: 26px;
+  border-color: rgba(136, 196, 255, 0.18);
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.035)),
+    rgba(6,16,24,0.72);
+}
+
+.legal-card::before {
+  content: "";
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 44px;
+  height: 44px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.16), rgba(255,255,255,0.02)),
+    radial-gradient(circle, rgba(74, 163, 255, 0.24), transparent 68%);
+  box-shadow: 0 14px 36px rgba(0,0,0,0.18);
+}
+
+.legal-card::after {
+  content: "§";
+  position: absolute;
+  top: 24px;
+  right: 32px;
+  color: rgba(255,255,255,0.62);
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.legal-card .eyebrow {
+  width: fit-content;
+  padding: 7px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+}
+
+.legal-card h3 {
+  margin-top: 2px;
+}
+
+.legal-card .muted {
+  margin: 0;
+  line-height: 1.72;
+}
+
+.legal-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.legal-meta-row span,
+.legal-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.055);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.legal-cta {
+  width: fit-content;
+  margin-top: 6px;
+  color: var(--text);
+  border-color: rgba(136, 196, 255, 0.24);
+  background: linear-gradient(135deg, rgba(74, 163, 255, 0.18), rgba(255,255,255,0.06));
+  text-decoration: none;
+}
+
 .page-image {
   width: 100%;
   height: auto;
@@ -2307,7 +2414,8 @@ button { font: inherit; }
 
 @media (max-width: 960px) {
   .arma-entry-grid,
-  .arma-brief-grid {
+  .arma-brief-grid,
+  .legal-section-grid {
     grid-template-columns: 1fr;
   }
 }
