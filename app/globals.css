@@ -6131,6 +6131,46 @@ button { font: inherit; }
   color: var(--cyan);
 }
 
+.panel-toggle-summary {
+  display: grid;
+  gap: 0.18rem;
+  justify-items: end;
+  margin-left: auto;
+  color: rgba(219, 236, 255, 0.82);
+  text-align: right;
+}
+
+.panel-toggle-summary strong {
+  color: #effcff;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.panel-toggle-summary small {
+  color: rgba(219, 236, 255, 0.64);
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.panel-minimize-toggle .panel-toggle-summary,
+.system-shell-control-toggle .panel-toggle-summary {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .panel-minimize-toggle,
+  .system-shell-control-toggle {
+    align-items: flex-start;
+  }
+
+  .panel-toggle-summary {
+    justify-items: start;
+    text-align: left;
+  }
+}
+
 .hub-form-shell {
   display: grid;
   gap: 18px;

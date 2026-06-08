@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import usePersistedPanelState from '@/components/usePersistedPanelState';
 
 export default function EntropyMissionPanel({
   lobbyMode = 'hub',
@@ -16,14 +16,14 @@ export default function EntropyMissionPanel({
   const economy = operations.economy || { entropyMined: 0, entropyResolved: 0, unresolvedEntropy: 0, credits: 0, currency: { shortLabel: 'E_s credits', symbol: 'E_s' } };
   const canMine = lobbyMode === 'hub' && activeNode?.key === 'entropic_node';
   const canResolve = activeNode?.key === 'matrixcoinexchange' && economy.unresolvedEntropy > 0;
-  const [open, setOpen] = useState(true);
+  const [open, toggleOpen] = usePersistedPanelState('tcentral-panel-entropy-mission', false);
 
   return (
     <div className="content-card stable-card entropy-mission-card stable-card-layer telemetry-layer">
       <button
         type="button"
         className="panel-minimize-toggle"
-        onClick={() => setOpen((value) => !value)}
+        onClick={toggleOpen}
         aria-expanded={open}
         aria-label={open ? 'Minimize mission flow panel' : 'Expand mission flow panel'}
       >
@@ -31,6 +31,10 @@ export default function EntropyMissionPanel({
           <p className="eyebrow">Mission flow</p>
           <h3>Private universe → shared hub → return</h3>
         </div>
+        <span className="panel-toggle-summary">
+          <strong>{lobbyMode === 'hub' ? 'Shared Hub active' : 'Private Universe active'}</strong>
+          <small>{economy.unresolvedEntropy} carried · {economy.entropyResolved} settled · {activeNode?.label || 'Deep Space Blackhole'}</small>
+        </span>
         <span className="panel-minimize-indicator" aria-hidden="true">{open ? '−' : '+'}</span>
       </button>
       {open ? (

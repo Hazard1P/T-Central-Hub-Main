@@ -21,6 +21,7 @@ import { SIM_RUNTIME_STATUS } from '@/lib/simRuntime/contracts';
 import { buildDynamicEngineState } from '@/lib/dynamicEngine';
 import OperationsDirectorPanel from '@/components/OperationsDirectorPanel';
 import EntropyMissionPanel from '@/components/EntropyMissionPanel';
+import usePersistedPanelState from '@/components/usePersistedPanelState';
 import { useMultiplayerSession } from '@/components/MultiplayerSessionProvider';
 import { subscribeToMultiplayerRoom } from '@/lib/multiplayerRealtimeClient';
 import { resolveMultiplayerIdentity } from '@/lib/multiplayerSyncEngine';
@@ -1863,7 +1864,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
               ) : null}
             </>
           ) : null}
-        </div>
+        </div> : null}
 
 
           {showVisualDebugCards ? <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
@@ -1967,13 +1968,17 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
         <button
           type="button"
           className="panel-minimize-toggle"
-          onClick={() => setFlightDeckOpen((value) => !value)}
+          onClick={toggleFlightDeckOpen}
           aria-expanded={flightDeckOpen}
           aria-label={flightDeckOpen ? 'Minimize flight command deck panel' : 'Expand flight command deck panel'}
         >
           <div>
             <p className="eyebrow">Flight command deck</p>
             <h3>Flight-command deck interface</h3>
+            <span className="panel-toggle-summary">
+              <strong>{lobbyMode === 'hub' ? 'Shared Hub' : 'Private Universe'} · {telemetry.speed}</strong>
+              <small>{telemetry.nearest || 'Deep-space drift'} · {authoritativeState.playerCount || presence.length} pilots · {flightConfig.routeAssist ? 'Assist on' : 'Assist off'}</small>
+            </span>
           </div>
           <span className="panel-minimize-indicator" aria-hidden="true">{flightDeckOpen ? '−' : '+'}</span>
         </button>

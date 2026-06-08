@@ -1,20 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import usePersistedPanelState from '@/components/usePersistedPanelState';
 
 export default function LobbyModePanel({ lobbyMode, onChange, steamUser, universe = null }) {
-  const [open, setOpen] = useState(true);
+  const [open, toggleOpen] = usePersistedPanelState('tcentral-panel-lobby-mode', false);
 
   return (
     <div className="lobby-mode-panel sim-zone-top-status-auth">
       <button
         className="panel-minimize-toggle"
         type="button"
-        onClick={() => setOpen((value) => !value)}
+        onClick={toggleOpen}
         aria-expanded={open}
         aria-label={open ? 'Collapse game mode panel' : 'Expand game mode panel'}
       >
         <span>Game mode</span>
+        <span className="panel-toggle-summary">
+          <strong>{lobbyMode === 'hub' ? 'Shared Hub' : 'Private Universe'}</strong>
+          <small>{steamUser?.steamid ? 'Steam linked' : 'Guest layout'} · {universe?.privacy?.observanceScope || 'hub:public'}</small>
+        </span>
         <span className="panel-minimize-indicator" aria-hidden>{open ? '−' : '+'}</span>
       </button>
 

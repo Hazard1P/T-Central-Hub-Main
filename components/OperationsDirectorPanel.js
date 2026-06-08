@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import usePersistedPanelState from '@/components/usePersistedPanelState';
 
 function Section({ title, kicker, items }) {
   return (
@@ -46,7 +47,7 @@ const MISSION_TYPES = [
 export default function OperationsDirectorPanel({ operations, lobbyMode = 'hub', validationSummary = null }) {
   if (!operations) return null;
 
-  const [open, setOpen] = useState(true);
+  const [open, toggleOpen] = usePersistedPanelState('tcentral-panel-operations-director', false);
   const [activeTab, setActiveTab] = useState('overview');
   const [targetKey, setTargetKey] = useState(MISSION_TARGETS[0].value);
   const [missionType, setMissionType] = useState(MISSION_TYPES[0].value);
@@ -62,7 +63,7 @@ export default function OperationsDirectorPanel({ operations, lobbyMode = 'hub',
       <button
         type="button"
         className="panel-minimize-toggle"
-        onClick={() => setOpen((value) => !value)}
+        onClick={toggleOpen}
         aria-expanded={open}
         aria-label={open ? 'Minimize operations director panel' : 'Expand operations director panel'}
       >
@@ -78,6 +79,10 @@ export default function OperationsDirectorPanel({ operations, lobbyMode = 'hub',
             </span>
           </div>
         </div>
+        <span className="panel-toggle-summary">
+          <strong>{lobbyMode === 'hub' ? 'Shared Hub' : 'Private Universe'}</strong>
+          <small>{operations.nextDirective?.title || 'All directives complete'} · {validationSummary ? `${String(validationSummary.confidence || 'low').toUpperCase()} validator` : 'Validator pending'}</small>
+        </span>
         <span className="panel-minimize-indicator" aria-hidden="true">{open ? '−' : '+'}</span>
       </button>
 
