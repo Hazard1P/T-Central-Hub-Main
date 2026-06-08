@@ -7,7 +7,7 @@ export default function SteamLoginHud() {
   const { steamUser: session, googleUser, support, universe, loading, presence } = useSteamSession();
 
   return (
-    <div className="steam-login-hud">
+    <div className="steam-login-hud sim-zone-top-status-auth">
       <div className="steam-login-card">
         <div className="steam-login-topline">
           <span className="steam-kicker">Steam Access</span>

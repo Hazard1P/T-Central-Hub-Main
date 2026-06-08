@@ -11,7 +11,7 @@ export default function SystemShellControlLayer({ steamUser, lobbyMode, onChange
   const [open, toggleOpen] = usePersistedPanelState('tcentral-panel-system-shell', false);
 
   return (
-    <div className={`system-shell-control-layer ${open ? 'open' : 'collapsed'}`}>
+    <div className={`system-shell-control-layer sim-zone-right-controls ${open ? 'open' : 'collapsed'}`}>
       <button
         className="system-shell-control-toggle"
         type="button"
