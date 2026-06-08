@@ -1870,6 +1870,28 @@ button { font: inherit; }
 .report-status.error { color: #ffb1b1; }
 .report-status.loading { color: #d8f7ff; }
 
+.contact-helper {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.contact-actions .button:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
+  transform: none;
+}
+
+.contact-status {
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+
+.contact-status.success { color: #baf8d0; }
+.contact-status.error { color: #ffb1b1; }
+.contact-status.loading { color: #d8f7ff; }
+
 @media (max-width: 900px) {
   .steam-identity-panel {
     left: 16px;

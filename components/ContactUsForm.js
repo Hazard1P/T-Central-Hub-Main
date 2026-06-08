@@ -14,10 +14,12 @@ const initial = {
 export default function ContactUsForm() {
   const [form, setForm] = useState(initial);
   const [state, setState] = useState({ status: '', ok: false, reference: '' });
+  const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(event) {
     event.preventDefault();
     setState({ status: 'Sending transmission...', ok: false, reference: '' });
+    setSubmitting(true);
 
     try {
       const response = await fetch('/api/contact', {
@@ -45,6 +47,8 @@ export default function ContactUsForm() {
         ok: false,
         reference: '',
       });
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -100,15 +104,18 @@ export default function ContactUsForm() {
       <label className="donation-field contact-field-wide">
         <span>Message</span>
         <textarea value={form.message} onChange={(event) => update('message', event.target.value)} required rows={7} maxLength={2500} />
+        <small className="contact-helper">Include your server, account, or route context if relevant.</small>
       </label>
 
       <div className="contact-actions">
-        <button className="button primary" type="submit">Send message</button>
+        <button className="button primary" type="submit" disabled={submitting}>
+          {submitting ? 'Sending…' : 'Send message'}
+        </button>
         <a className="button secondary" href="mailto:BrainandBodyai@gmail.com">Email directly</a>
       </div>
 
       {state.status ? (
-        <p className={`report-status ${state.ok ? 'success' : 'error'}`}>
+        <p className={`contact-status ${submitting ? 'loading' : state.ok ? 'success' : 'error'}`} aria-live="polite">
           {state.status} {state.reference ? <span>Reference: {state.reference}</span> : null}
         </p>
       ) : null}
