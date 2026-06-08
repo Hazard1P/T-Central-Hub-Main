@@ -31,8 +31,10 @@ import { SESSION_MODES } from '@/lib/sessionModeEngine';
 import { FLIGHT_CONTROL_COPY } from '@/lib/siteContent';
 
 const UI_VISUAL_DEBUG = false;
+const SHIP_MODEL_FORWARD = new THREE.Vector3(0, 0, 1);
+const SHIP_CAMERA_BACK = new THREE.Vector3(0, 0, -1);
 const FLIGHT_PRESETS = Object.freeze({
-  assisted: { thrustScale: 1, inertialDampers: true, chaseZoom: 1, routeAssist: true },
+  assisted: { thrustScale: 1, inertialDampers: true, chaseZoom: 1, routeAssist: true, mouseLook: false, sixAxis: false },
   freeFlight: { thrustScale: 1.45, inertialDampers: false, chaseZoom: 1.24, routeAssist: false, mouseLook: true, sixAxis: true }
 });
 
@@ -675,7 +677,7 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
   useEffect(() => {
     const down = (event) => {
       keys.current[event.code] = true;
-      if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) {
+      if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyR', 'KeyF', 'KeyQ', 'Space', 'ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) {
         event.preventDefault();
       }
     };
@@ -724,11 +726,11 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
     const rawMove = new THREE.Vector3(
       (keys.current.KeyD || keys.current.ArrowRight ? 1 : 0) - (keys.current.KeyA || keys.current.ArrowLeft ? 1 : 0) + (touchInput.x || 0),
       (keys.current.Space || keys.current.KeyR ? 1 : 0) - (keys.current.ShiftLeft || keys.current.ShiftRight || keys.current.KeyF ? 1 : 0) + (touchInput.y || 0),
-      (keys.current.KeyS || keys.current.ArrowDown ? 1 : 0) - (keys.current.KeyW || keys.current.ArrowUp ? 1 : 0) + (touchInput.z || 0),
+      (keys.current.KeyW || keys.current.ArrowUp ? 1 : 0) - (keys.current.KeyS || keys.current.ArrowDown ? 1 : 0) + (touchInput.z || 0),
     );
 
     const boostActive = Boolean(keys.current.ControlLeft || keys.current.ControlRight || (touchInput.boost || 0) > 0.5);
-    const fireActive = Boolean(keys.current.KeyQ || keys.current.KeyF);
+    const fireActive = Boolean(keys.current.KeyQ);
     if (fireActive && !fireLatch.current) {
       fireLatch.current = true;
       onCombatAction?.({ type: 'fire', frameIndex: frameCounter.current, tick: Date.now() });
@@ -782,8 +784,8 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
     }
 
     const speed = velocity.current.length();
-    const direction = speed > 0.08 ? velocity.current.clone().normalize() : new THREE.Vector3(0, 0, -1).applyQuaternion(lookQuat);
-    const targetQuat = flightConfig?.mouseLook ? lookQuat : new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), direction);
+    const direction = speed > 0.08 ? velocity.current.clone().normalize() : SHIP_MODEL_FORWARD.clone().applyQuaternion(lookQuat);
+    const targetQuat = flightConfig?.mouseLook ? lookQuat : new THREE.Quaternion().setFromUnitVectors(SHIP_MODEL_FORWARD, direction);
     groupRef.current.quaternion.slerp(targetQuat, 0.1);
 
     const gravityMagnitude = Number(stepped.gravityMagnitude || 0);
@@ -815,12 +817,13 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
 
     const zoom = flightConfig?.chaseZoom || 1;
     const routeAssistLift = flightConfig?.routeAssist ? 0.9 : 0.25;
-    const cameraOffset = new THREE.Vector3(0, 3.6 + routeAssistLift, 10.4 * zoom + horizonFactor * 2.8);
-    if (flightConfig?.mouseLook) cameraOffset.applyQuaternion(lookQuat);
+    const cameraOffset = SHIP_CAMERA_BACK.clone().multiplyScalar(10.4 * zoom + horizonFactor * 2.8);
+    cameraOffset.y = 3.6 + routeAssistLift;
+    if (flightConfig?.mouseLook || flightConfig?.sixAxis) cameraOffset.applyQuaternion(lookQuat);
     const cameraTarget = groupRef.current.position.clone().add(cameraOffset);
     camera.position.lerp(cameraTarget, 0.07);
-    const lookAhead = groupRef.current.position.clone().add(new THREE.Vector3(0, 0.35, -5.5).applyQuaternion(lookQuat));
-    camera.lookAt(flightConfig?.mouseLook ? lookAhead : groupRef.current.position.clone().add(new THREE.Vector3(0, 0.4, -1.1)));
+    const lookAhead = groupRef.current.position.clone().add(SHIP_MODEL_FORWARD.clone().multiplyScalar(5.5).applyQuaternion(lookQuat));
+    camera.lookAt((flightConfig?.mouseLook || flightConfig?.sixAxis) ? lookAhead : groupRef.current.position.clone().add(new THREE.Vector3(0, 0.4, 1.1)));
 
     if (nearest && lastNearest.current !== nearest.key && nearest.distance < nearest.source.influenceRadius) {
       lastNearest.current = nearest.key;
@@ -856,7 +859,6 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
         Number(direction.y.toFixed(2)),
         Number(direction.z.toFixed(2)),
       ],
-      frameIndex: frameCounter.current,
       controlVector: controlVector.map((v) => Number(v.toFixed(4))),
       dt: Number(dt.toFixed(5)),
       simulationSeed,
@@ -1081,13 +1083,13 @@ function TouchFlightPad({ onInputChange }) {
   return (
     <div className="touch-flight-pad" aria-hidden="true">
       <div className="touch-flight-cluster">
-        <button onTouchStart={() => setAxis('z', -1)} onTouchEnd={() => setAxis('z', 0)} onMouseDown={() => setAxis('z', -1)} onMouseUp={() => setAxis('z', 0)}>↑</button>
+        <button onTouchStart={() => setAxis('z', 1)} onTouchEnd={() => setAxis('z', 0)} onMouseDown={() => setAxis('z', 1)} onMouseUp={() => setAxis('z', 0)}>↑</button>
         <div className="touch-flight-row">
           <button onTouchStart={() => setAxis('x', -1)} onTouchEnd={() => setAxis('x', 0)} onMouseDown={() => setAxis('x', -1)} onMouseUp={() => setAxis('x', 0)}>←</button>
           <button className="touch-flight-boost" onTouchStart={() => setAxis('boost', 1)} onTouchEnd={() => setAxis('boost', 0)} onMouseDown={() => setAxis('boost', 1)} onMouseUp={() => setAxis('boost', 0)}>Boost</button>
           <button onTouchStart={() => setAxis('x', 1)} onTouchEnd={() => setAxis('x', 0)} onMouseDown={() => setAxis('x', 1)} onMouseUp={() => setAxis('x', 0)}>→</button>
         </div>
-        <button onTouchStart={() => setAxis('z', 1)} onTouchEnd={() => setAxis('z', 0)} onMouseDown={() => setAxis('z', 1)} onMouseUp={() => setAxis('z', 0)}>↓</button>
+        <button onTouchStart={() => setAxis('z', -1)} onTouchEnd={() => setAxis('z', 0)} onMouseDown={() => setAxis('z', -1)} onMouseUp={() => setAxis('z', 0)}>↓</button>
       </div>
       <div className="touch-flight-cluster vertical">
         <button onTouchStart={() => setAxis('y', 1)} onTouchEnd={() => setAxis('y', 0)} onMouseDown={() => setAxis('y', 1)} onMouseUp={() => setAxis('y', 0)}>Ascend</button>
@@ -1103,8 +1105,8 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   const { googleUser, universe, presence, updatePresence, refresh } = useSteamSession();
   const [selected, setSelected] = useState(null);
   const [touchInput, setTouchInput] = useState({ x: 0, y: 0, z: 0, boost: 0 });
-  const [flightConfig, setFlightConfig] = useState(FLIGHT_PRESETS.assisted);
-  const [flightDeckOpen, setFlightDeckOpen] = useState(true);
+  const [flightConfig, setFlightConfig] = useState(FLIGHT_PRESETS.freeFlight);
+  const [flightDeckOpen, setFlightDeckOpen] = useState(false);
   const [flightResetTick, setFlightResetTick] = useState(0);
   const [presentationMode, setPresentationMode] = useState(true);
   const [correctionState, setCorrectionState] = useState(null);
@@ -1879,7 +1881,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
         {flightDeckOpen ? (
           <>
             <p className="muted">
-              Route-flight now runs through a clearer command layout with grouped controls, live readability, and quicker crew-side tuning for multiplayer and private missions.
+              Free-roam flight now starts immediately with the panel minimized, nose-aligned controls, grouped tuning, and live readability for multiplayer and private missions.
             </p>
             <div className="flight-command-stat-grid">
               <article>
@@ -1936,8 +1938,8 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
               {FLIGHT_CONTROL_COPY.fullSummary}
             </p>
             <div className="free-flight-control-grid">
-              <article><strong>Move</strong><span>W/S forward-back · A/D strafe · Space/R rise · Shift/F descend</span></article>
-              <article><strong>Look</strong><span>Move mouse over the scene. Free-flight follows the ship nose, not only the world grid.</span></article>
+              <article><strong>Move</strong><span>W/S forward-back along the ship nose · A/D strafe · Space/R rise · Shift/F descend</span></article>
+              <article><strong>Look</strong><span>Move mouse over the scene. Free-flight thrust, camera, and hull attitude all follow the ship nose.</span></article>
               <article><strong>Boost</strong><span>Hold Ctrl for high-thrust travel through the hub routes.</span></article>
             </div>
             <div className="stable-chip-row alt">
