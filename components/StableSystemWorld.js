@@ -1109,6 +1109,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   const [flightDeckOpen, setFlightDeckOpen] = useState(false);
   const [flightResetTick, setFlightResetTick] = useState(0);
   const [presentationMode, setPresentationMode] = useState(true);
+  const [hudVisible, setHudVisible] = useState(true);
   const [correctionState, setCorrectionState] = useState(null);
   const lastPresenceBroadcast = useRef(0);
   const previousServerSessionRef = useRef(null);
@@ -1218,6 +1219,15 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
     degradedReason: null,
   });
   const predictionHistoryRef = useRef([]);
+
+  useEffect(() => {
+    const handleHudToggle = (event) => {
+      setHudVisible(Boolean(event.detail));
+    };
+
+    window.addEventListener('hudToggle', handleHudToggle);
+    return () => window.removeEventListener('hudToggle', handleHudToggle);
+  }, []);
 
   const handleCombatAction = useCallback(async (action) => {
     if (lobbyMode !== 'hub' || !serverSession?.token) return;
@@ -1694,7 +1704,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       <div className="stable-system-backdrop" />
       <div className="stable-system-veil" />
 
-      <div className="stable-system-hud">
+      {hudVisible ? <div className="stable-system-hud">
         <aside className="left-ops-rail">
           <OperationsDirectorPanel operations={operations} lobbyMode={lobbyMode} validationSummary={validatorSummary} />
           <AccountProgressPanel profile={{ ...accountProfile, progression: accountProgression, progress }} lobbyMode={lobbyMode} />
@@ -1888,10 +1898,10 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             <span>Seeds {universe?.prayerSeeds?.total ?? 0}</span>
           </div>
         </div> : null}
-      </div>
+      </div> : null}
 
 
-      {showVisualDebugCards ? <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
+      {hudVisible && showVisualDebugCards ? <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
         <p className="eyebrow">Authoritative multiplayer state</p>
         <h3>{serverStatus.label}</h3>
         <p className="muted">The multiplayer hub now maintains server-side player transforms, projectile state, contested nodes, and combat heat so the shared multiverse is more than just presence sync.</p>
@@ -1910,7 +1920,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
         </div>
       </div> : null}
 
-      <div className="content-card stable-card observer flight-command-card stable-card-layer telemetry-layer">
+      {hudVisible ? <div className="content-card stable-card observer flight-command-card stable-card-layer telemetry-layer">
         <button
           type="button"
           className="panel-minimize-toggle"
@@ -1996,7 +2006,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             </div>
           </>
         ) : null}
-      </div>
+      </div> : null}
 
       <div className="stable-world-canvas polished-canvas cinematic-polished-canvas">
         <Canvas camera={{ position: [0, 8, 26], fov: deviceTier.isMobile ? 52 : (presentationMode ? 49 : 46) }} dpr={deviceTier.dpr} gl={{ antialias: !deviceTier.isMobile }}>
@@ -2027,7 +2037,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
         </Canvas>
       </div>
 
-      {showVisualDebugCards ? <div className="stable-layer-dock">
+      {hudVisible && showVisualDebugCards ? <div className="stable-layer-dock">
         <div className="stable-layer-dock-head">
           <strong>System object layering</strong>
           <span className="eyebrow">Defined render stack</span>
@@ -2043,7 +2053,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
         </div>
       </div> : null}
 
-      {deviceTier.isMobile ? <TouchFlightPad onInputChange={setTouchInput} /> : null}
+      {hudVisible && deviceTier.isMobile ? <TouchFlightPad onInputChange={setTouchInput} /> : null}
     </div>
   );
 }
