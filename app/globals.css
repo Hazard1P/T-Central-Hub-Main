@@ -4568,6 +4568,44 @@ button { font: inherit; }
   pointer-events: auto;
 }
 
+.stable-hud-chrome,
+.stable-show-hud-button {
+  pointer-events: auto;
+  justify-self: start;
+  border: 1px solid rgba(127, 231, 255, 0.28);
+  background: rgba(7, 12, 20, 0.74);
+  color: #eafaff;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(10px);
+}
+
+.stable-hud-chrome {
+  grid-column: 1 / -1;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.stable-show-hud-button {
+  position: fixed;
+  left: 18px;
+  top: 118px;
+  z-index: 52;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.stable-show-hud-button:hover,
+.stable-show-hud-button:focus-visible {
+  border-color: rgba(127, 231, 255, 0.62);
+  background: rgba(12, 27, 42, 0.88);
+}
+
 .stable-card {
   background: linear-gradient(180deg, rgba(10,16,28,0.88), rgba(7,12,20,0.76));
   border: 1px solid rgba(255,255,255,0.09);
