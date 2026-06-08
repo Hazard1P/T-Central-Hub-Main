@@ -1602,6 +1602,41 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       singularityContainment: singularityState.containment,
       engineScale: 0.92 + dynamicState.dynamicBalance * 0.3,
     });
+    const originEventId = [
+      identity.id,
+      'matrixcoinexchange',
+      Number(progress.entropyResolved || 0),
+      unresolved,
+      Math.round(settlement.quote * 100),
+      telemetry.frameIndex || 0,
+    ].map((part) => String(part).replace(/[^A-Za-z0-9_-]/g, '_')).join(':');
+    const idempotencyKey = `${originEventId}:settlement`;
+
+    fetch('/api/matrixcoinexchange/system', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
+      body: JSON.stringify({
+        nodeKey: 'matrixcoinexchange',
+        modeScope: `${lobbyMode === 'hub' ? 'multiplayer' : 'singleplayer'}:matrixcoinexchange`,
+        idempotencyKey,
+        originEventId,
+        entropyUnits: settlement.units,
+        stabilizedEntropy: settlement.stabilizedEntropy,
+        creditQuote: settlement.quote,
+        creditMicroEc: Math.round(settlement.quote * 1_000_000),
+        routeIntegrity,
+        tickId: telemetry.frameIndex || 0,
+        telemetry: {
+          coherencePercent: telemetry?.quantum?.coherencePercent || 50,
+          entropyPercent: telemetry?.quantum?.entropyPercent || 50,
+          horizonFactor: telemetry.horizonFactor,
+          dynamicBalance: dynamicState.dynamicBalance,
+          singularityContainment: singularityState.containment,
+        },
+      }),
+    }).catch(() => {});
+
     setProgress((current) => ({
       ...current,
       entropyResolved: current.entropyResolved + unresolved,
