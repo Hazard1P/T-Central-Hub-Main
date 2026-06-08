@@ -5438,6 +5438,23 @@ button { font: inherit; }
   z-index: 48;
 }
 
+.stable-system-page .observer-summary-card {
+  align-self: start;
+}
+
+.stable-system-page .observer-summary-card .panel-minimize-toggle {
+  margin-bottom: 0;
+}
+
+.observer-status-pill-row {
+  margin-top: 0.75rem;
+}
+
+.observer-status-pill-row span {
+  padding: 0.42rem 0.68rem;
+  font-size: 0.72rem;
+}
+
 @media (max-width: 1100px) {
   .stable-system-page .flight-command-card {
     left: 1rem;
