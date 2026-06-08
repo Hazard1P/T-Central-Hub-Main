@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { buildAccountSnapshot, defaultProgressState, normalizeProgressState } from '@/lib/accountProgression';
+import { buildAccountSnapshot, defaultProgressState, isOlderProgressSnapshot, normalizeProgressState } from '@/lib/accountProgression';
 import { resolveGameAuthContext } from '@/lib/auth/resolveGameAuthContext';
 import { loadPlayerProgression, persistPlayerProgression } from '@/lib/serverPersistence';
 
@@ -53,7 +53,22 @@ export async function POST(request) {
   const authContext = resolveAuthenticatedSession();
   const body = await request.json().catch(() => null);
   const identity = resolveIdentity(body?.identity, authContext);
-  const snapshot = buildAccountSnapshot({ identity, steamUser: authContext.steamUser, progress: normalizeProgressState(body?.progress) });
+  const snapshot = buildAccountSnapshot({ identity, steamUser: authContext.steamUser, progress: normalizeProgressState(body?.progress), savedAt: body?.savedAt });
+  const loaded = await loadPlayerProgression(identity);
+  const currentSnapshot = loaded?.record
+    ? buildAccountSnapshot({ identity, steamUser: authContext.steamUser, progress: normalizeProgressState(loaded.record.progress), savedAt: loaded.record.savedAt })
+    : null;
+
+  if (currentSnapshot && isOlderProgressSnapshot(snapshot, currentSnapshot)) {
+    return NextResponse.json({
+      ok: false,
+      error: 'STALE_PROGRESSION_SNAPSHOT',
+      snapshot: currentSnapshot,
+      storage: loaded?.storage || 'none',
+      warning: 'Ignored an older progression snapshot to preserve hydrated account progress.',
+    }, { status: 409 });
+  }
+
   const persisted = await persistPlayerProgression(snapshot, {
     eventType: 'PROGRESSION_SNAPSHOT_SAVED',
     ledgerMetadata: { provider: identity.kind, source: 'player_progression_api' },

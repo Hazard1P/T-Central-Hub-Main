@@ -16,7 +16,7 @@
     "ci:continuity": "npm run check:dyson-continuity && npm run release:notes",
     "release:entropy-pdf": "node scripts/generate-entropy-frontpage-pdf.mjs",
     "drill:continuity": "node scripts/run-continuity-drill.mjs",
-    "verify:migrations": "node scripts/verify-supabase-migrations.mjs"
+    "verify:matrixcoin-storage": "node scripts/verify-matrixcoin-storage.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^9.121.4",

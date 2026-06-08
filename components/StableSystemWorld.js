@@ -1130,7 +1130,10 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   const [validatorSummary, setValidatorSummary] = useState(null);
   const simRuntimeClient = useMemo(() => createSimulationRuntimeClient(), []);
   const identity = useMemo(() => resolveMultiplayerIdentity(steamUser, googleUser), [steamUser, googleUser]);
+  const progressIdentityKey = `${identity.id}:${identity.kind}:${Boolean(identity.authenticated)}`;
   const [progress, setProgress] = useState(defaultProgressState());
+  const [progressHydrated, setProgressHydrated] = useState(false);
+  const [hydratedProgressIdentityKey, setHydratedProgressIdentityKey] = useState(null);
   const [accountProfile, setAccountProfile] = useState(() => buildAccountSnapshot({ identity: { id: 'boot', displayName: 'Boot Pilot', kind: 'guest', authenticated: false }, progress: defaultProgressState() }));
   const {
     session: serverSession,
@@ -1479,6 +1482,8 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   useEffect(() => {
     if (typeof window === 'undefined') return;
     let active = true;
+    setProgressHydrated(false);
+    setHydratedProgressIdentityKey(null);
     const storageKey = getAccountStorageKey(identity.id);
 
     try {
@@ -1509,13 +1514,19 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           return merged;
         });
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        if (!active) return;
+        setHydratedProgressIdentityKey(progressIdentityKey);
+        setProgressHydrated(true);
+      });
 
     return () => { active = false; };
-  }, [identity.id, identity.displayName, identity.kind, identity.authenticated, steamUser, googleUser]);
+  }, [identity.id, identity.displayName, identity.kind, identity.authenticated, progressIdentityKey, steamUser, googleUser]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (!progressHydrated || hydratedProgressIdentityKey !== progressIdentityKey) return;
     const storageKey = getAccountStorageKey(identity.id);
     const snapshot = buildAccountSnapshot({ identity, steamUser, progress });
     setAccountProfile(snapshot);
@@ -1527,12 +1538,12 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
     fetch('/api/player/progression', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ identity, progress }),
+      body: JSON.stringify({ identity, progress, savedAt: snapshot.savedAt }),
       signal: controller.signal,
     }).catch(() => {});
 
     return () => controller.abort();
-  }, [progress, identity, steamUser, googleUser]);
+  }, [progress, identity, progressHydrated, hydratedProgressIdentityKey, progressIdentityKey, steamUser, googleUser]);
 
   useEffect(() => {
     if (lobbyMode !== 'hub') return;
@@ -1602,6 +1613,41 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       singularityContainment: singularityState.containment,
       engineScale: 0.92 + dynamicState.dynamicBalance * 0.3,
     });
+    const originEventId = [
+      identity.id,
+      'matrixcoinexchange',
+      Number(progress.entropyResolved || 0),
+      unresolved,
+      Math.round(settlement.quote * 100),
+      telemetry.frameIndex || 0,
+    ].map((part) => String(part).replace(/[^A-Za-z0-9_-]/g, '_')).join(':');
+    const idempotencyKey = `${originEventId}:settlement`;
+
+    fetch('/api/matrixcoinexchange/system', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
+      body: JSON.stringify({
+        nodeKey: 'matrixcoinexchange',
+        modeScope: `${lobbyMode === 'hub' ? 'multiplayer' : 'singleplayer'}:matrixcoinexchange`,
+        idempotencyKey,
+        originEventId,
+        entropyUnits: settlement.units,
+        stabilizedEntropy: settlement.stabilizedEntropy,
+        creditQuote: settlement.quote,
+        creditMicroEc: Math.round(settlement.quote * 1_000_000),
+        routeIntegrity,
+        tickId: telemetry.frameIndex || 0,
+        telemetry: {
+          coherencePercent: telemetry?.quantum?.coherencePercent || 50,
+          entropyPercent: telemetry?.quantum?.entropyPercent || 50,
+          horizonFactor: telemetry.horizonFactor,
+          dynamicBalance: dynamicState.dynamicBalance,
+          singularityContainment: singularityState.containment,
+        },
+      }),
+    }).catch(() => {});
+
     setProgress((current) => ({
       ...current,
       entropyResolved: current.entropyResolved + unresolved,
