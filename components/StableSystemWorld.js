@@ -1107,6 +1107,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   const [touchInput, setTouchInput] = useState({ x: 0, y: 0, z: 0, boost: 0 });
   const [flightConfig, setFlightConfig] = useState(FLIGHT_PRESETS.freeFlight);
   const [flightDeckOpen, setFlightDeckOpen] = useState(false);
+  const [observerDockOpen, setObserverDockOpen] = useState(false);
   const [flightResetTick, setFlightResetTick] = useState(0);
   const [presentationMode, setPresentationMode] = useState(true);
   const [hudVisible, setHudVisible] = useState(true);
@@ -1670,6 +1671,11 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   const perspective = steamUser?.steamid
     ? { role: lobbyMode === 'hub' ? 'Player-linked observer' : 'Private player layer', note: lobbyMode === 'hub' ? 'Steam session linked. Shared observance and pilot state remain synchronized.' : 'Private Steam world active with isolated route ownership and synchronized pilot state.' }
     : { role: 'Observer layer', note: 'Guest observer mode stays synchronized across the HUD and world while route flight remains available.' };
+  const observerStatus = {
+    mode: lobbyMode === 'hub' ? 'Shared Hub' : 'Private Universe',
+    identity: steamUser?.steamid ? 'Steam' : googleUser?.sub ? 'Google' : 'Guest',
+    pilotCount: Math.max(authoritativeState.playerCount || 0, presence.length || 0, identity?.id ? 1 : 0),
+  };
 
   const layerDefinitions = [
     {
@@ -1794,30 +1800,50 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           </div>
         ) : null}
 
-        <div className="content-card stable-card observer stable-card-layer observer-layer">
-          <p className="eyebrow">Observer / Pilot</p>
-          <h3>{perspective.role}</h3>
-          <p className="muted">{perspective.note}</p>
-          <div className="focus-meta">
-            <span>{steamUser?.personaname || googleUser?.name || 'Guest observer'}</span>
-            <span>{lobbyMode === 'hub' ? 'Shared world visibility' : 'Private world visibility'}</span>
+        <div className="content-card stable-card observer observer-summary-card stable-card-layer observer-layer">
+          <button
+            type="button"
+            className="panel-minimize-toggle"
+            onClick={() => setObserverDockOpen((value) => !value)}
+            aria-expanded={observerDockOpen}
+            aria-label={observerDockOpen ? 'Collapse observer and pilot details' : 'Expand observer and pilot details'}
+          >
+            <div>
+              <p className="eyebrow">Observer / Pilot</p>
+              <h3>{perspective.role}</h3>
+            </div>
+            <span className="panel-minimize-indicator" aria-hidden="true">{observerDockOpen ? '−' : '+'}</span>
+          </button>
+          <div className="stable-chip-row alt observer-status-pill-row" aria-label="Current observer and pilot status">
+            <span>Mode {observerStatus.mode}</span>
+            <span>Pilot {observerStatus.identity}</span>
+            <span>Pilots {observerStatus.pilotCount}</span>
           </div>
-          <div className="stable-chip-row alt">
-            <span>Inspect</span>
-            <span>Fly</span>
-            <span>Overlay-safe</span>
-            <span>{authoritativeState.playerCount || presence.length} pilots</span>
-          </div>
-          <p className="stable-flight-note">
-            Desktop: {FLIGHT_CONTROL_COPY.desktopSummary} + {FLIGHT_CONTROL_COPY.verticalSummary}. Mobile: use the {FLIGHT_CONTROL_COPY.touchSummary}.
-          </p>
-          {lobbyMode === 'private' ? (
-            <button className="stable-route-button" onClick={handlePrayerSeed}>
-              Plant Prayer Seed
-            </button>
-          ) : null}
-          {prayerSeedState.status ? (
-            <p className={`report-status ${prayerSeedState.ok ? 'success' : 'error'}`}>{prayerSeedState.status}</p>
+          {observerDockOpen ? (
+            <>
+              <p className="muted">{perspective.note}</p>
+              <div className="focus-meta">
+                <span>{steamUser?.personaname || googleUser?.name || 'Guest observer'}</span>
+                <span>{lobbyMode === 'hub' ? 'Shared world visibility' : 'Private world visibility'}</span>
+              </div>
+              <div className="stable-chip-row alt">
+                <span>Inspect</span>
+                <span>Fly</span>
+                <span>Overlay-safe</span>
+                <span>{observerStatus.pilotCount} pilots</span>
+              </div>
+              <p className="stable-flight-note">
+                Desktop: {FLIGHT_CONTROL_COPY.desktopSummary} + {FLIGHT_CONTROL_COPY.verticalSummary}. Mobile: use the {FLIGHT_CONTROL_COPY.touchSummary}.
+              </p>
+              {lobbyMode === 'private' ? (
+                <button className="stable-route-button" onClick={handlePrayerSeed}>
+                  Plant Prayer Seed
+                </button>
+              ) : null}
+              {prayerSeedState.status ? (
+                <p className={`report-status ${prayerSeedState.ok ? 'success' : 'error'}`}>{prayerSeedState.status}</p>
+              ) : null}
+            </>
           ) : null}
         </div>
 
