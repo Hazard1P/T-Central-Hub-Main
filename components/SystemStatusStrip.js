@@ -21,7 +21,7 @@ export default function SystemStatusStrip() {
     : fallbackPills;
 
   return (
-    <div className="system-status-strip">
+    <div className="system-status-strip sim-zone-top-status-auth">
       {pills.map((pill) => (
         <div className="status-strip-pill" key={`${pill.label}-${pill.value}`}>
           <span>{pill.label}</span>
