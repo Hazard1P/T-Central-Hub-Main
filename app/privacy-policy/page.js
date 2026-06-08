@@ -2,6 +2,39 @@ import PageShell from '@/components/PageShell';
 
 export const metadata = { title: 'Privacy Policy' };
 
+const privacySections = [
+  {
+    id: 'what-we-collect',
+    eyebrow: 'Steam sign-in',
+    title: 'What we collect',
+    text: 'When you sign in with Steam, the system may process your SteamID, display name, profile URL, and avatar for session, lobby, and route-interface purposes.',
+  },
+  {
+    id: 'how-it-is-used',
+    eyebrow: 'Multiplayer hub',
+    title: 'How it is used',
+    text: 'Steam-linked data supports account sessions, shared room presence, flight roles, server routing, moderation context, and continuity between public hub features and protected player spaces.',
+  },
+  {
+    id: 'private-world-data',
+    eyebrow: 'Private world',
+    title: 'Private world data',
+    text: 'Private world state should remain isolated to the linked Steam account. Sensitive private state should be encrypted at rest and transported only over secure sessions.',
+  },
+  {
+    id: 'external-routes',
+    eyebrow: 'Route portals',
+    title: 'External routes',
+    text: 'Connected portals may send you to game servers, Steam-linked authentication surfaces, payment processors, or community systems that operate under their own notices and controls.',
+  },
+  {
+    id: 'contact-and-removal-requests',
+    eyebrow: 'Support requests',
+    title: 'Contact and removal requests',
+    text: 'You can contact the T-Central team to ask privacy questions, request review of account-linked records, or request removal where deletion is technically and legally available.',
+  },
+];
+
 export default function PrivacyPolicyPage() {
   return (
     <PageShell
@@ -9,29 +42,61 @@ export default function PrivacyPolicyPage() {
       title="Privacy policy"
       text="This policy explains the core data used by the T-Central website, Steam-linked sign-in flow, multiplayer hub presence, private world isolation, and connected route portals."
     >
+      <section className="content-card" aria-labelledby="privacy-legal-overview">
+        <p className="eyebrow">Legal notice</p>
+        <h3 id="privacy-legal-overview">Privacy at T-Central</h3>
+        <p className="muted">
+          This page summarizes how account-linked data, public lobby presence, protected player world state, and off-site routing are handled across the T-Central hub.
+        </p>
+        <div className="arma-brief-grid" aria-label="Privacy policy metadata">
+          <div className="arma-highlight">
+            <strong>Last updated</strong>
+            <span className="muted">June 8, 2026</span>
+          </div>
+          <div className="arma-highlight">
+            <strong>Applies to</strong>
+            <span className="muted">Website, Steam sign-in, multiplayer hub, private worlds, and route portals</span>
+          </div>
+          <div className="arma-highlight">
+            <strong>Support channel</strong>
+            <span className="muted">Privacy questions, access requests, and removal requests</span>
+          </div>
+        </div>
+      </section>
+
+      <nav className="content-card" aria-label="Privacy policy summary">
+        <p className="eyebrow">Summary</p>
+        <h3>On this page</h3>
+        <ul className="arma-list">
+          {privacySections.map((section) => (
+            <li key={section.id}>
+              <a href={`#${section.id}`}>{section.title}</a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
       <div className="arma-brief-grid">
-        <article className="content-card">
-          <p className="eyebrow">Steam sign-in</p>
-          <h3>Identity data</h3>
-          <p className="muted">
-            When you sign in with Steam, the system may process your SteamID, display name, profile URL, and avatar for session, lobby, and route-interface purposes.
-          </p>
-        </article>
-        <article className="content-card">
-          <p className="eyebrow">Multiplayer hub</p>
-          <h3>Shared room presence</h3>
-          <p className="muted">
-            The public multiplayer hub may process lightweight shared presence data such as room membership, flight role, and in-system movement markers for Steam-linked users.
-          </p>
-        </article>
-        <article className="content-card">
-          <p className="eyebrow">Private world</p>
-          <h3>Scoped personal state</h3>
-          <p className="muted">
-            Private world state should remain isolated to the linked Steam account. Sensitive private state should be encrypted at rest and transported only over secure sessions.
-          </p>
-        </article>
+        {privacySections.map((section) => (
+          <article className="content-card" id={section.id} key={section.id}>
+            <p className="eyebrow">{section.eyebrow}</p>
+            <h3>{section.title}</h3>
+            <p className="muted">{section.text}</p>
+          </article>
+        ))}
       </div>
+
+      <section className="content-card" aria-labelledby="privacy-support-cta">
+        <p className="eyebrow">Need help?</p>
+        <h3 id="privacy-support-cta">Contact support or report abuse</h3>
+        <p className="muted">
+          For privacy questions, data access, or removal requests, contact the T-Central team. If a privacy issue involves harassment, cheating, or player misconduct, use the player report flow too.
+        </p>
+        <div className="donate-legal-links" aria-label="Privacy support links">
+          <a href="/contact">Contact support</a>
+          <a href="/report-player">Report a player</a>
+        </div>
+      </section>
     </PageShell>
   );
 }
