@@ -6,7 +6,7 @@ export default function LobbyModePanel({ lobbyMode, onChange, steamUser, univers
   const [open, setOpen] = useState(true);
 
   return (
-    <div className="lobby-mode-panel">
+    <div className="lobby-mode-panel sim-zone-top-status-auth">
       <button
         className="panel-minimize-toggle"
         type="button"

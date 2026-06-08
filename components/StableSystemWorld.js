@@ -1704,8 +1704,8 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       <div className="stable-system-backdrop" />
       <div className="stable-system-veil" />
 
-      {hudVisible ? <div className="stable-system-hud">
-        <aside className="left-ops-rail">
+      {hudVisible ? <div className="stable-system-hud" aria-label="Stable system HUD layout">
+        <aside className="left-ops-rail sim-zone-left-mission" aria-label="Mission operations rail">
           <OperationsDirectorPanel operations={operations} lobbyMode={lobbyMode} validationSummary={validatorSummary} />
           <AccountProgressPanel profile={{ ...accountProfile, progression: accountProgression, progress }} lobbyMode={lobbyMode} />
           <EntropyMissionPanel
@@ -1719,7 +1719,8 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           />
         </aside>
 
-        {UI_VISUAL_DEBUG ? <div className="content-card stable-card intro stable-card-layer primary-layer">
+        <section className="stable-system-right-dock sim-zone-right-controls" aria-label="System controls and telemetry dock">
+          {UI_VISUAL_DEBUG ? <div className="content-card stable-card intro stable-card-layer primary-layer">
           <p className="eyebrow">Stability layer</p>
           <h3>{lobbyMode === 'hub' ? 'Shared Hub shell' : 'Private Universe shell'}</h3>
           <p className="muted">
@@ -1746,7 +1747,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           </div>
         </div> : null}
 
-        {UI_VISUAL_DEBUG ? <div className="content-card stable-card focus stable-card-layer route-layer">
+          {UI_VISUAL_DEBUG ? <div className="content-card stable-card focus stable-card-layer route-layer">
           <p className="eyebrow">Route focus</p>
           <h3>{activeNode?.label || 'Deep Space Blackhole'}</h3>
           <p className="muted">{activeNode?.description || 'Primary anchor route.'}</p>
@@ -1822,7 +1823,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
         </div>
 
 
-        {showVisualDebugCards ? <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
+          {showVisualDebugCards ? <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
           <p className="eyebrow">Private universe matrix</p>
           <h3>{universe?.privacy?.observanceScope || 'hub:public'}</h3>
           <p className="muted">Prayer Seeds stay bound to the private universe vault while the Solar System remains anchored to Unix epoch timing and Dyson-sphere relativity.</p>
@@ -1898,10 +1899,8 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             <span>Seeds {universe?.prayerSeeds?.total ?? 0}</span>
           </div>
         </div> : null}
-      </div> : null}
 
-
-      {hudVisible && showVisualDebugCards ? <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
+          {showVisualDebugCards ? <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
         <p className="eyebrow">Authoritative multiplayer state</p>
         <h3>{serverStatus.label}</h3>
         <p className="muted">The multiplayer hub now maintains server-side player transforms, projectile state, contested nodes, and combat heat so the shared multiverse is more than just presence sync.</p>
@@ -1919,8 +1918,9 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           <span>Anomaly {Math.round((authoritativeState.world?.anomalyPhase || 0) * 100)}%</span>
         </div>
       </div> : null}
+        </section>
 
-      {hudVisible ? <div className="content-card stable-card observer flight-command-card stable-card-layer telemetry-layer">
+        <div className="content-card stable-card observer flight-command-card stable-card-layer telemetry-layer sim-zone-bottom-command">
         <button
           type="button"
           className="panel-minimize-toggle"
@@ -2006,9 +2006,10 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             </div>
           </>
         ) : null}
+        </div>
       </div> : null}
 
-      <div className="stable-world-canvas polished-canvas cinematic-polished-canvas">
+      <div className="stable-world-canvas polished-canvas cinematic-polished-canvas sim-zone-center-canvas" aria-label="Center simulation canvas">
         <Canvas camera={{ position: [0, 8, 26], fov: deviceTier.isMobile ? 52 : (presentationMode ? 49 : 46) }} dpr={deviceTier.dpr} gl={{ antialias: !deviceTier.isMobile }}>
           <StableSceneContent
             simRuntimeClient={simRuntimeClient}
