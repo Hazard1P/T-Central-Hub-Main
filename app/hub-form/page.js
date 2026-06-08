@@ -25,7 +25,7 @@ export default function HubFormPage() {
             <Link className="button secondary" href="/report-player">Report player</Link>
           </div>
           <div className="entry-status-bar refined">
-            <span>Steam-gated posting</span>
+            <span>Steam/Google-gated posting</span>
             <span>Community signal board</span>
             <span>Server feedback route</span>
           </div>

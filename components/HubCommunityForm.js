@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { HUB_POST_CATEGORIES } from '@/lib/hubPosts';
 
 const initialForm = {
   topic: '',
@@ -8,27 +9,32 @@ const initialForm = {
   message: '',
 };
 
-const CATEGORIES = ['General', 'Server feedback', 'Bug report', 'Events', 'Feature idea', 'Moderation'];
-
 export default function HubCommunityForm() {
-  const [session, setSession] = useState({ loading: true, user: null });
+  const [session, setSession] = useState({ loading: true, provider: null, user: null });
   const [form, setForm] = useState(initialForm);
   const [posts, setPosts] = useState([]);
   const [status, setStatus] = useState({ state: 'idle', message: '' });
 
   const canSubmit = useMemo(
-    () => Boolean(session.user?.steamid) && form.topic.trim() && form.message.trim(),
-    [session.user?.steamid, form.topic, form.message]
+    () => Boolean(session.user) && form.topic.trim() && form.message.trim(),
+    [session.user, form.topic, form.message]
   );
 
   useEffect(() => {
     let active = true;
     Promise.all([
       fetch('/api/auth/steam/session', { cache: 'no-store' }).then((r) => r.json()).catch(() => null),
+      fetch('/api/auth/google/session', { cache: 'no-store' }).then((r) => r.json()).catch(() => null),
       fetch('/api/hub-posts', { cache: 'no-store' }).then((r) => r.json()).catch(() => null),
-    ]).then(([authData, postsData]) => {
+    ]).then(([steamData, googleData, postsData]) => {
       if (!active) return;
-      setSession({ loading: false, user: authData?.authenticated ? authData?.user : null });
+      const steamUser = steamData?.authenticated ? steamData?.user : null;
+      const googleUser = googleData?.authenticated ? googleData?.user : null;
+      setSession({
+        loading: false,
+        provider: steamUser ? 'steam' : googleUser ? 'google' : null,
+        user: steamUser || googleUser || null,
+      });
       setPosts(Array.isArray(postsData?.posts) ? postsData.posts : []);
     });
     return () => {
@@ -64,18 +70,22 @@ export default function HubCommunityForm() {
       <article className="content-card hub-form-card">
         <div className="hub-form-head">
           <p className="eyebrow">Community board</p>
-          <h3>Steam-authenticated posting lane</h3>
+          <h3>Steam/Google-authenticated posting lane</h3>
           <p className="muted">
             Post updates, questions, ideas, and route notes related to anything in T-Central Hub.
           </p>
         </div>
 
-        {session.loading ? <p className="muted">Checking Steam session…</p> : null}
+        {session.loading ? <p className="muted">Checking Steam/Google session…</p> : null}
         {!session.loading && !session.user ? (
           <div className="hub-auth-required">
-            <p>Steam authentication is required to post.</p>
+            <p>Steam or Google authentication is required to post.</p>
             <a className="button primary" href="/api/auth/steam/login?redirectTo=/hub-form">Sign in with Steam</a>
+            <a className="button secondary" href="/api/auth/google/login?redirectTo=/hub-form">Sign in with Google</a>
           </div>
+        ) : null}
+        {!session.loading && session.user ? (
+          <p className="muted">Posting as {session.user.personaname || session.user.name || session.user.email || 'Community Pilot'} through {session.provider?.toUpperCase()}.</p>
         ) : null}
 
         <form className="hub-form-grid" onSubmit={onSubmit}>
@@ -92,7 +102,7 @@ export default function HubCommunityForm() {
           <label>
             Category
             <select value={form.category} onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value }))}>
-              {CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
+              {HUB_POST_CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
             </select>
           </label>
           <label className="full">
@@ -125,7 +135,7 @@ export default function HubCommunityForm() {
               </div>
               <p>{post.message}</p>
               <small>
-                {post.author?.personaname || 'Steam Pilot'} · {new Date(post.createdAt).toLocaleString()}
+                {post.author?.displayName || post.author?.personaname || 'Community Pilot'} · {post.author?.provider ? `${post.author.provider.toUpperCase()} · ` : ''}{new Date(post.createdAt).toLocaleString()}
               </small>
             </div>
           )) : <p className="muted">No posts yet. Be the first to publish a hub update.</p>}
