@@ -29,6 +29,7 @@ import AccountProgressPanel from '@/components/AccountProgressPanel';
 import { HYPERSPACE_DIMENSION_COUNT, HYPERSPACE_SIGNATURE_PREFIX } from '@/lib/simulationConfig';
 import { SESSION_MODES } from '@/lib/sessionModeEngine';
 import { FLIGHT_CONTROL_COPY } from '@/lib/siteContent';
+import { gameEngine } from '@/lib/gameEngine';
 
 const UI_VISUAL_DEBUG = false;
 const SHIP_MODEL_FORWARD = new THREE.Vector3(0, 0, 1);
@@ -1229,6 +1230,10 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
     return () => window.removeEventListener('hudToggle', handleHudToggle);
   }, []);
 
+  const showHud = useCallback(() => {
+    gameEngine.setHUDVisible(true);
+  }, []);
+
   const handleCombatAction = useCallback(async (action) => {
     if (lobbyMode !== 'hub' || !serverSession?.token) return;
     try {
@@ -1704,7 +1709,19 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       <div className="stable-system-backdrop" />
       <div className="stable-system-veil" />
 
+      {!hudVisible ? (
+        <button
+          type="button"
+          className="stable-show-hud-button"
+          onClick={showHud}
+          aria-label="Show HUD"
+        >
+          Show HUD
+        </button>
+      ) : null}
+
       {hudVisible ? <div className="stable-system-hud">
+        <div className="stable-hud-chrome" role="note">Press H to hide/show HUD.</div>
         <aside className="left-ops-rail">
           <OperationsDirectorPanel operations={operations} lobbyMode={lobbyMode} validationSummary={validatorSummary} />
           <AccountProgressPanel profile={{ ...accountProfile, progression: accountProgression, progress }} lobbyMode={lobbyMode} />
