@@ -1,19 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import usePersistedPanelState from '@/components/usePersistedPanelState';
 
 export default function AccountProgressPanel({ profile = null, lobbyMode = 'private' }) {
   const progression = profile?.progression;
   const stats = profile?.progress || {};
   const width = Math.max(6, Math.round((progression?.progressToNext || 0) * 100));
-  const [open, setOpen] = useState(true);
+  const [open, toggleOpen] = usePersistedPanelState('tcentral-panel-account-progress', false);
 
   return (
     <section className="content-card stable-card stable-card-layer account-progress-panel">
       <button
         type="button"
         className="panel-minimize-toggle"
-        onClick={() => setOpen((value) => !value)}
+        onClick={toggleOpen}
         aria-expanded={open}
         aria-label={open ? 'Minimize pilot progression panel' : 'Expand pilot progression panel'}
       >
@@ -21,6 +21,10 @@ export default function AccountProgressPanel({ profile = null, lobbyMode = 'priv
           <p className="eyebrow">Pilot progression</p>
           <h3>{profile?.identity?.displayName || 'Guest Pilot'}</h3>
         </div>
+        <span className="panel-toggle-summary">
+          <strong>{lobbyMode === 'hub' ? 'Shared Hub' : 'Private Universe'} · Level {progression?.level || 1}</strong>
+          <small>{width}% to next · {stats.entropyMined || 0} entropy · {stats.visitedNodes?.length || 0} anchors</small>
+        </span>
         <span className="panel-minimize-indicator" aria-hidden="true">{open ? '−' : '+'}</span>
       </button>
       {open ? (

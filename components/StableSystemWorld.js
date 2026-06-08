@@ -21,6 +21,7 @@ import { SIM_RUNTIME_STATUS } from '@/lib/simRuntime/contracts';
 import { buildDynamicEngineState } from '@/lib/dynamicEngine';
 import OperationsDirectorPanel from '@/components/OperationsDirectorPanel';
 import EntropyMissionPanel from '@/components/EntropyMissionPanel';
+import usePersistedPanelState from '@/components/usePersistedPanelState';
 import { useMultiplayerSession } from '@/components/MultiplayerSessionProvider';
 import { subscribeToMultiplayerRoom } from '@/lib/multiplayerRealtimeClient';
 import { resolveMultiplayerIdentity } from '@/lib/multiplayerSyncEngine';
@@ -1106,7 +1107,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   const [selected, setSelected] = useState(null);
   const [touchInput, setTouchInput] = useState({ x: 0, y: 0, z: 0, boost: 0 });
   const [flightConfig, setFlightConfig] = useState(FLIGHT_PRESETS.freeFlight);
-  const [flightDeckOpen, setFlightDeckOpen] = useState(false);
+  const [flightDeckOpen, toggleFlightDeckOpen] = usePersistedPanelState('tcentral-panel-flight-command-deck', false);
   const [flightResetTick, setFlightResetTick] = useState(0);
   const [presentationMode, setPresentationMode] = useState(true);
   const [hudVisible, setHudVisible] = useState(true);
@@ -1794,7 +1795,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           </div>
         ) : null}
 
-        <div className="content-card stable-card observer stable-card-layer observer-layer">
+        {showVisualDebugCards ? <div className="content-card stable-card observer stable-card-layer observer-layer">
           <p className="eyebrow">Observer / Pilot</p>
           <h3>{perspective.role}</h3>
           <p className="muted">{perspective.note}</p>
@@ -1819,7 +1820,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           {prayerSeedState.status ? (
             <p className={`report-status ${prayerSeedState.ok ? 'success' : 'error'}`}>{prayerSeedState.status}</p>
           ) : null}
-        </div>
+        </div> : null}
 
 
         {showVisualDebugCards ? <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
@@ -1924,13 +1925,17 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
         <button
           type="button"
           className="panel-minimize-toggle"
-          onClick={() => setFlightDeckOpen((value) => !value)}
+          onClick={toggleFlightDeckOpen}
           aria-expanded={flightDeckOpen}
           aria-label={flightDeckOpen ? 'Minimize flight command deck panel' : 'Expand flight command deck panel'}
         >
           <div>
             <p className="eyebrow">Flight command deck</p>
             <h3>Flight-command deck interface</h3>
+            <span className="panel-toggle-summary">
+              <strong>{lobbyMode === 'hub' ? 'Shared Hub' : 'Private Universe'} · {telemetry.speed}</strong>
+              <small>{telemetry.nearest || 'Deep-space drift'} · {authoritativeState.playerCount || presence.length} pilots · {flightConfig.routeAssist ? 'Assist on' : 'Assist off'}</small>
+            </span>
           </div>
           <span className="panel-minimize-indicator" aria-hidden="true">{flightDeckOpen ? '−' : '+'}</span>
         </button>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import usePersistedPanelState from '@/components/usePersistedPanelState';
 import SteamAccessPanel from '@/components/SteamAccessPanel';
 import SteamModeButtons from '@/components/SteamModeButtons';
 import WalletExchangePanel from '@/components/WalletExchangePanel';
@@ -8,19 +8,23 @@ import BlackholeMapPanel from '@/components/BlackholeMapPanel';
 import DysonContinuityCheckpointPanel from '@/components/DysonContinuityCheckpointPanel';
 
 export default function SystemShellControlLayer({ steamUser, lobbyMode, onChange, activeNode }) {
-  const [open, setOpen] = useState(true);
+  const [open, toggleOpen] = usePersistedPanelState('tcentral-panel-system-shell', false);
 
   return (
     <div className={`system-shell-control-layer ${open ? 'open' : 'collapsed'}`}>
       <button
         className="system-shell-control-toggle"
         type="button"
-        onClick={() => setOpen((value) => !value)}
+        onClick={toggleOpen}
         aria-expanded={open}
         aria-label={open ? 'Collapse game controls' : 'Expand game controls'}
       >
         <span>Game controls</span>
-        <strong>{open ? '−' : '+'}</strong>
+        <span className="panel-toggle-summary">
+          <strong>{lobbyMode === 'hub' ? 'Shared Hub' : 'Private Universe'}</strong>
+          <small>{steamUser?.steamid ? 'Steam linked' : 'Guest'} · {activeNode?.label || 'No anchor selected'}</small>
+        </span>
+        <strong className="panel-minimize-indicator">{open ? '−' : '+'}</strong>
       </button>
 
       {open ? (
