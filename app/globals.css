@@ -446,6 +446,13 @@ button { font: inherit; }
   box-shadow: var(--shadow);
 }
 
+.bubble-link.is-active {
+  border-color: rgba(131,235,255,0.68);
+  background: linear-gradient(135deg, rgba(131,235,255,0.24), rgba(159,124,255,0.22)), rgba(6,16,24,0.9);
+  box-shadow: 0 18px 44px rgba(0,0,0,0.36), 0 0 22px rgba(131,235,255,0.2);
+  color: #ffffff;
+}
+
 .page-hero,
 .page-section {
   position: relative;

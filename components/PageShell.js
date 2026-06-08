@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 const quickLinks = [
   { href: '/', label: 'Return to Hub' },
@@ -11,17 +14,37 @@ const quickLinks = [
   { href: '/terms-and-conditions', label: 'Terms' },
 ];
 
-export default function PageShell({ eyebrow, title, text, heroImage = null, children }) {
+const normalizeHref = (href) => {
+  if (!href || href === '/') {
+    return '/';
+  }
+
+  return href.endsWith('/') ? href.slice(0, -1) : href;
+};
+
+export default function PageShell({ eyebrow, title, text, heroImage = null, activeHref, children }) {
+  const pathname = usePathname();
+  const currentHref = normalizeHref(activeHref || pathname);
+
   return (
     <main className="content-page">
       <div className="content-backdrop" />
       <div className="content-noise" />
       <div className="content-bubbles">
-        {quickLinks.map((link) => (
-          <Link key={link.href} href={link.href} className="bubble-link">
-            {link.label}
-          </Link>
-        ))}
+        {quickLinks.map((link) => {
+          const isActive = normalizeHref(link.href) === currentHref;
+
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`bubble-link${isActive ? ' is-active' : ''}`}
+              aria-current={isActive ? 'page' : undefined}
+            >
+              {link.label}
+            </Link>
+          );
+        })}
       </div>
 
       <section className="page-hero">
