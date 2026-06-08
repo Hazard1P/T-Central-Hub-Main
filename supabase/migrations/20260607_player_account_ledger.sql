@@ -1,7 +1,9 @@
 create table if not exists public.player_account_ledger (
   id uuid primary key default gen_random_uuid(),
   identity_id text not null,
+  account_key text,
   event_type text not null,
+  event_payload jsonb not null default '{}'::jsonb,
   progress_delta jsonb,
   progress jsonb,
   progression jsonb,
@@ -17,6 +19,9 @@ create unique index if not exists player_account_ledger_idempotency_key_idx
 
 create index if not exists player_account_ledger_identity_saved_at_idx
   on public.player_account_ledger (identity_id, saved_at desc);
+
+create index if not exists player_account_ledger_account_key_created_at_idx
+  on public.player_account_ledger (account_key, created_at desc);
 
 create index if not exists player_account_ledger_event_type_idx
   on public.player_account_ledger (event_type);
