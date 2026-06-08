@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { decryptJson } from '@/lib/security';
 import { resolveGameAuthContext } from '@/lib/auth/resolveGameAuthContext';
 import { buildMatrixCoinSystemStatus } from '@/lib/matrixCoinExchangeSystem';
+import { MATRIXCOIN_NODE_KEY, loadMatrixCoinWallet, recordMatrixCoinSettlement } from '@/lib/server/matrixCoinExchangeStore';
 
 export const dynamic = 'force-dynamic';
 
@@ -76,10 +77,65 @@ export async function GET() {
     entropyBudget: discrepancyTelemetry.entropyBudget,
     fallbackReason: discrepancyTelemetry.fallbackReason,
   });
+  const walletState = authContext.authenticated
+    ? await loadMatrixCoinWallet(authContext, { modeScope: `singleplayer:${MATRIXCOIN_NODE_KEY}` })
+    : { ok: false, storage: 'none', wallet: null };
 
   return NextResponse.json({
     ok: true,
     source: discrepancyTelemetry.source,
     status,
+    matrixCoinWallet: walletState.wallet || null,
+    walletStorage: walletState.storage,
   });
+}
+
+
+function resolveModeScope(body = {}) {
+  const requested = typeof body?.modeScope === 'string' ? body.modeScope : null;
+  if (requested && /^(singleplayer|multiplayer):[A-Za-z0-9_-]+$/.test(requested)) return requested;
+  return `singleplayer:${MATRIXCOIN_NODE_KEY}`;
+}
+
+export async function POST(request) {
+  const authContext = resolveGameAuthContext(cookies());
+  if (!authContext.authenticated) {
+    return NextResponse.json({
+      ok: false,
+      error: 'AUTHENTICATED_ACCOUNT_REQUIRED',
+      message: 'MatrixCoinExchange settlements require a linked authenticated account before durable wallet storage is written.',
+    }, { status: 401 });
+  }
+
+  const body = await request.json().catch(() => null);
+  if (!body || body.nodeKey !== MATRIXCOIN_NODE_KEY) {
+    return NextResponse.json({
+      ok: false,
+      error: 'INVALID_MATRIXCOIN_NODE',
+      message: 'Settlements must target the matrixcoinexchange node.',
+    }, { status: 400 });
+  }
+
+  const settlement = await recordMatrixCoinSettlement(authContext, {
+    modeScope: resolveModeScope(body),
+    idempotencyKey: body.idempotencyKey,
+    originEventId: body.originEventId,
+    entropyUnits: body.entropyUnits,
+    stabilizedEntropy: body.stabilizedEntropy,
+    creditQuote: body.creditQuote,
+    creditMicroEc: body.creditMicroEc,
+    routeIntegrity: body.routeIntegrity,
+    tickId: body.tickId,
+    telemetry: body.telemetry,
+  });
+
+  return NextResponse.json({
+    ok: settlement.ok,
+    storage: settlement.storage,
+    duplicate: Boolean(settlement.duplicate),
+    wallet: settlement.wallet || null,
+    ledgerEntry: settlement.ledgerEntry || null,
+    settlement: settlement.settlement || null,
+    warning: settlement.ok ? null : settlement.reason || 'MatrixCoinExchange durable persistence is not configured.',
+  }, { status: settlement.ok ? 200 : 202 });
 }
