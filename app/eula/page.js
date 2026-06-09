@@ -31,7 +31,12 @@ export default function EulaPage() {
         <article className="content-card">
           <p className="eyebrow">Ownership</p>
           <h3>System ownership</h3>
-          <p className="muted">All game systems, visuals, route structures, engine logic, and related platform components remain the property of the operator and licensors of T-Central.</p>
+          <p className="muted">All game systems, visuals, route structures, engine logic, and related platform components remain the property of the operator and licensors of T-Central. One-time donations and recurring support are voluntary and do not transfer ownership, intellectual property rights, equity, control, or any real-world return in T-Central.</p>
+        </article>
+        <article className="content-card">
+          <p className="eyebrow">Supporter benefits</p>
+          <h3>Revocable supporter benefits</h3>
+          <p className="muted">Any supporter recognition, account display, community role, early-access preview, or future supporter perk is a revocable access benefit, not owned property, stored value, in-game currency, external payout rights, or a paid gameplay advantage.</p>
         </article>
         <article className="content-card">
           <p className="eyebrow">Support/perks</p>

@@ -3086,6 +3086,36 @@ button { font: inherit; }
   font-size: 14px;
 }
 
+.entry-link-row a {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(131, 235, 255, 0.24);
+  border-radius: 999px;
+  padding: 7px 12px;
+  color: rgba(230, 247, 255, 0.92);
+  background: rgba(8, 18, 36, 0.42);
+  box-shadow: 0 0 0 1px rgba(159, 124, 255, 0.08), 0 10px 28px rgba(0, 0, 0, 0.18);
+  text-decoration: none;
+  transition: border-color 180ms ease, box-shadow 180ms ease, color 180ms ease, transform 180ms ease, background 180ms ease;
+}
+
+.entry-link-row a:hover {
+  border-color: rgba(131, 235, 255, 0.62);
+  color: #ffffff;
+  background: rgba(32, 54, 92, 0.58);
+  box-shadow: 0 0 18px rgba(131, 235, 255, 0.22), 0 12px 32px rgba(0, 0, 0, 0.24);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  transform: translateY(-1px);
+}
+
+.entry-link-row a:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 3px;
+  border-color: rgba(131, 235, 255, 0.82);
+  box-shadow: 0 0 0 4px rgba(131, 235, 255, 0.18), 0 0 22px rgba(159, 124, 255, 0.24);
+}
+
 .entry-panel-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
