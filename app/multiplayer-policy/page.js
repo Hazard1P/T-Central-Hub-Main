@@ -23,7 +23,12 @@ export default function MultiplayerPolicyPage() {
         <article className="content-card">
           <p className="eyebrow">Economy notice</p>
           <h3>In-game values only</h3>
-          <p className="muted">E_s Credits and other in-game yield values are gameplay units only. They are not currency, stored value, or a guarantee of external payout or real-world return.</p>
+          <p className="muted">E_s Credits and other in-game yield values are gameplay units only. They are not currency, stored value, external payout rights, or a guarantee of real-world return.</p>
+        </article>
+        <article className="content-card">
+          <p className="eyebrow">Support fairness</p>
+          <h3>No paid gameplay advantage</h3>
+          <p className="muted">One-time donations, recurring support, supporter recognition, account displays, community roles, previews, and future supporter perks do not provide paid gameplay advantage in shared multiplayer play and have no real-world value.</p>
         </article>
       </div>
     </PageShell>
