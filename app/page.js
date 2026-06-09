@@ -111,10 +111,12 @@ export default async function HomePage() {
           </article>
 
           <div className="entry-link-row compact">
-            <Link href="/privacy-policy">Privacy policy</Link>
-            <Link href="/terms-and-conditions">Terms and conditions</Link>
-            <Link href="/report-player">Report player</Link>
-            <Link href="/donate">Support</Link>
+            <Link href="/privacy-policy">Privacy Policy</Link>
+            <Link href="/terms-and-conditions">Terms &amp; Conditions</Link>
+            <Link href="/eula">EULA</Link>
+            <Link href="/multiplayer-policy">Multiplayer Policy</Link>
+            <Link href="/donate">Support / Donate</Link>
+            <Link href="/report-player">Report Player</Link>
           </div>
         </div>
 
