@@ -3898,6 +3898,12 @@ button { font: inherit; }
   backdrop-filter: blur(10px);
 }
 
+.system-runtime-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 
 .progress-stage-panel {
   position: fixed;

@@ -59,7 +59,7 @@ export default function SystemEntryClient() {
     setLaunchPhase('launching');
   };
 
-  const handleRetry = () => {
+  const resetLauncher = () => {
     setSelectedNode(null);
     setLaunchPhase('idle');
   };
@@ -70,7 +70,7 @@ export default function SystemEntryClient() {
       <SystemStatusStrip />
       {launchPhase === 'in_sim' ? <SystemNewsInfoPanel lobbyMode={lobbyMode} selected={selectedNode} /> : null}
       {launchPhase === 'in_sim' ? (
-        <SystemErrorBoundary>
+        <SystemErrorBoundary onReset={resetLauncher}>
           <MultiplayerSessionProvider>
             <div className="system-top-left-controls">
               <LobbyModePanel lobbyMode={lobbyMode} onChange={setLobbyMode} steamUser={steamUser} universe={universe} />
@@ -87,7 +87,7 @@ export default function SystemEntryClient() {
               <p className="eyebrow">Initialization issue</p>
               <h3>3D layer failed before simulation handoff.</h3>
               <p className="muted">Please try launching again. If this persists, refresh the page.</p>
-              <button className="button primary" onClick={handleRetry}>
+              <button className="button primary" onClick={resetLauncher}>
                 Reset launcher
               </button>
             </div>
