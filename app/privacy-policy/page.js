@@ -25,7 +25,19 @@ const privacySections = [
     id: 'external-routes',
     eyebrow: 'Route portals',
     title: 'External routes',
-    text: 'Connected portals may send you to game servers, Steam-linked authentication surfaces, payment processors, or community systems that operate under their own notices and controls.',
+    text: 'Connected portals may send you to game servers, Steam-linked authentication surfaces, PayPal payment surfaces, or community systems that operate under their own notices and controls.',
+  },
+  {
+    id: 'payment-routing',
+    eyebrow: 'Payment routing',
+    title: 'Payment routing and PayPal processing',
+    text: 'One-time donations and recurring support are routed to PayPal as the external payment processor. T-Central does not need to collect or store sensitive card, bank, or PayPal credential details handled by PayPal checkout.',
+  },
+  {
+    id: 'receipt-metadata',
+    eyebrow: 'Receipt metadata',
+    title: 'Account-linked receipt metadata',
+    text: 'When support is connected to a Steam-linked account, T-Central may keep account-linked receipt metadata such as package choice, support status, PayPal order or subscription references, timestamps, and fallback notes needed for support, reconciliation, and account display.',
   },
   {
     id: 'contact-and-removal-requests',
@@ -51,15 +63,15 @@ export default function PrivacyPolicyPage() {
         <div className="arma-brief-grid" aria-label="Privacy policy metadata">
           <div className="arma-highlight">
             <strong>Last updated</strong>
-            <span className="muted">June 8, 2026</span>
+            <span className="muted">June 9, 2026</span>
           </div>
           <div className="arma-highlight">
             <strong>Applies to</strong>
-            <span className="muted">Website, Steam sign-in, multiplayer hub, private worlds, and route portals</span>
+            <span className="muted">Website, Steam sign-in, multiplayer hub, private worlds, route portals, and PayPal-routed support</span>
           </div>
           <div className="arma-highlight">
             <strong>Support channel</strong>
-            <span className="muted">Privacy questions, access requests, and removal requests</span>
+            <span className="muted">Privacy questions, access requests, payment metadata questions, and removal requests</span>
           </div>
         </div>
       </section>
@@ -90,7 +102,7 @@ export default function PrivacyPolicyPage() {
         <p className="eyebrow">Need help?</p>
         <h3 id="privacy-support-cta">Contact support or report abuse</h3>
         <p className="muted">
-          For privacy questions, data access, or removal requests, contact the T-Central team. If a privacy issue involves harassment, cheating, or player misconduct, use the player report flow too.
+          For privacy questions, account-linked receipt metadata, data access, or removal requests, contact the T-Central team. If a privacy issue involves harassment, cheating, or player misconduct, use the player report flow too.
         </p>
         <div className="donate-legal-links" aria-label="Privacy support links">
           <a href="/contact">Contact support</a>

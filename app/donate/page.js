@@ -65,10 +65,10 @@ function PaymentLegalDisclosure() {
     <aside className="donate-legal-disclosure" aria-label="Payment legal disclosure">
       <strong>Payment disclosure</strong>
       <p>
-        One-time donations and recurring subscriptions are processed by PayPal. Monthly memberships recur until
-        cancelled through PayPal or the account-management path provided. Donations/support do not guarantee in-game
-        currency, stored value, external payout, or real-world return. PayPal.Me fallback may not automatically bind to
-        the Steam-linked account. Refund/support questions should use <Link href="/contact">contact</Link>.
+        One-time donations and recurring support are voluntary and processed by PayPal. Monthly support recurs until
+        cancelled through PayPal or the available account-management path, and support does not provide in-game
+        currency, stored value, external payout rights, real-world return, paid gameplay advantage, or ownership in T-Central. PayPal.Me fallback may not automatically
+        bind to a Steam-linked account. See the linked legal pages for details or use <Link href="/contact">contact</Link> for help.
       </p>
       <nav className="donate-legal-links" aria-label="Donation legal links">
         {legalDisclosureLinks.map((link) => (

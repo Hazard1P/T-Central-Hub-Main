@@ -28,6 +28,24 @@ const termsSections = [
     text: 'Route portals, Steam authentication, payment providers, game servers, and community platforms may have separate rules, account requirements, uptime behavior, and privacy practices.',
   },
   {
+    id: 'payment-terms',
+    eyebrow: 'Payment terms',
+    title: 'Payment terms',
+    text: 'One-time donations and recurring support are voluntary contributions processed by PayPal. Support does not buy in-game currency, stored value, external payout rights, real-world return, ownership in T-Central, or a paid gameplay advantage.',
+  },
+  {
+    id: 'recurring-support',
+    eyebrow: 'Recurring support',
+    title: 'Recurring support and cancellation',
+    text: 'Monthly support recurs until cancelled through PayPal or the available account-management path. Cancellation stops future recurring billing according to PayPal and account-management timing, but it does not automatically reverse previously completed payments.',
+  },
+  {
+    id: 'refunds-and-support',
+    eyebrow: 'Refunds and support',
+    title: 'Refund and support handling',
+    text: 'Refund, billing, account-linking, and PayPal.Me fallback questions should be sent through the contact path. PayPal.Me fallback may not automatically bind to a Steam-linked account, so supporters should include useful receipt and account details when asking for help.',
+  },
+  {
     id: 'availability-and-changes',
     eyebrow: 'Availability',
     title: 'Availability and changes',
@@ -51,15 +69,15 @@ export default function TermsPage() {
         <div className="arma-brief-grid" aria-label="Terms metadata">
           <div className="arma-highlight">
             <strong>Last updated</strong>
-            <span className="muted">June 8, 2026</span>
+            <span className="muted">June 9, 2026</span>
           </div>
           <div className="arma-highlight">
             <strong>Applies to</strong>
-            <span className="muted">Website, multiplayer hub, private worlds, linked identity, and route portals</span>
+            <span className="muted">Website, multiplayer hub, private worlds, linked identity, route portals, and voluntary support payments</span>
           </div>
           <div className="arma-highlight">
             <strong>Support channel</strong>
-            <span className="muted">General support, conduct reports, access issues, and route questions</span>
+            <span className="muted">General support, payment questions, conduct reports, access issues, and route questions</span>
           </div>
         </div>
       </section>
@@ -90,7 +108,7 @@ export default function TermsPage() {
         <p className="eyebrow">Need help?</p>
         <h3 id="terms-support-cta">Contact support or report conduct issues</h3>
         <p className="muted">
-          Contact the T-Central team for account, route, or service questions. Use the report form for harassment, cheating, griefing, or other community conduct concerns.
+          Contact the T-Central team for account, route, service, refund, billing, or PayPal.Me account-linking questions. Use the report form for harassment, cheating, griefing, or other community conduct concerns.
         </p>
         <div className="donate-legal-links" aria-label="Terms support links">
           <a href="/contact">Contact support</a>
