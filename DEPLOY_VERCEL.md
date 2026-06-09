@@ -46,3 +46,18 @@ Add these environment variables in Vercel:
 
 Recommended webhook target:
 - `/api/donations/paypal/webhook`
+
+Before enabling live PayPal donations, complete this webhook checklist:
+- [ ] Register `https://<production-domain>/api/donations/paypal/webhook` in the PayPal app dashboard.
+- [ ] Subscribe to these webhook events handled by `app/api/donations/paypal/webhook/route.js`:
+  - `CHECKOUT.ORDER.APPROVED`
+  - `PAYMENT.CAPTURE.COMPLETED`
+  - `BILLING.SUBSCRIPTION.CREATED`
+  - `BILLING.SUBSCRIPTION.ACTIVATED`
+  - `BILLING.SUBSCRIPTION.UPDATED`
+  - `BILLING.SUBSCRIPTION.SUSPENDED`
+  - `BILLING.SUBSCRIPTION.CANCELLED`
+  - `BILLING.SUBSCRIPTION.EXPIRED`
+  - `BILLING.SUBSCRIPTION.PAYMENT.FAILED`
+- [ ] Copy the dashboard webhook ID into `PAYPAL_WEBHOOK_ID`.
+- [ ] Confirm webhook verification succeeds before switching `PAYPAL_ENV` to `live`.
