@@ -1,12 +1,12 @@
 # Vercel deployment notes
 
 ## Required environment variables
-- `NEXT_PUBLIC_APP_URL`
-- `SESSION_SECRET`
-- `STEAM_API_KEY` if you want enriched Steam profiles
+- `NEXT_PUBLIC_APP_URL` set to the production origin, for example `https://example.com`, so Steam OpenID and protected donation redirects return to the deployed site.
+- `SESSION_SECRET` set to a stable, high-entropy production value so encrypted Steam sessions survive deploys and protected PayPal checkout can recognize valid Steam sessions.
 - `DYSON_ADMIN_ACCOUNT_ID` for the single account allowed to use admin-only Dyson operations
 
 ## Optional environment variables
+- `STEAM_API_KEY` for enriched Steam profile data. Steam sign-in and protected donation binding can work with the Steam ID alone, but this key is recommended for persona name, profile URL, and avatar enrichment.
 - `SUPPORT_LINK_SECRET`
 - `STATUS_SOURCE_URL`
 - `NEXT_PUBLIC_SUPABASE_URL`
@@ -36,6 +36,10 @@
 
 
 ## PayPal donation flow
+
+Protected PayPal checkout requires a valid Steam session. Before testing PayPal buttons, validate Steam sign-in by opening `/api/auth/steam/login?redirectTo=/donate` on the production origin and confirming the completed Steam login returns to `/donate?steam=linked`. If it does not, verify `NEXT_PUBLIC_APP_URL` and the stability of `SESSION_SECRET`.
+
+PayPal.Me remains available without Steam binding for direct one-time support, but it bypasses the protected Steam-linked order flow and may not automatically attach the payment to a Steam support record.
 
 Add these environment variables in Vercel:
 - `NEXT_PUBLIC_PAYPAL_CLIENT_ID`
