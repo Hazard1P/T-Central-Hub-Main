@@ -1864,7 +1864,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
               ) : null}
             </>
           ) : null}
-        </div> : null}
+        </div>
 
 
           {showVisualDebugCards ? <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
