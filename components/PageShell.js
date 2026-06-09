@@ -12,6 +12,8 @@ const quickLinks = [
   { href: '/report-player', label: 'Report' },
   { href: '/privacy-policy', label: 'Privacy' },
   { href: '/terms-and-conditions', label: 'Terms' },
+  { href: '/eula', label: 'EULA' },
+  { href: '/multiplayer-policy', label: 'Multiplayer Policy' },
 ];
 
 const normalizeHref = (href) => {
