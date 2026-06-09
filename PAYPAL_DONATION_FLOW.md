@@ -33,3 +33,11 @@ Other event types are accepted, signature-verified, marked processed, and ignore
 - `PAYPAL_CURRENCY` (defaults to `USD`)
 - `PAYPAL_SUBSCRIPTION_PLAN_ID` (required only for subscription purchases)
 - `PAYPAL_WEBHOOK_ID` (required for webhook signature verification)
+
+## Cancellation handling
+
+- Active recurring PayPal memberships can be cancelled from the protected donation page after Steam login.
+- The client posts the linked PayPal subscription ID to `/api/support/cancel-subscription`.
+- The route verifies the Steam session, checks the latest support ledger or signed support receipt, confirms the PayPal subscription belongs to that Steam ID when PayPal metadata is available, and calls PayPal's `/v1/billing/subscriptions/{subscription_id}/cancel` endpoint.
+- After a successful cancellation request, T-Central stores a cancelled support receipt and support-ledger status so the account no longer appears as an active subscription while waiting for any PayPal webhook reconciliation.
+- In-progress one-time donations can be cancelled from the PayPal checkout approval screen. Completed one-time donations cannot be cancelled as recurring billing; refund, dispute, or support requests should go through PayPal or `/contact`.

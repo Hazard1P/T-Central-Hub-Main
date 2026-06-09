@@ -6794,3 +6794,32 @@ button { font: inherit; }
   grid-column: auto;
   justify-self: stretch;
 }
+
+.donate-entry .support-cancellation-panel {
+  align-items: center;
+  background: linear-gradient(135deg, rgba(255, 209, 92, 0.1), rgba(24, 37, 64, 0.62));
+  border: 1px solid rgba(255, 209, 92, 0.22);
+  border-radius: 18px;
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding: 16px;
+}
+
+.donate-entry .support-cancellation-panel p {
+  color: var(--muted-text, rgba(235, 244, 255, 0.72));
+  margin: 6px 0 0;
+}
+
+.donate-entry .support-cancel-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@media (max-width: 700px) {
+  .donate-entry .support-cancellation-panel {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
