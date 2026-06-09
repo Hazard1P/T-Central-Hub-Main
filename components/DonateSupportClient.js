@@ -128,6 +128,7 @@ export default function DonateSupportClient() {
   const [donationSummary, setDonationSummary] = useState(null);
   const [checkoutMode, setCheckoutMode] = useState('donation');
   const [selectedPackageId, setSelectedPackageId] = useState(supportPackages[0].id);
+  const [cancellingSubscription, setCancellingSubscription] = useState(false);
   const { blackholeAnchors, solarSystems } = useMemo(() => getDonationRouteOptions(), []);
 
   useEffect(() => {
@@ -153,12 +154,52 @@ export default function DonateSupportClient() {
   }, [checkoutMode, config]);
 
   const activeSubscriptionIdentifier = support?.subscriptionId || (support?.identifierType === 'subscription' ? support?.identifier : null);
+  const supportStatus = String(support?.status || support?.verification?.state || '').toUpperCase();
+  const canCancelSubscription = Boolean(
+    activeSubscriptionIdentifier && support?.active !== false && !['CANCELLED', 'EXPIRED'].includes(supportStatus)
+  );
   const linkedSupportReceipt = Boolean(support?.reference || support?.identifier);
   const latestDonation = donationSummary?.latest || null;
   const confirmedDonationText = donationSummary?.confirmed
     ? `${donationSummary.confirmed} confirmed / ${donationSummary.totalAmount} ${config?.currency || latestDonation?.currency || 'USD'}`
     : 'No confirmed one-time donation yet';
   const paypalReference = support?.reference || support?.verification?.identifier || support?.identifier || null;
+
+  const cancelSubscription = async () => {
+    if (!activeSubscriptionIdentifier || cancellingSubscription) return;
+
+    setCancellingSubscription(true);
+    setStatus('Cancelling PayPal subscription through T-Central.me account management...');
+
+    try {
+      const response = await fetch('/api/support/cancel-subscription', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          provider: 'paypal',
+          subscriptionId: activeSubscriptionIdentifier,
+          reason: 'T-Central.me account-management cancellation',
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        setStatus(payload?.error || 'Subscription cancellation failed');
+        return;
+      }
+
+      setStatus(
+        payload.alreadyCancelled
+          ? 'Subscription was already cancelled in PayPal. Support status updated.'
+          : 'Subscription cancellation sent to PayPal. Future recurring billing is stopped once PayPal confirms it.'
+      );
+      refresh();
+    } catch (error) {
+      setStatus(error?.message || 'Subscription cancellation failed');
+    } finally {
+      setCancellingSubscription(false);
+    }
+  };
 
   const selectSupportPackage = (supportPackage) => {
     setSelectedPackageId(supportPackage.id);
@@ -311,7 +352,7 @@ export default function DonateSupportClient() {
 
           <div className="support-link-panel">
             <span className="support-link-label">Active subscription identifier</span>
-            <strong>{activeSubscriptionIdentifier ? 'Subscription active' : 'No subscription identifier'}</strong>
+            <strong>{canCancelSubscription ? 'Subscription active' : activeSubscriptionIdentifier ? 'Subscription inactive' : 'No subscription identifier'}</strong>
             <small>{activeSubscriptionIdentifier || 'Choose a monthly package to create one'}</small>
           </div>
 
@@ -331,6 +372,23 @@ export default function DonateSupportClient() {
         <p className="support-link-status">
           Linked support receipts remain available on this device for {SUPPORT_RECEIPT_MAX_AGE_DAYS} days after verification.
         </p>
+
+        <div className="support-cancellation-panel">
+          <div>
+            <strong>Manage cancellation</strong>
+            <p>
+              Cancel active PayPal memberships from T-Central.me, or cancel an in-progress one-time donation from the PayPal checkout screen before approval. Completed one-time donations are handled as refund/support requests through PayPal or Contact.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="button secondary support-cancel-button"
+            onClick={cancelSubscription}
+            disabled={!canCancelSubscription || cancellingSubscription}
+          >
+            {cancellingSubscription ? 'Cancelling...' : 'Cancel PayPal subscription'}
+          </button>
+        </div>
 
         <div className="support-mode-switcher">
           <button
