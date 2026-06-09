@@ -35,13 +35,14 @@ export default class SystemErrorBoundary extends React.Component {
       return (
         <div className="system-runtime-fallback">
           <div className="content-card">
-            <p className="eyebrow">Runtime fallback</p>
-            <h3>System recovered from a client error</h3>
+            <p className="eyebrow">3D layer recovery</p>
+            <h3>System recovered from a client render error</h3>
             <p className="muted">
-              The 3D layer hit a client-side error. Click Retry 3D layer to remount the scene and relaunch after updating the package.
+              The 3D layer hit a client-side render error. Click Retry 3D layer to remount the scene, then check the browser console for the logged System runtime error details if recovery repeats.
             </p>
             <div className="focus-meta">
-              <span>{this.state.message || 'Unknown error'}</span>
+              <span>Error: {this.state.message || 'Unknown client render error'}</span>
+              <span>Console hint: search for System runtime error.</span>
             </div>
             <button type="button" onClick={this.handleRetry}>
               Retry 3D layer

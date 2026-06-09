@@ -40,6 +40,21 @@ const FLIGHT_PRESETS = Object.freeze({
   freeFlight: { thrustScale: 1.45, inertialDampers: false, chaseZoom: 1.24, routeAssist: false, mouseLook: true, sixAxis: true }
 });
 
+function describeRuntimeStatus(runtime = {}) {
+  const status = runtime?.status || SIM_RUNTIME_STATUS.ONLINE;
+  if (status === SIM_RUNTIME_STATUS.DEGRADED) {
+    return {
+      label: 'Sim runtime degraded',
+      detail: runtime?.degradedReason || 'sim-runtime-unavailable',
+    };
+  }
+
+  return {
+    label: 'Sim runtime online',
+    detail: 'continuity heartbeat healthy',
+  };
+}
+
 async function disconnectMultiplayerSession(session) {
   if (!session?.token || !session?.id || !session?.room) return;
 
@@ -1682,6 +1697,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
     identity: steamUser?.steamid ? 'Steam' : googleUser?.sub ? 'Google' : 'Guest',
     pilotCount: Math.max(authoritativeState.playerCount || 0, presence.length || 0, identity?.id ? 1 : 0),
   };
+  const runtimeDisplay = describeRuntimeStatus(telemetry.runtime);
 
   const layerDefinitions = [
     {
@@ -1934,6 +1950,10 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             <span>Entropy {telemetry.quantum.entropyPercent}%</span>
             <span>{telemetry.quantum.dominantDimension}</span>
           </div>
+          <div className="stable-chip-row alt" aria-label="Simulation runtime telemetry">
+            <span>{runtimeDisplay.label}</span>
+            <span>{runtimeDisplay.detail}</span>
+          </div>
           <p className="stable-flight-note">
             Nearest anchor: {telemetry.nearest || 'deep-space drift'} · Δr {telemetry.nearestDistance} · vₑ {telemetry.escapeVelocity}
           </p>
@@ -2008,6 +2028,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
               <span>Quantum engine live</span>
               <span>Singularity engine live</span>
               <span>Dynamic engine live</span>
+              <span>{runtimeDisplay.label}</span>
             </div>
             <div className="stable-chip-row alt flight-command-toggle-row">
               <button className={`stable-route-button compact ${flightConfig.inertialDampers ? 'is-live' : ''}`} onClick={() => setFlightConfig((current) => ({ ...current, inertialDampers: !current.inertialDampers }))}>
