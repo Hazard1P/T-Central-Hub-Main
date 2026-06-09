@@ -4,6 +4,12 @@ export const metadata = { title: 'Terms and Conditions' };
 
 const termsSections = [
   {
+    id: 'template-legal-review',
+    eyebrow: 'Template/legal review',
+    title: 'Draft template notice',
+    text: 'These terms are draft template language for planning and transparency. They should be reviewed and approved by qualified legal counsel before production use or reliance.',
+  },
+  {
     id: 'use-of-service',
     eyebrow: 'Use of service',
     title: 'Use of service',
@@ -50,6 +56,36 @@ const termsSections = [
     eyebrow: 'Availability',
     title: 'Availability and changes',
     text: 'Features, servers, private spaces, route links, and policies may change, pause, or become unavailable as systems are maintained, secured, moderated, or updated.',
+  },
+  {
+    id: 'donations-and-support',
+    eyebrow: 'Donations',
+    title: 'Voluntary donations and recurring support',
+    text: 'Donations and recurring support are voluntary contributions to help maintain T-Central. They are not required for ordinary community participation unless a specific optional support flow states otherwise.',
+  },
+  {
+    id: 'paypal-payments',
+    eyebrow: 'PayPal',
+    title: 'External PayPal processing',
+    text: 'PayPal processes donation and support payments externally. PayPal may require its own account, payment method, terms, privacy notice, dispute process, cancellation tools, and availability controls.',
+  },
+  {
+    id: 'monthly-subscriptions',
+    eyebrow: 'Recurring support',
+    title: 'Monthly subscriptions and cancellation',
+    text: 'Monthly subscriptions recur until canceled through PayPal or through the provided account path where available. Cancellation timing, billing cutoffs, receipts, and failed-payment handling may be controlled by PayPal.',
+  },
+  {
+    id: 'no-guaranteed-benefits',
+    eyebrow: 'No stored value',
+    title: 'No guaranteed perks, payout, or ownership',
+    text: 'Donations do not guarantee perks, currency, payout, stored value, ownership interest, uninterrupted service, or continued access to any specific feature, server, route, recognition, or benefit.',
+  },
+  {
+    id: 'refund-support',
+    eyebrow: 'Refunds',
+    title: 'Refund and support questions',
+    text: 'Refund, billing, receipt, cancellation, or supporter-account questions should be sent through /contact so the T-Central team can review the request and direct you to any applicable PayPal support path.',
   },
 ];
 

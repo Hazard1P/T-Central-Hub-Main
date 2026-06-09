@@ -4,6 +4,12 @@ export const metadata = { title: 'Privacy Policy' };
 
 const privacySections = [
   {
+    id: 'template-legal-review',
+    eyebrow: 'Template/legal review',
+    title: 'Draft template notice',
+    text: 'This privacy policy is draft template language for planning and transparency. It should be reviewed and approved by qualified legal counsel before production use or reliance.',
+  },
+  {
     id: 'what-we-collect',
     eyebrow: 'Steam sign-in',
     title: 'What we collect',
@@ -38,6 +44,30 @@ const privacySections = [
     eyebrow: 'Receipt metadata',
     title: 'Account-linked receipt metadata',
     text: 'When support is connected to a Steam-linked account, T-Central may keep account-linked receipt metadata such as package choice, support status, PayPal order or subscription references, timestamps, and fallback notes needed for support, reconciliation, and account display.',
+  },
+  {
+    id: 'payment-provider-routing',
+    eyebrow: 'Payment routing',
+    title: 'Payment provider routing to PayPal',
+    text: 'Donation and support flows may route you away from T-Central to PayPal for external payment processing, account authorization, receipts, recurring billing management, cancellation, and dispute handling.',
+  },
+  {
+    id: 'supporter-metadata',
+    eyebrow: 'Supporter records',
+    title: 'Steam-linked receipt and account metadata',
+    text: 'T-Central may use Steam-linked account identifiers, supporter status, transaction or subscription references, receipt metadata, timestamps, and support notes to track supporter recognition, troubleshoot payments, and prevent duplicate or fraudulent records.',
+  },
+  {
+    id: 'payment-data-limits',
+    eyebrow: 'Payment details',
+    title: 'No full card or PayPal credential storage',
+    text: 'The hub should not store full payment card numbers, security codes, bank credentials, or PayPal login credentials. Those details should be handled by PayPal or other applicable payment providers.',
+  },
+  {
+    id: 'paypal-privacy',
+    eyebrow: 'PayPal privacy',
+    title: 'PayPal has separate privacy terms',
+    text: 'PayPal operates independently and applies its own privacy terms, data collection, retention, security, dispute, fraud-prevention, and account-control practices when you use PayPal support flows.',
   },
   {
     id: 'contact-and-removal-requests',

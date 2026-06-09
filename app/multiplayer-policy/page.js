@@ -9,6 +9,14 @@ export default function MultiplayerPolicyPage() {
       title="Multiplayer policy"
       text="These rules apply when entering the shared hub, interacting with other pilots, and using multiplayer mission systems."
     >
+      <section className="content-card" aria-labelledby="multiplayer-template-review">
+        <p className="eyebrow">Template/legal review</p>
+        <h3 id="multiplayer-template-review">Draft template notice</h3>
+        <p className="muted">
+          This multiplayer policy is draft template language for planning and transparency. It should be reviewed and approved by qualified legal counsel before production use or reliance.
+        </p>
+      </section>
+
       <div className="arma-brief-grid">
         <article className="content-card">
           <p className="eyebrow">Conduct</p>
