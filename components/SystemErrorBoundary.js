@@ -7,6 +7,7 @@ export default class SystemErrorBoundary extends React.Component {
     super(props);
     this.state = { hasError: false, message: '', retryKey: 0 };
     this.handleRetry = this.handleRetry.bind(this);
+    this.handleReset = this.handleReset.bind(this);
     this.resetBoundary = this.resetBoundary.bind(this);
   }
 
@@ -30,6 +31,16 @@ export default class SystemErrorBoundary extends React.Component {
     }));
   }
 
+  handleReset() {
+    const resetLaunch = this.props.onReset || this.props.onExit;
+
+    this.resetBoundary();
+
+    if (typeof resetLaunch === 'function') {
+      resetLaunch();
+    }
+  }
+
   render() {
     if (this.state.hasError) {
       return (
@@ -44,9 +55,14 @@ export default class SystemErrorBoundary extends React.Component {
               <span>Error: {this.state.message || 'Unknown client render error'}</span>
               <span>Console hint: search for System runtime error.</span>
             </div>
-            <button type="button" onClick={this.handleRetry}>
-              Retry 3D layer
-            </button>
+            <div className="system-runtime-actions">
+              <button type="button" onClick={this.handleRetry}>
+                Retry 3D layer
+              </button>
+              <button type="button" onClick={this.handleReset}>
+                Return to launcher
+              </button>
+            </div>
           </div>
         </div>
       );
