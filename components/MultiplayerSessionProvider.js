@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 
 const defaultAuthoritativeState = {
   authoritative: false,
@@ -30,11 +30,11 @@ export function MultiplayerSessionProvider({ children }) {
   const [authoritativeState, setAuthoritativeState] = useState(defaultAuthoritativeState);
   const [serverStatus, setServerStatus] = useState(defaultServerStatus);
 
-  const resetSessionState = () => {
+  const resetSessionState = useCallback(() => {
     setSession(null);
     setAuthoritativeState(defaultAuthoritativeState);
     setServerStatus(defaultServerStatus);
-  };
+  }, []);
 
   const value = useMemo(() => ({
     session,
@@ -44,7 +44,7 @@ export function MultiplayerSessionProvider({ children }) {
     setAuthoritativeState,
     setServerStatus,
     resetSessionState,
-  }), [session, authoritativeState, serverStatus]);
+  }), [session, authoritativeState, serverStatus, resetSessionState]);
 
   return (
     <MultiplayerSessionContext.Provider value={value}>
