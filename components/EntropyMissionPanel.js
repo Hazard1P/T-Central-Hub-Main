@@ -14,7 +14,7 @@ export default function EntropyMissionPanel({
 
   const economy = operations.economy || { entropyMined: 0, entropyResolved: 0, unresolvedEntropy: 0, credits: 0, currency: { shortLabel: 'E_s credits', symbol: 'E_s' } };
   const canMine = lobbyMode === 'hub' && activeNode?.key === 'entropic_node';
-  const canResolve = activeNode?.key === 'matrixcoinexchange' && economy.unresolvedEntropy > 0;
+  const canResolve = activeNode?.key === 'entropic_node' && economy.unresolvedEntropy > 0;
   const [open, toggleOpen] = usePersistedPanelState('tcentral-panel-entropy-mission', false);
 
   return (
@@ -39,7 +39,7 @@ export default function EntropyMissionPanel({
       {open ? (
         <>
           <p className="muted">
-            Start in your private universe, jump into the shared hub, mine the entropic node, then stabilize the carried entropy into scalar gains inside the sim.
+            Start in your private universe, jump into the shared hub, mine the entropic node, then resolve your haul in-sim into stabilized scalar gains.
           </p>
 
           <div className="entropy-loop-grid">
@@ -84,8 +84,13 @@ export default function EntropyMissionPanel({
               Mine node
             </button>
             <button className={`stable-route-button compact ${canResolve ? 'is-live' : ''}`} type="button" onClick={onResolveEntropy} disabled={!canResolve}>
-              Stabilize gains
+              Settle gains
             </button>
+            {onOpenExchange ? (
+              <button className="stable-route-button compact" type="button" onClick={onOpenExchange}>
+                Open linked exchange
+              </button>
+            ) : null}
           </div>
         </>
       ) : null}
