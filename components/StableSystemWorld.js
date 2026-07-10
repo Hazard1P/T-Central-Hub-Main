@@ -1584,11 +1584,6 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
     setProgress((current) => ({ ...current, multiplayerJumped: true }));
   }, [lobbyMode, progress.multiplayerJumped, progress.visitedNodes]);
 
-  const openMatrixRoute = () => {
-    setProgress((current) => ({ ...current, routeTrips: current.routeTrips + 1, visitedNodes: current.visitedNodes.includes('matrixcoinexchange') ? current.visitedNodes : [...current.visitedNodes, 'matrixcoinexchange'] }));
-    window.open('https://matrixcoinexchange.com', '_blank', 'noopener,noreferrer');
-  };
-
   const singularityEnvelope = useMemo(() => simRuntimeClient.resolveSingularitySnapshot({
     gravity: telemetry.gravity,
     horizonFactor: telemetry.horizonFactor,
@@ -1626,7 +1621,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   };
 
   const handleResolveEntropy = () => {
-    if (activeNode?.key !== 'matrixcoinexchange') return;
+    if (activeNode?.key !== 'entropic_node') return;
     const unresolved = Math.max(0, Number(progress.entropyMined || 0) - Number(progress.entropyResolved || 0));
     if (!unresolved) return;
     const routeIntegrity = computeEntropicIntegrity({
@@ -1645,48 +1640,13 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       singularityContainment: singularityState.containment,
       engineScale: 0.92 + dynamicState.dynamicBalance * 0.3,
     });
-    const originEventId = [
-      identity.id,
-      'matrixcoinexchange',
-      Number(progress.entropyResolved || 0),
-      unresolved,
-      Math.round(settlement.quote * 100),
-      telemetry.frameIndex || 0,
-    ].map((part) => String(part).replace(/[^A-Za-z0-9_-]/g, '_')).join(':');
-    const idempotencyKey = `${originEventId}:settlement`;
-
-    fetch('/api/matrixcoinexchange/system', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      keepalive: true,
-      body: JSON.stringify({
-        nodeKey: 'matrixcoinexchange',
-        modeScope: `${lobbyMode === 'hub' ? 'multiplayer' : 'singleplayer'}:matrixcoinexchange`,
-        idempotencyKey,
-        originEventId,
-        entropyUnits: settlement.units,
-        stabilizedEntropy: settlement.stabilizedEntropy,
-        creditQuote: settlement.quote,
-        creditMicroEc: Math.round(settlement.quote * 1_000_000),
-        routeIntegrity,
-        tickId: telemetry.frameIndex || 0,
-        telemetry: {
-          coherencePercent: telemetry?.quantum?.coherencePercent || 50,
-          entropyPercent: telemetry?.quantum?.entropyPercent || 50,
-          horizonFactor: telemetry.horizonFactor,
-          dynamicBalance: dynamicState.dynamicBalance,
-          singularityContainment: singularityState.containment,
-        },
-      }),
-    }).catch(() => {});
 
     setProgress((current) => ({
       ...current,
       entropyResolved: current.entropyResolved + unresolved,
       credits: Number((current.credits + settlement.quote).toFixed(2)),
-      visitedNodes: current.visitedNodes.includes('matrixcoinexchange') ? current.visitedNodes : [...current.visitedNodes, 'matrixcoinexchange'],
+      visitedNodes: current.visitedNodes.includes('entropic_node') ? current.visitedNodes : [...current.visitedNodes, 'entropic_node'],
     }));
-    window.open('https://matrixcoinexchange.com', '_blank', 'noopener,noreferrer');
   };
 
   const perspective = steamUser?.steamid
@@ -1755,7 +1715,6 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             operations={operations}
             onMineEntropy={handleMineEntropy}
             onResolveEntropy={handleResolveEntropy}
-            onOpenExchange={openMatrixRoute}
           />
         </aside>
 
@@ -1810,8 +1769,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
               Travel to route
             </button>
           ) : null}
-          {activeNode?.key === 'entropic_node' ? <p className="stable-flight-note">Mine this seam only after switching to the multiplayer hub.</p> : null}
-          {activeNode?.key === 'matrixcoinexchange' ? <p className="stable-flight-note">Return here with unresolved entropy to settle the cargo into {ENTROPIC_CURRENCY.shortLabel}.</p> : null}
+          {activeNode?.key === 'entropic_node' ? <p className="stable-flight-note">Mine this seam after switching to the multiplayer hub, then settle unresolved entropy locally into {ENTROPIC_CURRENCY.shortLabel} without leaving the simulation.</p> : null}
           {activeNode?.key === 'ss_dock' ? <p className="stable-flight-note">Dock here in proximity to the Synaptics.Systems Dyson Sphere before and after long-range sorties.</p> : null}
           {activeNode?.key === 'csis' ? <p className="stable-flight-note">Canada Strings of Intelligence Dispersal ring 1 drives intelligence dispersal outputs, ring 2 handles ingress/egress server and external system database routing, and ring 3 regenerates entropy for star singularity state. Spin integers 1/2, 1/4, and 3/4 stay active at an astrological quantum tier with bidirectional API links. This sphere is sealed to players and remains a system-owned defense anchor. Linked anchors: {graph.csisState?.linkedNodeKeys?.length || 0} · quarantined relays: {graph.csisState?.quarantinedNodeKeys?.length || 0}.</p> : null}
         </div> : null}
