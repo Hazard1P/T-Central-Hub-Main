@@ -6058,6 +6058,19 @@ button { font: inherit; }
   color: rgba(226, 238, 255, 0.92);
 }
 .consent-gate__check input { margin-top: 0.2rem; }
+.consent-gate__link {
+  color: #87f4ff;
+  font-weight: 800;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  transition: color 180ms ease, text-shadow 180ms ease;
+}
+.consent-gate__link:hover,
+.consent-gate__link:focus-visible {
+  color: #ffffff;
+  text-shadow: 0 0 14px rgba(135, 244, 255, 0.62);
+}
 .consent-gate__action {
   margin-top: 0.75rem;
   border: 0;

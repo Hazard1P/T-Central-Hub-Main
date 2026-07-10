@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 
 const STORAGE_KEY = 'tcentral_consent_v1';
@@ -46,14 +47,32 @@ export default function ConsentGate() {
         <p className="muted">
           Before entering T-Central, review and accept the platform rules for privacy, shared-hub conduct, and in-game route systems.
         </p>
-        <label className="consent-gate__check">
-          <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} />
-          <span>I accept the Terms & Conditions and EULA.</span>
-        </label>
-        <label className="consent-gate__check">
-          <input type="checkbox" checked={privacy} onChange={(e) => setPrivacy(e.target.checked)} />
-          <span>I accept the Privacy Policy and understand the multiplayer policy.</span>
-        </label>
+        <div className="consent-gate__check">
+          <input type="checkbox" checked={terms} aria-describedby="terms-consent-label" onChange={(e) => setTerms(e.target.checked)} />
+          <span id="terms-consent-label">
+            I accept the{' '}
+            <Link className="consent-gate__link" href="/terms-and-conditions" aria-label="Read Terms & Conditions" onClick={(e) => e.stopPropagation()}>
+              Terms &amp; Conditions
+            </Link>{' '}
+            and{' '}
+            <Link className="consent-gate__link" href="/eula" aria-label="Read EULA" onClick={(e) => e.stopPropagation()}>
+              EULA
+            </Link>.
+          </span>
+        </div>
+        <div className="consent-gate__check">
+          <input type="checkbox" checked={privacy} aria-describedby="privacy-consent-label" onChange={(e) => setPrivacy(e.target.checked)} />
+          <span id="privacy-consent-label">
+            I accept the{' '}
+            <Link className="consent-gate__link" href="/privacy-policy" aria-label="Read Privacy Policy" onClick={(e) => e.stopPropagation()}>
+              Privacy Policy
+            </Link>{' '}
+            and understand the{' '}
+            <Link className="consent-gate__link" href="/multiplayer-policy" aria-label="Read multiplayer policy" onClick={(e) => e.stopPropagation()}>
+              multiplayer policy
+            </Link>.
+          </span>
+        </div>
         <button type="button" className="consent-gate__action" disabled={!ready} onClick={handleAccept}>
           Enter T-Central
         </button>
