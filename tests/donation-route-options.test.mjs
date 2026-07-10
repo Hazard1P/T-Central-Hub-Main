@@ -13,7 +13,7 @@ test('donation route options are generated from world layout route data', () => 
 
   assert.ok(anchorSlugs.includes('deep_blackhole'));
   assert.ok(anchorSlugs.includes('arma3-cth'));
-  assert.ok(anchorSlugs.includes('matrixcoinexchange'));
+  assert.ok(!anchorSlugs.includes('matrixcoinexchange'));
   assert.ok(solarSystemKeys.includes('solar_system'));
 
   const armaAnchor = blackholeAnchors.find((anchor) => anchor.anchorSlug === 'arma3-cth');

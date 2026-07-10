@@ -43,3 +43,10 @@ test('server blackholes and Dyson datapoints resolve as anchored sub-sector asse
   assert.equal(csis.kind, 'dyson');
   assert.equal(csis.external, true);
 });
+
+
+test('world simulation data does not expose MatrixCoinExchange as a playable route asset', () => {
+  assert.equal(WORLD_LAYOUT.some((node) => node.key === 'matrixcoinexchange'), false);
+  assert.equal(WORLD_MAP_DATA.subSectorAssets.some((asset) => asset.key === 'matrixcoinexchange'), false);
+  assert.equal(getWorldMapAssetByKey('matrixcoinexchange'), null);
+});
