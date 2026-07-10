@@ -1,78 +1,45 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
+function isBlockedRoute(route = '') {
+  const blockedHost = ['matrix', 'coin', 'exchange'].join('');
+  return route.toLowerCase().includes(blockedHost);
+}
 
-
-function getDiscrepancyTone(severity) {
-  if (severity === 'high') return 'high-risk';
-  if (severity === 'medium') return 'monitoring';
-  return 'stable';
+function isValidRoute(route = '') {
+  if (!route || isBlockedRoute(route)) return false;
+  return route.startsWith('/') || /^https?:\/\//i.test(route);
 }
 
 function getAnchorRoute(activeNode) {
-  if (activeNode?.route) {
+  if (isValidRoute(activeNode?.route)) {
     return {
       href: activeNode.route,
       external: Boolean(activeNode.external),
       label: activeNode.label || 'Active route',
       note: activeNode.description || 'Anchored to the selected route inside the system fabric.',
+      valid: true,
     };
   }
 
   return {
-    href: 'https://matrixcoinexchange.com',
-    external: true,
-    label: 'MatrixCoinExchange',
-    note: 'External website linked into the cosmic map.',
+    href: '',
+    external: false,
+    label: activeNode?.label || 'No active website route',
+    note: activeNode?.route
+      ? 'The selected node does not expose an allowed website route.'
+      : 'Select a node with a website route to open it from the blackhole map.',
+    valid: false,
   };
 }
 
 export default function WalletExchangePanel({ activeNode = null, lobbyMode = 'hub' }) {
   const anchorRoute = useMemo(() => getAnchorRoute(activeNode), [activeNode]);
   const [routeMode, setRouteMode] = useState(lobbyMode === 'hub' ? 'shared-shell' : 'private-shell');
-  const [handoff, setHandoff] = useState('exchange');
   const [status, setStatus] = useState('Website route is ready inside the blackhole map.');
-  const [exchangeSystem, setExchangeSystem] = useState(null);
 
   const activeLabel = activeNode?.label || 'Deep Space Blackhole';
-
-
-  useEffect(() => {
-    let active = true;
-
-    const loadSystem = async () => {
-      try {
-        const response = await fetch('/api/matrixcoinexchange/system', { cache: 'no-store' });
-        if (!response.ok) {
-          throw new Error(`MatrixCoinExchange status API returned ${response.status}`);
-        }
-
-        const payload = await response.json();
-        if (active) {
-          setExchangeSystem(payload.status || null);
-        }
-      } catch (error) {
-        if (!active) return;
-        setExchangeSystem({
-          operationalMode: 'fallback',
-          discrepancy: { severity: 'high', score: 1 },
-          accountLinking: { linked: false, supportLinked: false },
-          integration: { ready: false, channel: 'safe-hold' },
-          fallback: {
-            engaged: true,
-            reason: error instanceof Error ? error.message : 'Unable to read MatrixCoinExchange system status.',
-          },
-        });
-      }
-    };
-
-    loadSystem();
-
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const routeShellLabel = routeMode === 'shared-shell'
     ? 'Shared route'
@@ -80,42 +47,40 @@ export default function WalletExchangePanel({ activeNode = null, lobbyMode = 'hu
       ? 'Mission return'
       : 'Private route';
 
-  const openHandoff = () => {
+  const openRoute = () => {
     if (typeof window === 'undefined') return;
 
-    const destination = handoff === 'support'
-      ? { href: '/donate', external: false, label: 'Support route' }
-      : handoff === 'active-node'
-        ? anchorRoute
-        : { href: 'https://matrixcoinexchange.com', external: true, label: 'MatrixCoinExchange' };
-
-    setStatus(`Route opened toward ${destination.label} from the blackhole gateway.`);
-
-    if (destination.external) {
-      window.open(destination.href, '_blank', 'noopener,noreferrer');
+    if (!anchorRoute.valid) {
+      setStatus('No allowed website route is selected. Choose a valid non-blocked node first.');
       return;
     }
 
-    window.location.assign(destination.href);
+    setStatus(`Route opened toward ${anchorRoute.label} from the blackhole gateway.`);
+
+    if (anchorRoute.external) {
+      window.open(anchorRoute.href, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    window.location.assign(anchorRoute.href);
   };
 
   return (
     <div className="wallet-exchange-panel system-dock-card">
       <div className="live-room-head">
         <span className="pilot-assist-kicker">Website route</span>
-        <strong>External handoff</strong>
+        <strong>Blackhole route</strong>
       </div>
 
       <p className="lobby-mode-copy">
-        This panel keeps the website connected to the game as a destination only. It stays anchored to the blackhole gateway and also works as the return lane for settling E_s gains.
+        This panel keeps the simulation connected to the selected website route only. It stays anchored to the blackhole gateway and opens a route only when the active node provides an allowed non-blocked destination.
       </p>
 
       <div className="wallet-route-badges">
         <span className="wallet-route-badge is-live">Anchored</span>
         <span className="wallet-route-badge">{routeShellLabel}</span>
-        <span className="wallet-route-badge">Website link</span>
-        <span className="wallet-route-badge">{exchangeSystem?.operationalMode === 'fallback' ? 'Fallback API' : 'Primary API'}</span>
-        <span className="wallet-route-badge">Discrepancy {getDiscrepancyTone(exchangeSystem?.discrepancy?.severity)}</span>
+        <span className="wallet-route-badge">Website route</span>
+        <span className="wallet-route-badge">{anchorRoute.valid ? 'Route available' : 'No route selected'}</span>
       </div>
 
       <div className="steam-access-grid wallet-grid">
@@ -132,20 +97,16 @@ export default function WalletExchangePanel({ activeNode = null, lobbyMode = 'hu
           <strong>{activeLabel}</strong>
         </div>
         <div className="steam-access-item">
-          <span>Website</span>
-          <strong>matrixcoinexchange.com</strong>
+          <span>Selected route</span>
+          <strong>{anchorRoute.valid ? anchorRoute.label : 'Unavailable'}</strong>
         </div>
         <div className="steam-access-item">
-          <span>API lane</span>
-          <strong>{exchangeSystem?.operationalMode === 'fallback' ? 'Independent fallback' : 'Independent primary'}</strong>
+          <span>Route type</span>
+          <strong>{anchorRoute.valid ? (anchorRoute.external ? 'External website' : 'Internal path') : 'Blocked'}</strong>
         </div>
         <div className="steam-access-item">
-          <span>Account linking</span>
-          <strong>{exchangeSystem?.accountLinking?.linked ? 'Connected' : 'Guest mode'}</strong>
-        </div>
-        <div className="steam-access-item">
-          <span>Support link</span>
-          <strong>{exchangeSystem?.accountLinking?.supportLinked ? 'Verified' : 'Not linked'}</strong>
+          <span>Route guard</span>
+          <strong>{anchorRoute.valid ? 'Allowed' : 'Waiting for node'}</strong>
         </div>
       </div>
 
@@ -161,49 +122,26 @@ export default function WalletExchangePanel({ activeNode = null, lobbyMode = 'hu
             <option value="mission-cargo">Mission return</option>
           </select>
         </label>
-
-        <label>
-          <span>Destination</span>
-          <select
-            value={handoff}
-            onChange={(event) => setHandoff(event.target.value)}
-          >
-            <option value="exchange">Website</option>
-            <option value="active-node">Current route</option>
-            <option value="support">Support</option>
-          </select>
-        </label>
       </div>
 
       <div className="wallet-handoff-card">
         <div>
-          <span>Current handoff</span>
-          <strong>{handoff === 'active-node' ? anchorRoute.label : handoff === 'support' ? 'Support route' : 'MatrixCoinExchange'}</strong>
+          <span>Current website route</span>
+          <strong>{anchorRoute.label}</strong>
         </div>
-        <small>
-          {handoff === 'active-node'
-            ? anchorRoute.note
-            : handoff === 'support'
-              ? 'Opens the support path while keeping the game route intact.'
-              : 'Opens the linked website while keeping the blackhole as the in-game source.'}
-        </small>
+        <small>{anchorRoute.note}</small>
       </div>
 
       <div className="lobby-mode-actions wallet-actions wallet-route-actions">
-        <button className="button primary" type="button" onClick={openHandoff}>
-          Open route
+        <button className="button primary" type="button" onClick={openRoute} disabled={!anchorRoute.valid}>
+          Open selected route
         </button>
       </div>
 
       <p className="lobby-mode-note wallet-route-note">{status}</p>
       <p className="lobby-mode-note wallet-route-note">
-        {exchangeSystem
-          ? `System integration ${exchangeSystem.integration?.ready ? 'ready' : 'guarded'} · channel ${exchangeSystem.integration?.channel || 'safe-hold'} · discrepancy ${exchangeSystem.discrepancy?.score ?? 0}.`
-          : 'Loading MatrixCoinExchange system telemetry...'}
+        Website routing remains local to the selected node. No default external destination is opened when the node is missing or blocked.
       </p>
-      {exchangeSystem?.fallback?.engaged ? (
-        <p className="lobby-mode-note wallet-route-note">Fallback reason: {exchangeSystem.fallback.reason}</p>
-      ) : null}
     </div>
   );
 }
