@@ -1584,11 +1584,6 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
     setProgress((current) => ({ ...current, multiplayerJumped: true }));
   }, [lobbyMode, progress.multiplayerJumped, progress.visitedNodes]);
 
-  const openMatrixRoute = () => {
-    setProgress((current) => ({ ...current, routeTrips: current.routeTrips + 1, visitedNodes: current.visitedNodes.includes('matrixcoinexchange') ? current.visitedNodes : [...current.visitedNodes, 'matrixcoinexchange'] }));
-    window.open('https://matrixcoinexchange.com', '_blank', 'noopener,noreferrer');
-  };
-
   const singularityEnvelope = useMemo(() => simRuntimeClient.resolveSingularitySnapshot({
     gravity: telemetry.gravity,
     horizonFactor: telemetry.horizonFactor,
@@ -1755,7 +1750,6 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             operations={operations}
             onMineEntropy={handleMineEntropy}
             onResolveEntropy={handleResolveEntropy}
-            onOpenExchange={openMatrixRoute}
           />
         </aside>
 
@@ -1811,7 +1805,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             </button>
           ) : null}
           {activeNode?.key === 'entropic_node' ? <p className="stable-flight-note">Mine this seam only after switching to the multiplayer hub.</p> : null}
-          {activeNode?.key === 'matrixcoinexchange' ? <p className="stable-flight-note">Return here with unresolved entropy to settle the cargo into {ENTROPIC_CURRENCY.shortLabel}.</p> : null}
+          {activeNode?.key === 'matrixcoinexchange' ? <p className="stable-flight-note">Return here with unresolved entropy to stabilize the cargo into {ENTROPIC_CURRENCY.shortLabel}.</p> : null}
           {activeNode?.key === 'ss_dock' ? <p className="stable-flight-note">Dock here in proximity to the Synaptics.Systems Dyson Sphere before and after long-range sorties.</p> : null}
           {activeNode?.key === 'csis' ? <p className="stable-flight-note">Canada Strings of Intelligence Dispersal ring 1 drives intelligence dispersal outputs, ring 2 handles ingress/egress server and external system database routing, and ring 3 regenerates entropy for star singularity state. Spin integers 1/2, 1/4, and 3/4 stay active at an astrological quantum tier with bidirectional API links. This sphere is sealed to players and remains a system-owned defense anchor. Linked anchors: {graph.csisState?.linkedNodeKeys?.length || 0} · quarantined relays: {graph.csisState?.quarantinedNodeKeys?.length || 0}.</p> : null}
         </div> : null}

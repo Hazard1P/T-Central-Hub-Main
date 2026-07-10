@@ -9,7 +9,6 @@ export default function EntropyMissionPanel({
   operations = null,
   onMineEntropy,
   onResolveEntropy,
-  onOpenExchange,
 }) {
   if (!operations) return null;
 
@@ -33,14 +32,14 @@ export default function EntropyMissionPanel({
         </div>
         <span className="panel-toggle-summary">
           <strong>{lobbyMode === 'hub' ? 'Shared Hub active' : 'Private Universe active'}</strong>
-          <small>{economy.unresolvedEntropy} carried · {economy.entropyResolved} settled · {activeNode?.label || 'Deep Space Blackhole'}</small>
+          <small>{economy.unresolvedEntropy} carried · {economy.entropyResolved} stabilized · {activeNode?.label || 'Deep Space Blackhole'}</small>
         </span>
         <span className="panel-minimize-indicator" aria-hidden="true">{open ? '−' : '+'}</span>
       </button>
       {open ? (
         <>
           <p className="muted">
-            Start in your private universe, jump into the shared hub, mine the entropic node, then return through the blackhole route to settle your haul into stabilized scalar gains.
+            Start in your private universe, jump into the shared hub, mine the entropic node, then stabilize the carried entropy into scalar gains inside the sim.
           </p>
 
           <div className="entropy-loop-grid">
@@ -64,7 +63,7 @@ export default function EntropyMissionPanel({
               <strong>{economy.unresolvedEntropy}</strong>
             </div>
             <div className="entropy-economy-item">
-              <span>Settled</span>
+              <span>Stabilized</span>
               <strong>{economy.entropyResolved}</strong>
             </div>
             <div className="entropy-economy-item">
@@ -85,10 +84,7 @@ export default function EntropyMissionPanel({
               Mine node
             </button>
             <button className={`stable-route-button compact ${canResolve ? 'is-live' : ''}`} type="button" onClick={onResolveEntropy} disabled={!canResolve}>
-              Settle gains
-            </button>
-            <button className="stable-route-button compact" type="button" onClick={onOpenExchange}>
-              Open MatrixCoinExchange
+              Stabilize gains
             </button>
           </div>
         </>
