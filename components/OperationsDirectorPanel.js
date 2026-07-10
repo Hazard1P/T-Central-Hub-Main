@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import usePersistedPanelState from '@/components/usePersistedPanelState';
 
 function Section({ title, kicker, items }) {
@@ -35,8 +35,13 @@ const MISSION_TARGETS = [
   { value: 'entropic_node', label: 'Entropic Node' },
   { value: 'rust_anchor', label: 'Rust Anchor Blackhole' },
   { value: 'arma3', label: 'Arma3 Blackhole' },
-  { value: 'matrixcoinexchange', label: 'MatrixCoinExchange Lane' },
 ];
+
+const DEFAULT_MISSION_TARGET = MISSION_TARGETS[0].value;
+
+function getValidMissionTarget(targetKey) {
+  return MISSION_TARGETS.some((item) => item.value === targetKey) ? targetKey : DEFAULT_MISSION_TARGET;
+}
 
 const MISSION_TYPES = [
   { value: 'blackhole-seal', label: 'Selective blackhole lock' },
@@ -49,12 +54,23 @@ export default function OperationsDirectorPanel({ operations, lobbyMode = 'hub',
 
   const [open, toggleOpen] = usePersistedPanelState('tcentral-panel-operations-director', false);
   const [activeTab, setActiveTab] = useState('overview');
-  const [targetKey, setTargetKey] = useState(MISSION_TARGETS[0].value);
+  const [targetKey, setTargetKey] = useState(DEFAULT_MISSION_TARGET);
   const [missionType, setMissionType] = useState(MISSION_TYPES[0].value);
   const [pilotCount, setPilotCount] = useState(3);
   const [engineerCount, setEngineerCount] = useState(2);
 
-  const targetLabel = useMemo(() => MISSION_TARGETS.find((item) => item.value === targetKey)?.label || 'Unknown target', [targetKey]);
+  const selectedTargetKey = getValidMissionTarget(targetKey);
+
+  useEffect(() => {
+    if (targetKey !== selectedTargetKey) {
+      setTargetKey(selectedTargetKey);
+    }
+  }, [selectedTargetKey, targetKey]);
+
+  const targetLabel = useMemo(
+    () => MISSION_TARGETS.find((item) => item.value === selectedTargetKey)?.label || 'Unknown target',
+    [selectedTargetKey],
+  );
   const missionLabel = useMemo(() => MISSION_TYPES.find((item) => item.value === missionType)?.label || 'Unknown mission profile', [missionType]);
   const totalCrew = pilotCount + engineerCount;
 
@@ -143,7 +159,7 @@ export default function OperationsDirectorPanel({ operations, lobbyMode = 'hub',
               <div className="mission-assignment-grid">
                 <label>
                   <span>Mission target</span>
-                  <select value={targetKey} onChange={(event) => setTargetKey(event.target.value)}>
+                  <select value={selectedTargetKey} onChange={(event) => setTargetKey(getValidMissionTarget(event.target.value))}>
                     {MISSION_TARGETS.map((item) => (
                       <option key={item.value} value={item.value}>{item.label}</option>
                     ))}
