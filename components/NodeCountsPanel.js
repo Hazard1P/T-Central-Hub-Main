@@ -21,7 +21,7 @@ export default function NodeCountsPanel() {
 
       <div className="node-feature-list">
         {featured.map((node) => (
-          <div key={node.key} className={`node-feature-item ${node.key === 'matrixcoinexchange' ? 'matrix' : ''}`}>
+          <div key={node.key} className="node-feature-item">
             <strong>{node.label}</strong>
             <span>{getKindLabel(node.kind)}</span>
           </div>

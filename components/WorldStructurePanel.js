@@ -18,7 +18,7 @@ export default function WorldStructurePanel() {
         <span className="structure-title">Blackholes</span>
         <div className="structure-chip-list">
           {blackholes.map((node) => (
-            <span key={node.key} className={`structure-chip ${node.key === 'matrixcoinexchange' ? 'matrix' : ''}`}>
+            <span key={node.key} className="structure-chip">
               {node.label}
             </span>
           ))}

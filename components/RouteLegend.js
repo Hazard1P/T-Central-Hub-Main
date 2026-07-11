@@ -11,7 +11,7 @@ export default function RouteLegend() {
       </div>
       <div className="route-legend-chips">
         {ROUTE_CHIPS.map((chip) => (
-          <span key={chip} className={`route-legend-chip ${chip === 'MatrixCoinExchange' ? 'matrix' : ''}`}>{chip}</span>
+          <span key={chip} className="route-legend-chip">{chip}</span>
         ))}
       </div>
     </div>
