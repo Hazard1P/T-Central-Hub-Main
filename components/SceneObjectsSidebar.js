@@ -34,7 +34,7 @@ export default function SceneObjectsSidebar({ lobbyMode = 'hub' }) {
           <span className="scene-objects-title">Blackholes</span>
           <div className="scene-objects-chiplist">
             {grouped.blackholes.map((node) => (
-              <span key={node.key} className={`scene-objects-chip ${node.key === 'matrixcoinexchange' ? 'matrix' : ''}`}>
+              <span key={node.key} className="scene-objects-chip">
                 {node.label}
               </span>
             ))}

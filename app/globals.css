@@ -3610,10 +3610,6 @@ button { font: inherit; }
   font-size: 11px;
 }
 
-.route-legend-chip.matrix {
-  border-color: rgba(109,255,181,0.38);
-  color: #dffff1;
-}
 
 @media (max-width: 900px) {
   .route-legend {
@@ -3670,10 +3666,6 @@ button { font: inherit; }
   font-size: 11px;
 }
 
-.structure-chip.matrix {
-  border-color: rgba(109,255,181,0.38);
-  color: #dffff1;
-}
 
 @media (max-width: 900px) {
   .world-structure-panel {
@@ -3752,9 +3744,6 @@ button { font: inherit; }
   letter-spacing: .08em;
 }
 
-.node-feature-item.matrix {
-  border-color: rgba(109,255,181,0.28);
-}
 
 .system-console-panel {
   position: fixed;
