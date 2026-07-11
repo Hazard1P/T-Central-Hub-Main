@@ -34,9 +34,10 @@ export async function GET(request) {
 
   const { searchParams } = new URL(request.url);
   const lobbyMode = resolveLobbyMode(searchParams.get('lobbyMode'));
+  const playableAt = searchParams.get('playableAt') || searchParams.get('day') || Date.now();
 
   const continuityRuntime = continuityHealthService.start();
-  const launchGenesis = runLaunchGenesisPipeline({ authContext, lobbyMode });
+  const launchGenesis = runLaunchGenesisPipeline({ authContext, lobbyMode, playableAt });
   const continuityDrill = await readLatestContinuityDrillReport();
 
   if (!launchGenesis.ok) {
