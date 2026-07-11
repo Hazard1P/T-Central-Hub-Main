@@ -13,9 +13,24 @@ import { MultiplayerSessionProvider } from '@/components/MultiplayerSessionProvi
 import { useSteamSession } from '@/components/SteamSessionProvider';
 import { gameEngine } from '@/lib/gameEngine';
 
+function canUseWebGL() {
+  if (typeof window === 'undefined') return false;
+
+  try {
+    const canvas = window.document?.createElement?.('canvas');
+    if (!canvas) return false;
+
+    return Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
+  } catch (error) {
+    console.warn('System WebGL preflight failed.', error);
+    return false;
+  }
+}
+
 export default function SystemEntryClient() {
   const [launchPhase, setLaunchPhase] = useState('idle');
   const [selectedNode, setSelectedNode] = useState(null);
+  const [launchError, setLaunchError] = useState('');
   const previousLaunchPhaseRef = useRef(launchPhase);
   const { steamUser, universe, lobbyMode, setLobbyMode } = useSteamSession();
 
@@ -56,11 +71,20 @@ export default function SystemEntryClient() {
   }, [launchPhase]);
 
   const handleEnter = () => {
+    setLaunchError('');
+
+    if (!canUseWebGL()) {
+      setLaunchError('Your browser could not start a WebGL context. Enable hardware acceleration or try another browser/device.');
+      setLaunchPhase('error');
+      return;
+    }
+
     setLaunchPhase('launching');
   };
 
   const resetLauncher = () => {
     setSelectedNode(null);
+    setLaunchError('');
     setLaunchPhase('idle');
   };
 
@@ -68,9 +92,9 @@ export default function SystemEntryClient() {
     <>
       <SteamLoginHud />
       <SystemStatusStrip />
-      {launchPhase === 'in_sim' ? <SystemNewsInfoPanel lobbyMode={lobbyMode} selected={selectedNode} /> : null}
       {launchPhase === 'in_sim' ? (
         <SystemErrorBoundary onReset={resetLauncher}>
+          <SystemNewsInfoPanel lobbyMode={lobbyMode} selected={selectedNode} />
           <MultiplayerSessionProvider>
             <div className="system-top-left-controls">
               <LobbyModePanel lobbyMode={lobbyMode} onChange={setLobbyMode} steamUser={steamUser} universe={universe} />
@@ -86,7 +110,7 @@ export default function SystemEntryClient() {
             <div className="content-card observer" role="alert">
               <p className="eyebrow">Initialization issue</p>
               <h3>3D layer failed before simulation handoff.</h3>
-              <p className="muted">Please try launching again. If this persists, refresh the page.</p>
+              <p className="muted">{launchError || 'Please try launching again. If this persists, refresh the page.'}</p>
               <button className="button primary" onClick={resetLauncher}>
                 Reset launcher
               </button>
