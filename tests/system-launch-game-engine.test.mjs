@@ -8,6 +8,8 @@ const stableWorld = readFileSync(new URL('../components/StableSystemWorld.js', i
 test('system launch path initializes gameEngine when entering simulation', () => {
   assert.match(systemEntryClient, /import \{ gameEngine \} from '@\/lib\/gameEngine';/);
   assert.match(systemEntryClient, /launchPhase !== 'in_sim' \|\| typeof window === 'undefined'/);
+  assert.match(systemEntryClient, /function canUseWebGL\(\)/);
+  assert.match(systemEntryClient, /setLaunchError\('Your browser could not start a WebGL context/);
   assert.match(systemEntryClient, /gameEngine\.init\(\)/);
 });
 
