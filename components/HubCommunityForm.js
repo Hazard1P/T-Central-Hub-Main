@@ -14,10 +14,11 @@ export default function HubCommunityForm() {
   const [form, setForm] = useState(initialForm);
   const [posts, setPosts] = useState([]);
   const [status, setStatus] = useState({ state: 'idle', message: '' });
+  const [hubStorage, setHubStorage] = useState({ loading: true, storageConfigured: true, storage: 'none' });
 
   const canSubmit = useMemo(
-    () => Boolean(session.user) && form.topic.trim() && form.message.trim(),
-    [session.user, form.topic, form.message]
+    () => Boolean(session.user) && hubStorage.storageConfigured && form.topic.trim() && form.message.trim(),
+    [session.user, hubStorage.storageConfigured, form.topic, form.message]
   );
 
   useEffect(() => {
@@ -36,6 +37,11 @@ export default function HubCommunityForm() {
         user: steamUser || googleUser || null,
       });
       setPosts(Array.isArray(postsData?.posts) ? postsData.posts : []);
+      setHubStorage({
+        loading: false,
+        storageConfigured: postsData?.storageConfigured !== false,
+        storage: postsData?.storage || 'none',
+      });
     });
     return () => {
       active = false;
@@ -87,6 +93,11 @@ export default function HubCommunityForm() {
         {!session.loading && session.user ? (
           <p className="muted">Posting as {session.user.personaname || session.user.name || session.user.email || 'Community Pilot'} through {session.provider?.toUpperCase()}.</p>
         ) : null}
+        {!hubStorage.loading && !hubStorage.storageConfigured ? (
+          <div className="hub-auth-required" role="alert">
+            <p>Durable hub storage is not configured; posting is temporarily unavailable.</p>
+          </div>
+        ) : null}
 
         <form className="hub-form-grid" onSubmit={onSubmit}>
           <label>
@@ -115,7 +126,7 @@ export default function HubCommunityForm() {
               required
             />
           </label>
-          <button className="button primary" type="submit" disabled={!canSubmit || status.state === 'loading'}>
+          <button className="button primary" type="submit" disabled={!canSubmit || status.state === 'loading' || hubStorage.loading}>
             {status.state === 'loading' ? 'Posting…' : 'Publish to board'}
           </button>
         </form>

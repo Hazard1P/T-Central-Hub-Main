@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { resolveGameAuthContext } from '@/lib/auth/resolveGameAuthContext';
-import { listHubPosts, persistHubPost } from '@/lib/serverPersistence';
+import { getHubPostStorageReadiness, listHubPosts, persistHubPost } from '@/lib/serverPersistence';
 import { buildHubPostRecord } from '@/lib/hubPosts';
 
 export async function GET() {
   const records = await listHubPosts();
-  return NextResponse.json({ ok: true, posts: records.slice(0, 40) });
+  const readiness = getHubPostStorageReadiness();
+  return NextResponse.json({ ok: true, posts: records.slice(0, 40), ...readiness });
 }
 
 export async function POST(request) {
