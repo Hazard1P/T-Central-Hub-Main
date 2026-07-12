@@ -3359,6 +3359,14 @@ button { font: inherit; }
   pointer-events: none;
 }
 
+.system-home-link {
+  position: fixed;
+  top: 18px;
+  left: 18px;
+  z-index: 61;
+  pointer-events: auto;
+}
+
 .status-strip-pill {
   display: grid;
   gap: 2px;

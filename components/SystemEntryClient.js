@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import SteamLoginHud from '@/components/SteamLoginHud';
 import SystemStatusStrip from '@/components/SystemStatusStrip';
@@ -92,6 +93,7 @@ export default function SystemEntryClient() {
     <>
       <SteamLoginHud />
       <SystemStatusStrip />
+      <Link className="button secondary system-home-link" href="/">Back to homepage</Link>
       {launchPhase === 'in_sim' ? (
         <SystemErrorBoundary onReset={resetLauncher}>
           <SystemNewsInfoPanel lobbyMode={lobbyMode} selected={selectedNode} />
