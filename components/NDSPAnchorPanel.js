@@ -11,9 +11,9 @@ async function sha256Hex(input) {
   return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-export default function NDSPAnchorPanel({ steamUser, lobbyMode = 'private', selected }) {
+export default function NDSPAnchorPanel({ authContext = null, identity = null, steamUser = null, googleUser = null, lobbyMode = 'private', selected }) {
   const active = selected?.key === 'ss' || selected?.label === 'Synaptics.Systems Dyson Sphere';
-  const anchor = useMemo(() => createBuildAnchor(steamUser, lobbyMode), [steamUser, lobbyMode]);
+  const anchor = useMemo(() => createBuildAnchor(authContext || identity || { steamUser, googleUser }, lobbyMode), [authContext, identity, steamUser, googleUser, lobbyMode]);
   const epochAnchor = useMemo(() => createEpochAnchor({ now: Date.now(), dysonKey: 'ss' }), []);
   const stellarProfile = useMemo(() => createStellarProfile({ seed: `${anchor.anchorSeed}:synaptics-dyson`, classHint: 'F8V', label: 'Synaptics.Systems Core Star' }), [anchor.anchorSeed]);
   const dysonState = useMemo(() => buildDysonEncryptionState({ epochAnchor, stellarProfile, seed: anchor.anchorSeed }), [epochAnchor, stellarProfile, anchor.anchorSeed]);

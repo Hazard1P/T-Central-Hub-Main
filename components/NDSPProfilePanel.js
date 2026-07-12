@@ -3,8 +3,8 @@
 import { useMemo } from 'react';
 import { createNDSPProfileContext } from '@/lib/ndspProfile';
 
-export default function NDSPProfilePanel({ steamUser, lobbyMode = 'private' }) {
-  const profile = useMemo(() => createNDSPProfileContext(steamUser, lobbyMode), [steamUser, lobbyMode]);
+export default function NDSPProfilePanel({ authContext = null, identity = null, steamUser = null, googleUser = null, lobbyMode = 'private' }) {
+  const profile = useMemo(() => createNDSPProfileContext(authContext || identity || { steamUser, googleUser }, lobbyMode), [authContext, identity, steamUser, googleUser, lobbyMode]);
 
   return (
     <div className="ndsp-profile-panel">
@@ -17,8 +17,8 @@ export default function NDSPProfilePanel({ steamUser, lobbyMode = 'private' }) {
 
       <div className="ndsp-profile-grid">
         <div className="ndsp-profile-item">
-          <span>Steam ID</span>
-          <strong>{profile.steamId}</strong>
+          <span>Account key</span>
+          <strong>{profile.accountKey}</strong>
         </div>
         <div className="ndsp-profile-item">
           <span>Instance scope</span>
