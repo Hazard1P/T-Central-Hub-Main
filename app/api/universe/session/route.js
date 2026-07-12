@@ -61,7 +61,7 @@ export async function GET(request) {
 
   const persistence = await persistLaunchRecord(launchGenesis.launchRecord);
 
-  const privacy = createPrivacySummary({ steamUser: authContext.steamUser, lobbyMode });
+  const privacy = createPrivacySummary({ authContext, lobbyMode });
   const epochAnchor = launchGenesis.epoch;
   const sessionMode = lobbyMode === 'hub' ? 'multiplayer' : 'singleplayer';
   const dysonStates = computeRegisteredDysonStates({
