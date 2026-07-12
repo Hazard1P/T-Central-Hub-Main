@@ -1,14 +1,35 @@
 create table if not exists public.player_accounts (
   account_key text primary key,
-  steam_id text not null unique,
+  steam_id text unique,
   provider text not null default 'steam',
+  account_id text,
   display_name text not null default 'Steam Pilot',
   profile_url text,
   avatar_url text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  last_login_at timestamptz not null default now()
+  last_login_at timestamptz not null default now(),
+  metadata jsonb not null default '{}'::jsonb
 );
+
+alter table public.player_accounts
+  add column if not exists provider text not null default 'steam',
+  add column if not exists account_id text,
+  add column if not exists metadata jsonb not null default '{}'::jsonb;
+
+alter table public.player_accounts
+  alter column steam_id drop not null;
+
+update public.player_accounts
+  set account_id = steam_id
+  where provider = 'steam' and account_id is null and steam_id is not null;
+
+update public.player_accounts
+  set account_id = account_key
+  where account_id is null;
+
+create unique index if not exists player_accounts_provider_account_id_idx
+  on public.player_accounts (provider, account_id);
 
 alter table public.player_account_ledger
   add column if not exists identity_id text,

@@ -100,6 +100,8 @@ export async function GET(request) {
         displayName: user.name || user.email || 'Google Pilot',
         metadata: {
           source: 'google_oauth_callback',
+          email: user.email || null,
+          picture: user.picture || null,
           emailVerified: user.email_verified,
         },
       });
