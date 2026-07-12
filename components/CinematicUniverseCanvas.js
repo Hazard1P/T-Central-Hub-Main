@@ -1,10 +1,52 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Html, Line, Sparkles, Stars, Trail } from '@react-three/drei';
 import * as THREE from 'three';
 import { buildUniverseGraph, getNodePositionMap } from '@/lib/universeEngine';
+
+
+class CinematicCanvasRecoveryBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, message: '' };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, message: error?.message || 'Unknown WebGL canvas error' };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('Cinematic universe canvas error:', {
+      error,
+      stack: error?.stack,
+      componentStack: errorInfo?.componentStack,
+    });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="cinematic-universe-recovery" role="presentation">
+          <span>3D universe layer paused; poster fallback active.</span>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+function useCanvasEventSource() {
+  const [eventSource, setEventSource] = useState(undefined);
+
+  useEffect(() => {
+    setEventSource(document.getElementById('__next') || document.body || undefined);
+  }, []);
+
+  return eventSource;
+}
 
 function useDeviceTier() {
   const [tier, setTier] = useState({ isMobile: false, dpr: [1, 1.35], stars: 4200, sparkles: 110, meteors: 6, labels: 3 });
@@ -335,19 +377,24 @@ function UniverseScene({ tier }) {
 
 export default function CinematicUniverseCanvas({ className = '' }) {
   const tier = useDeviceTier();
+  const eventSource = useCanvasEventSource();
 
   return (
     <div className={`cinematic-universe-shell ${className}`.trim()} aria-hidden="true">
       <div className="cinematic-universe-poster" />
       <div className="cinematic-universe-gradient" />
-      <Canvas
-        camera={{ position: [0, 8, 28], fov: tier.isMobile ? 50 : 44 }}
-        dpr={tier.dpr}
-        gl={{ antialias: !tier.isMobile, alpha: true, powerPreference: 'high-performance' }}
-        eventSource={typeof document !== 'undefined' ? document.getElementById('__next') : undefined}
-      >
-        <UniverseScene tier={tier} />
-      </Canvas>
+      <CinematicCanvasRecoveryBoundary>
+        {eventSource ? (
+          <Canvas
+            camera={{ position: [0, 8, 28], fov: tier.isMobile ? 50 : 44 }}
+            dpr={tier.dpr}
+            gl={{ antialias: !tier.isMobile, alpha: true, powerPreference: 'high-performance' }}
+            eventSource={eventSource}
+          >
+            <UniverseScene tier={tier} />
+          </Canvas>
+        ) : null}
+      </CinematicCanvasRecoveryBoundary>
     </div>
   );
 }
