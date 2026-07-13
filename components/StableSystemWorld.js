@@ -1125,6 +1125,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   const [flightConfig, setFlightConfig] = useState(FLIGHT_PRESETS.freeFlight);
   const [flightDeckOpen, setFlightDeckOpen] = useState(false);
   const [observerDockOpen, setObserverDockOpen] = useState(false);
+  const toggleFlightDeckOpen = useCallback(() => setFlightDeckOpen((value) => !value), []);
   const [flightResetTick, setFlightResetTick] = useState(0);
   const [presentationMode, setPresentationMode] = useState(true);
   const [hudVisible, setHudVisible] = useState(true);
