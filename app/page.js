@@ -2,7 +2,6 @@ import SteamLoginHud from '@/components/SteamLoginHud';
 import CinematicUniverseCanvas from '@/components/CinematicUniverseCanvas';
 import { getHomeLaunchCards, getHomeStatusPills } from '@/lib/siteContent';
 import { buildUniverseGraph } from '@/lib/universeEngine';
-import { getEconomyReadModel } from '@/lib/economyReadModel';
 import MainAreaGatewayStatus from '@/components/MainAreaGatewayStatus';
 import Link from 'next/link';
 import { promises as fs } from 'node:fs';
@@ -12,7 +11,6 @@ export default async function HomePage() {
   const launchCards = getHomeLaunchCards().slice(0, 3);
   const statusPills = getHomeStatusPills();
   const graph = buildUniverseGraph();
-  const economy = getEconomyReadModel();
 
   const entropyReportPath = path.join(process.cwd(), 'public', 'reports', 'entropy-release-latest.meta.json');
   const entropyReport = await fs
@@ -65,30 +63,6 @@ export default async function HomePage() {
               <strong>{graph.stats.relays}</strong>
             </article>
           </div>
-
-
-          <div className="entry-telemetry-grid">
-            <article className="telemetry-card">
-              <span>Entropic credits (available)</span>
-              <strong>{economy.ui.available_ec}</strong>
-            </article>
-            <article className="telemetry-card">
-              <span>Entropic credits (reserved)</span>
-              <strong>{economy.ui.reserved_ec}</strong>
-            </article>
-            <article className="telemetry-card">
-              <span>Settlement queue</span>
-              <strong>{economy.settlement_state.pending_count}</strong>
-            </article>
-            <article className="telemetry-card">
-              <span>Mode scope</span>
-              <strong>{economy.wallet.mode_scope}</strong>
-            </article>
-          </div>
-          <p className="muted max-copy">
-            Entropic credit status is available from the canonical read model endpoint at
-            {' '}<code>/api/economy-read-model</code> for Main Area visibility.
-          </p>
 
           <article className="content-card entry-panel polished minimal-route-card" style={{ marginTop: '1rem' }}>
             <span className="entry-panel-kicker">Entropy Bulletin</span>
