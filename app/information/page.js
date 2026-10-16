@@ -1,52 +1,28 @@
+import Link from 'next/link';
 import PageShell from '@/components/PageShell';
 import DiscordPanel from '@/components/DiscordPanel';
 
-const blocks = [
-  {
-    title: 'Community standards',
-    text: 'Use this area for fair-play standards, anti-cheat expectations, comms expectations, and cross-community behavior guidelines.'
-  },
-  {
-    title: 'Announcements and updates',
-    text: 'Use this area for wipes, event nights, map changes, restarts, downtime messages, and featured notices.'
-  },
-  {
-    title: 'New player guidance',
-    text: 'Use this section for onboarding, join instructions, quick-start notes, and an overview of how each server is meant to be played.'
-  },
-  {
-    title: 'Support and moderation',
-    text: 'Point players toward Discord, moderation contact flow, and the dedicated player reporting page without building any account system.'
-  },
-  {
-    title: 'Blackhole route interlink',
-    text: 'Route subsections are designed to function alone (direct join instructions) and together (shared 3D/5D simulation navigation and status sync).'
-  }
+const guides = [
+  { title: 'Join a game server', text: 'Choose an Arma 3 or Rust route, check its game mode, then use Quick Connect with the Steam desktop app. You can also copy the address and join in-game.', href: '/server-info', label: 'Find a server' },
+  { title: 'Explore in your browser', text: 'Open Play and launch the navigation system. Use WASD or arrow keys to fly, Space and Shift to change height, and Control to boost. On mobile, use the flight pad.', href: '/system', label: 'Open Play' },
+  { title: 'Share updates and ideas', text: 'Read the community board for player posts. Sign in with Steam or Google to share feedback, suggest events, or start a discussion.', href: '/hub-form', label: 'Open community board' },
+  { title: 'Play fairly', text: 'Respect other players, avoid cheating and harassment, and follow the rules of the server you join. Review the multiplayer policy before entering shared spaces.', href: '/multiplayer-policy', label: 'Read the multiplayer policy' },
+  { title: 'Report a problem', text: 'For player misconduct, include the server, player name, and evidence in a report. For account or connection issues, contact the team directly.', href: '/report-player', label: 'Report a player' },
 ];
 
-export const metadata = {
-  title: 'Information',
-  description: 'T-Central information page for updates, onboarding, standards, and community guidance.'
-};
+export const metadata = { title: 'Player guide', description: 'How to join T-Central servers, explore the universe, and get community support.' };
 
 export default function InformationPage() {
   return (
-    <PageShell
-      eyebrow="Information"
-      title="A central page for updates, expectations, and helping players settle in."
-      text="Keep both communities informed with one easy place for expectations, update notes, and quick guidance."
-      heroImage={{
-        src: '/cosmic-map-reference.jpg',
-        alt: 'Cosmic map reference art used by T-Central Hub',
-      }}
-    >
+    <PageShell eyebrow="Player guide" title="Find your way around T-Central." text="Start with a server, explore the universe, or connect with the community. Here is how to get going.">
       <div className="card-grid two">
-            {blocks.map((block) => (
-              <article key={block.title} className="content-card">
-                <h3>{block.title}</h3>
-                <p className="muted">{block.text}</p>
-              </article>
-            ))}
+        {guides.map((guide) => (
+          <article key={guide.title} className="content-card">
+            <h2>{guide.title}</h2>
+            <p className="muted">{guide.text}</p>
+            <Link className="button secondary" href={guide.href}>{guide.label}</Link>
+          </article>
+        ))}
       </div>
       <DiscordPanel />
     </PageShell>

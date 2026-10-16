@@ -6910,3 +6910,140 @@ button { font: inherit; }
     flex-direction: column;
   }
 }
+
+/* Shared site navigation and interaction states. */
+.site-header {
+  position: relative;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1rem clamp(1rem, 4vw, 3rem);
+  border-bottom: 1px solid var(--line);
+  background: #081321;
+}
+.site-brand { font-size: 1.15rem; font-weight: 800; white-space: nowrap; }
+.site-brand span { color: var(--cyan); }
+.site-navigation { display: flex; flex-wrap: wrap; gap: .25rem; margin-left: auto; }
+.site-navigation a, .site-support { padding: .7rem .85rem; border-radius: 12px; font-size: .9rem; }
+.site-navigation a:hover, .site-navigation a[aria-current], .site-support:hover, .site-support[aria-current] { background: rgba(131,235,255,.12); color: var(--cyan); }
+.site-support { border: 1px solid rgba(131,235,255,.3); }
+.skip-link { position: fixed; top: .5rem; left: 1rem; z-index: 300; padding: 1rem; background: #102c42; transform: translateY(-150%); }
+.skip-link:focus { transform: translateY(0); }
+:where(a, button, input, select, textarea, [tabindex]):focus-visible { outline: 3px solid var(--cyan); outline-offset: 4px; }
+button:disabled { cursor: not-allowed; opacity: .6; }
+#main-content:focus { outline: none; }
+.content-bubbles { max-width: 1180px; margin: 0 auto 1.25rem; }
+.content-page .page-hero { padding: clamp(1.25rem, 4vw, 3rem); margin-bottom: 1.5rem; }
+.copy-address-control { display: inline-flex; flex-direction: column; gap: .5rem; align-items: flex-start; }
+.copy-address-status { font-size: .85rem; color: var(--cyan); overflow-wrap: anywhere; }
+.copy-address-status:empty { display: none; }
+.contact-unavailable { max-width: 720px; }
+.simplified-home-page > .steam-login-hud {
+  position: relative;
+  inset: auto;
+  width: min(440px, calc(100% - 2rem));
+  margin: 1rem 1rem 0 auto;
+}
+.simplified-home-page .steam-login-card { width: 100%; min-width: 0; }
+.simplified-home-page .entry-shell { padding-top: 2rem; }
+.arma-action-stack small { max-width: 40rem; line-height: 1.6; }
+.page-section code, .page-section h3, .steam-login-meta { overflow-wrap: anywhere; }
+.consent-gate__panel { max-height: min(90dvh, 860px); }
+@media (max-width: 700px) {
+  .site-header { flex-wrap: wrap; gap: .5rem; padding: .75rem 1rem; }
+  .site-navigation { order: 3; width: 100%; margin: 0; justify-content: space-between; }
+  .site-navigation a { padding: .65rem .45rem; font-size: .8rem; }
+  .site-support { margin-left: auto; }
+  .content-page { padding: 1rem; }
+  .content-bubbles { gap: .5rem; }
+  .bubble-link { padding: .65rem .8rem; font-size: .85rem; }
+  .simplified-home-page > .steam-login-hud { margin: 1rem auto 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+.simplified-home-page .entry-universe-canvas { isolation: isolate; z-index: 0; pointer-events: none; overflow: hidden; }
+.simplified-home-page .entry-panel-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; align-items: stretch; }
+.simplified-home-page .minimal-route-card { display: flex; flex-direction: column; justify-content: flex-start; gap: .8rem; }
+.simplified-home-page .minimal-route-card p { margin: 0; }
+.simplified-home-page .minimal-route-card > .button { margin-top: auto; align-self: flex-start; flex: 0 0 auto; }
+.simplified-home-page .minimal-route-card > strong { font-size: 1.1rem; }
+@media (max-width: 900px) {
+  .simplified-home-page .entry-panel-grid { grid-template-columns: 1fr; }
+}
+
+/* Keep simulation controls in one scrollable column rather than overlapping fixed panels. */
+.system-interface-sidebar {
+  position: fixed; top: 18px; right: 18px; bottom: 18px; width: 320px;
+  z-index: 61; display: flex; flex-direction: column; gap: 12px; overflow-y: auto;
+  scrollbar-width: thin; pointer-events: none;
+}
+.system-interface-sidebar > * { flex-shrink: 0; pointer-events: auto; }
+.system-interface-sidebar :is(.steam-login-hud, .system-news-panel, .lobby-mode-panel, .system-shell-control-layer) {
+  position: static; inset: auto; width: 100%; max-width: none; margin: 0; transform: none;
+}
+.system-interface-sidebar .steam-login-card { min-width: 0; width: 100%; }
+.system-interface-sidebar :is(.system-news-card, .system-news-toggle) { width: 100%; max-width: none; }
+body:has(.system-interface-sidebar) .system-status-strip { left: 50%; width: min(640px, calc(100vw - 740px)); }
+body:has(.system-interface-sidebar) .stable-system-hud {
+  inset: 100px 358px 18px 18px;
+  grid-template-columns: minmax(240px, 280px) minmax(0, 1fr) minmax(240px, 280px);
+}
+.stable-system-hud > .left-ops-rail { grid-area: left-mission; }
+.stable-system-hud > .stable-hud-chrome { position: absolute; top: -30px; left: 0; }
+.stable-system-hud .panel-minimize-toggle { flex-wrap: wrap; }
+.stable-system-hud .panel-toggle-summary { flex-basis: 100%; text-align: left; justify-items: start; }
+@media (max-width: 1100px) {
+  body:has(.system-interface-sidebar) .system-status-strip { display: none; }
+  body:has(.system-interface-sidebar) .stable-system-hud { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'left-mission' 'right-controls' 'bottom-command'; overflow-y: auto; }
+}
+@media (max-width: 700px) {
+  .system-interface-sidebar { top: 76px; left: 14px; right: 14px; bottom: auto; width: auto; max-height: 34dvh; }
+  body:has(.system-interface-sidebar) .stable-system-hud { inset: calc(34dvh + 120px) 14px 120px; }
+}
+.system-settings-toggle { display: none; }
+@media (max-width: 700px) {
+  .system-settings-toggle { display: inline-flex; position: fixed; top: 18px; right: 14px; z-index: 65; font-size: .8rem; padding: .8rem; }
+  .system-interface-sidebar.is-collapsed { display: none; }
+  body:has(.system-interface-sidebar.is-collapsed) .stable-system-hud { top: 100px; max-height: 34dvh; }
+}
+.system-entry-screen:not(.phase-in_sim) > .steam-login-hud {
+  position: relative; inset: auto; margin: 80px auto 0; width: min(440px, calc(100% - 2rem));
+}
+.system-entry-screen:not(.phase-in_sim) .steam-login-card { min-width: 0; width: 100%; }
+.system-entry-screen:not(.phase-in_sim) .system-status-strip { display: none; }
+.system-entry-screen:not(.phase-in_sim) .system-launcher-shell { padding-top: 2rem; }
+.simplified-home-page .minimal-route-card { background: rgba(7, 17, 30, .96); }
+
+/* Consistent content-page spacing, account access, and support columns. */
+.page-section > * + * { margin-top: 1.5rem; }
+.content-card h2 { margin: 0 0 .8rem; font-size: clamp(1.2rem, 2vw, 1.55rem); line-height: 1.3; }
+.card-grid > .content-card { display: flex; flex-direction: column; align-items: flex-start; gap: .5rem; }
+.card-grid > .content-card > .button { margin-top: auto; }
+.support-options { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+.report-shell.report-shell--shared { width: min(900px, 100%); margin: 0 auto; padding: 0; }
+.site-navigation { justify-content: center; }
+@media (max-width: 900px) {
+  .site-header { flex-wrap: wrap; }
+  .site-navigation { order: 3; flex-basis: 100%; margin: 0; }
+  .site-support { margin-left: auto; }
+  .support-options { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 700px) {
+  .site-navigation { justify-content: flex-start; gap: .15rem; }
+  .site-navigation a { padding: .7rem .6rem; }
+}
+
+.support-options .support-link-card { padding: 0; margin-top: 1.5rem; border: 0; background: transparent; box-shadow: none; }
+.support-options .support-cancellation-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; padding: 1rem; border: 1px solid var(--line); border-radius: 18px; margin-top: 1rem; }
+.support-options .support-link-panel strong { overflow-wrap: anywhere; }
+.page-section .card-grid { display: grid; gap: 1.5rem; }
+.page-section .card-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.content-page .content-card { background-color: rgba(7, 17, 30, .94); }
+.page-section .discord-panel { display: flex; align-items: center; gap: 1.5rem; padding: 1.5rem; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(7, 17, 30, .94); }
+.page-section .discord-panel .button-column { display: flex; flex-direction: column; gap: .75rem; flex-shrink: 0; }
+@media (max-width: 700px) {
+  .page-section .card-grid.two { grid-template-columns: minmax(0, 1fr); }
+  .page-section .discord-panel { flex-direction: column; align-items: stretch; }
+}

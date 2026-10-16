@@ -11,13 +11,14 @@ const initial = {
   company: '',
 };
 
-export default function ContactUsForm() {
+export default function ContactUsForm({ enabled = false }) {
   const [form, setForm] = useState(initial);
   const [state, setState] = useState({ status: '', ok: false, reference: '' });
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (submitting) return;
     setState({ status: 'Sending transmission...', ok: false, reference: '' });
     setSubmitting(true);
 
@@ -56,14 +57,26 @@ export default function ContactUsForm() {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
+  if (!enabled) {
+    return (
+      <article className="content-card contact-unavailable">
+        <p className="eyebrow">Email support</p>
+        <h2>Contact us directly</h2>
+        <p className="muted">The online form is currently unavailable. Send your question by email and include the server or account details we need to help.</p>
+        <a className="button primary" href="mailto:BrainandBodyai@gmail.com">Email the T-Central team</a>
+      </article>
+    );
+  }
+
   return (
-    <form className="contact-form" onSubmit={handleSubmit}>
+    <form className="contact-form" onSubmit={handleSubmit} aria-busy={submitting}>
       <div className="donation-form-grid">
         <label className="donation-field">
           <span>Name</span>
           <input
             value={form.name}
             onChange={(event) => update('name', event.target.value)}
+            autoComplete="name"
             placeholder="Your full name"
             required
             maxLength={120}
@@ -75,6 +88,7 @@ export default function ContactUsForm() {
             type="email"
             value={form.email}
             onChange={(event) => update('email', event.target.value)}
+            autoComplete="email"
             placeholder="you@example.com"
             required
             maxLength={160}
@@ -85,6 +99,8 @@ export default function ContactUsForm() {
           <input
             value={form.phone}
             onChange={(event) => update('phone', event.target.value)}
+            type="tel"
+            autoComplete="tel"
             placeholder="(555) 123-4567"
             maxLength={40}
           />

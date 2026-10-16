@@ -8,7 +8,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
 export default async function HomePage() {
-  const launchCards = getHomeLaunchCards().slice(0, 3);
+  const launchCards = getHomeLaunchCards();
   const statusPills = getHomeStatusPills();
   const graph = buildUniverseGraph();
 
@@ -27,18 +27,16 @@ export default async function HomePage() {
       <section className="entry-shell simplified">
         <div className="entry-copy cosmic-hero-panel entry-hero-panel simplified-panel">
           <p className="eyebrow">T-Central Hub</p>
-          <h1>Main gateway for cinematic routing, Steam handoff, and live server entry.</h1>
+          <h1>Your next adventure starts here.</h1>
           <p className="muted max-copy">
-            The front page now acts as mission control for your web layer and in-game 3D/5D game simulation system: discover routes, read mode briefs, and jump
-            straight into game servers with quick Steam connect actions.
+            Explore the interactive universe, find your Arma 3 or Rust server, and connect with the community. Play as a guest or sign in to link your account.
           </p>
 
           <div className="entry-actions">
             <Link className="button primary" href="/system">Enter system</Link>
-            <Link className="button secondary" href="/servers/arma3-cth">Open primary route</Link>
+            <Link className="button secondary" href="/server-info">Find a server</Link>
             <Link className="button secondary" href="/status">View status</Link>
-            <Link className="button secondary" href="/hub-form">Open hub form</Link>
-            <Link className="button secondary" href="/admin/dyson">Admin login</Link>
+            <Link className="button secondary" href="/hub-form">Community board</Link>
           </div>
 
           <div className="entry-status-bar refined">
@@ -69,7 +67,7 @@ export default async function HomePage() {
             <strong>Signed entropy release PDF</strong>
             <p>
               Cross-check the latest ring3 entropy release and continuity snapshot digest.
-              {entropyReport?.generatedAt ? ` Generated at ${entropyReport.generatedAt}.` : ' Generate it with scripts/generate-entropy-frontpage-pdf.mjs.'}
+              {entropyReport?.generatedAt ? ` Generated at ${entropyReport.generatedAt}.` : ' Read the latest published report.'}
             </p>
             <p className="muted" style={{ wordBreak: 'break-all' }}>
               SHA-256: {entropyReport?.sha256 || 'pending-generation'}
@@ -101,9 +99,9 @@ export default async function HomePage() {
               <strong>{card.title}</strong>
               <p>{card.copy}</p>
               {card.href.startsWith('/') ? (
-                <Link className="button secondary" href={card.href}>Open route</Link>
+                <Link className="button secondary" href={card.href}>Explore {card.title}</Link>
               ) : (
-                <a className="button secondary" href={card.href}>Open route</a>
+                <a className="button secondary" href={card.href}>Explore {card.title}</a>
               )}
             </article>
           ))}

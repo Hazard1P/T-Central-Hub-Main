@@ -45,13 +45,13 @@ Without Supabase, contact/report JSON persistence is available for local develop
 
 ## Local development
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
 ## Production build
 ```bash
-npm install
+npm ci
 npm run build
 npm run start
 ```
@@ -71,3 +71,22 @@ npm run start
 ## Notes
 - The `data/` directory is for local development fallback only.
 - The current package is intended to be the cumulative base for future updates.
+
+## Validate the site
+Use Node 24 and npm 10.8.2, as pinned in `package.json`.
+
+```bash
+node --test tests/*.test.mjs
+npm run verify:api
+npm run check:dyson-continuity
+node scripts/verify-supabase-migrations.mjs
+npm run build
+```
+
+With the app running in another terminal, check every page route and the guest admin guard:
+
+```bash
+APP_SMOKE_BASE_URL=http://127.0.0.1:3000 node scripts/verify-pages.mjs
+```
+
+Stop the development server before building; both use `.next`. The page check uses anonymous requests and does not submit forms or exercise external login/payment services. Review desktop and mobile layouts, keyboard consent, server-address copying, and the simulation launcher when changing shared UI. The legacy `/admin/dyson-assets` address redirects to the protected `/admin/dyson` page.

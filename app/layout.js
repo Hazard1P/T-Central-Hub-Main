@@ -1,6 +1,7 @@
 import './globals.css';
 import { SteamSessionProvider } from '@/components/SteamSessionProvider';
 import ConsentGate from '@/components/ConsentGate';
+import SiteNavigation from '@/components/SiteNavigation';
 import GlobalFooter from '@/components/GlobalFooter';
 import { getSiteUrl } from '@/lib/runtimeConfig';
 import { Analytics } from '@vercel/analytics/next';
@@ -9,11 +10,8 @@ const siteUrl = getSiteUrl();
 
 export const metadata = {
   metadataBase: new URL(siteUrl),
-  title: 'T-Central Hub',
+  title: { default: 'T-Central Hub', template: '%s | T-Central Hub' },
   description: 'Interactive game server and web-game hub for T-Central.',
-  alternates: {
-    canonical: '/',
-  },
   openGraph: {
     title: 'T-Central Hub',
     description: 'Interactive game server and web-game hub for T-Central.',
@@ -29,8 +27,12 @@ export default function RootLayout({ children }) {
       <body>
         <SteamSessionProvider>
           <ConsentGate />
-          {children}
-          <GlobalFooter />
+          <div id="site-content">
+            <a className="skip-link" href="#main-content">Skip to content</a>
+            <SiteNavigation />
+            <div id="main-content" tabIndex={-1}>{children}</div>
+            <GlobalFooter />
+          </div>
         </SteamSessionProvider>
         <Analytics />
       </body>

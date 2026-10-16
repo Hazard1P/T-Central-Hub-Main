@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { REPORT_SERVER_OPTIONS } from '@/lib/serverData';
+import PageShell from '@/components/PageShell';
 import ModerationQueuePanel from '@/components/ModerationQueuePanel';
 
 const initialForm = {
@@ -53,6 +54,7 @@ export default function ReportPlayerPage() {
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    if (status.state === 'loading') return;
     setStatus({ state: 'loading', message: 'Submitting report…' });
 
     try {
@@ -76,16 +78,8 @@ export default function ReportPlayerPage() {
   };
 
   return (
-    <main className="report-page">
-      <section className="report-shell">
-        <div className="report-header">
-          <p className="report-kicker">T-Central moderation</p>
-          <h1>Player reporting</h1>
-          <p className="report-copy">
-            Use this form to report cheating, griefing, abuse, or rule violations across T-Central servers.
-          </p>
-        </div>
-
+    <PageShell eyebrow="T-Central moderation" title="Report a player" text="Report cheating, griefing, abuse, or rule violations. Include the server, player name, and evidence so the team can investigate.">
+      <section className="report-shell report-shell--shared" aria-label="Player report form">
         <div className="report-identity">
           <div>
             <span className="report-label">Reporter identity</span>
@@ -96,7 +90,7 @@ export default function ReportPlayerPage() {
 
         <ModerationQueuePanel summary={publicMeta} />
 
-        <form className="report-form" onSubmit={onSubmit}>
+        <form className="report-form" onSubmit={onSubmit} aria-busy={status.state === 'loading'}>
           <label>
             <span>Reported player</span>
             <input value={form.reportedPlayer} onChange={(e) => onChange('reportedPlayer', e.target.value)} required />
@@ -122,15 +116,15 @@ export default function ReportPlayerPage() {
           </label>
 
           <div className="report-actions">
-            <button type="submit" className="report-submit">Submit report</button>
+            <button type="submit" className="report-submit" disabled={status.state === 'loading'}>{status.state === 'loading' ? 'Submitting…' : 'Submit report'}</button>
             <a href="/" className="report-back">Back to hub</a>
           </div>
 
           {status.message ? (
-            <p className={`report-status ${status.state}`}>{status.message}</p>
+            <p role="status" className={`report-status ${status.state}`}>{status.message}</p>
           ) : null}
         </form>
       </section>
-    </main>
+    </PageShell>
   );
 }

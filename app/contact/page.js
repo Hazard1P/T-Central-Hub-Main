@@ -1,6 +1,8 @@
 import PageShell from '@/components/PageShell';
 import ContactUsForm from '@/components/ContactUsForm';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = { title: 'Contact' };
 
 export default function ContactPage() {
@@ -8,9 +10,9 @@ export default function ContactPage() {
     <PageShell
       eyebrow="Contact"
       title="Reach the T-Central team"
-      text="Use the contact form below for support, partnerships, or general questions. Messages are now persisted server-side when a storage target is available."
+      text="Get help with a server, ask a question, or discuss a partnership with the T-Central team."
     >
-      <ContactUsForm />
+      <ContactUsForm enabled={process.env.CONTACT_FORM_ENABLED === 'true'} />
     </PageShell>
   );
 }

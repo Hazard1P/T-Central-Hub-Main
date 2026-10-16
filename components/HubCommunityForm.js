@@ -39,7 +39,7 @@ export default function HubCommunityForm() {
       setPosts(Array.isArray(postsData?.posts) ? postsData.posts : []);
       setHubStorage({
         loading: false,
-        storageConfigured: postsData?.storageConfigured !== false,
+        storageConfigured: postsData?.ok === true && postsData?.storageConfigured !== false,
         storage: postsData?.storage || 'none',
       });
     });
@@ -50,7 +50,7 @@ export default function HubCommunityForm() {
 
   const onSubmit = async (event) => {
     event.preventDefault();
-    if (!canSubmit) return;
+    if (!canSubmit || status.state === 'loading') return;
     setStatus({ state: 'loading', message: 'Posting to T-Central Hub…' });
 
     try {
@@ -76,16 +76,16 @@ export default function HubCommunityForm() {
       <article className="content-card hub-form-card">
         <div className="hub-form-head">
           <p className="eyebrow">Community board</p>
-          <h3>Steam/Google-authenticated posting lane</h3>
+          <h3>Start a conversation</h3>
           <p className="muted">
             Post updates, questions, ideas, and route notes related to anything in T-Central Hub.
           </p>
         </div>
 
-        {session.loading ? <p className="muted">Checking Steam/Google session…</p> : null}
+        {session.loading ? <p className="muted">Checking your account…</p> : null}
         {!session.loading && !session.user ? (
           <div className="hub-auth-required">
-            <p>Steam or Google authentication is required to post.</p>
+            <p>Sign in with Steam or Google to post.</p>
             <a className="button primary" href="/api/auth/steam/login?redirectTo=/hub-form">Sign in with Steam</a>
             <a className="button secondary" href="/api/auth/google/login?redirectTo=/hub-form">Sign in with Google</a>
           </div>
@@ -95,11 +95,11 @@ export default function HubCommunityForm() {
         ) : null}
         {!hubStorage.loading && !hubStorage.storageConfigured ? (
           <div className="hub-auth-required" role="alert">
-            <p>Durable hub storage is not configured; posting is temporarily unavailable.</p>
+            <p>Posting is temporarily unavailable. Please try again later or contact the team.</p>
           </div>
         ) : null}
 
-        <form className="hub-form-grid" onSubmit={onSubmit}>
+        <form className="hub-form-grid" onSubmit={onSubmit} aria-busy={status.state === 'loading'}>
           <label>
             Topic
             <input
@@ -131,12 +131,12 @@ export default function HubCommunityForm() {
           </button>
         </form>
 
-        {status.message ? <p className={`hub-form-status ${status.state}`}>{status.message}</p> : null}
+        {status.message ? <p role="status" className={`hub-form-status ${status.state}`}>{status.message}</p> : null}
       </article>
 
       <article className="content-card hub-board-feed">
         <p className="eyebrow">Latest posts</p>
-        <h3>Recent community signals</h3>
+        <h3>From the community</h3>
         <div className="hub-board-list">
           {posts.length ? posts.map((post) => (
             <div key={post.reference} className="hub-board-post">

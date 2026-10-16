@@ -369,7 +369,7 @@ function UniverseScene({ tier }) {
         return <RelayNode key={node.key} node={node} />;
       })}
 
-      <HeroLabels nodes={graph.heroNodes} limit={tier.labels} />
+      {/* Decorative background labels are omitted so they cannot cover page controls. */}
       <CometTrail />
     </>
   );

@@ -4,16 +4,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const quickLinks = [
-  { href: '/', label: 'Return to Hub' },
-  { href: '/about', label: 'About' },
-  { href: '/contact', label: 'Contact' },
-  { href: '/hub-form', label: 'Hub Form' },
-  { href: '/donate', label: 'Donate' },
-  { href: '/report-player', label: 'Report' },
-  { href: '/privacy-policy', label: 'Privacy' },
-  { href: '/terms-and-conditions', label: 'Terms' },
-  { href: '/eula', label: 'EULA' },
-  { href: '/multiplayer-policy', label: 'Multiplayer Policy' },
+  { href: '/hub-form', label: 'Community board' },
+  { href: '/donate', label: 'Support the hub' },
+  { href: '/report-player', label: 'Report a player' },
 ];
 
 const normalizeHref = (href) => {
@@ -32,7 +25,7 @@ export default function PageShell({ eyebrow, title, text, heroImage = null, acti
     <main className="content-page">
       <div className="content-backdrop" />
       <div className="content-noise" />
-      <div className="content-bubbles">
+      <nav className="content-bubbles" aria-label="Community and support">
         {quickLinks.map((link) => {
           const isActive = normalizeHref(link.href) === currentHref;
 
@@ -47,7 +40,7 @@ export default function PageShell({ eyebrow, title, text, heroImage = null, acti
             </Link>
           );
         })}
-      </div>
+      </nav>
 
       <section className="page-hero">
         <p className="eyebrow">{eyebrow}</p>

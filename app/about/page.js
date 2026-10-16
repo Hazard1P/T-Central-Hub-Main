@@ -1,22 +1,31 @@
+import Link from 'next/link';
 import PageShell from '@/components/PageShell';
 
 export const metadata = { title: 'About' };
 
 export default function AboutPage() {
   return (
-    <PageShell
-      eyebrow="About the hub"
-      title="A cleaner front-end shell for T-Central"
-      text="T-Central Hub keeps the observer view simple while the deeper world layer continues running background cinematics, route logic, Steam-aware session flows, and server access panels."
-    >
-      <div className="content-grid">
+    <PageShell eyebrow="About the hub" title="One community. More ways to play." text="T-Central brings Arma 3 and Rust server routes together with an interactive space universe and a shared community hub.">
+      <div className="card-grid two">
         <article className="content-card">
-          <h3>What this build focuses on</h3>
-          <p>Defined player-facing layers, cleaner route access, support flows, and a cinematic background that stays active without drowning the interface.</p>
+          <h2>Find your server</h2>
+          <p className="muted">Compare game modes, find connection details, and open a server through Steam. Each route has its own briefing and address.</p>
+          <Link className="button secondary" href="/server-info">Browse servers</Link>
         </article>
         <article className="content-card">
-          <h3>System layers</h3>
-          <p>The hub surface, observer HUD, route panels, and the world canvas are separated so the live scene remains readable and the system objects stay visually ordered.</p>
+          <h2>Explore the universe</h2>
+          <p className="muted">Launch the browser-based 3D system, learn the flight controls, and explore its connected routes. You can start as a guest.</p>
+          <Link className="button secondary" href="/system">Launch the system</Link>
+        </article>
+        <article className="content-card">
+          <h2>Shape the community</h2>
+          <p className="muted">Share feedback, suggest an event, or discuss a server on the community board. Sign in with Steam or Google to post.</p>
+          <Link className="button secondary" href="/hub-form">Visit the community board</Link>
+        </article>
+        <article className="content-card">
+          <h2>Get help</h2>
+          <p className="muted">Contact the team for account and server questions, or use player reporting for cheating, abuse, and rule violations.</p>
+          <Link className="button secondary" href="/contact">Contact the team</Link>
         </article>
       </div>
     </PageShell>

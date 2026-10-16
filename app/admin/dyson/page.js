@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { cookies } from 'next/headers';
 import AdminDysonAssetEditor from '@/components/AdminDysonAssetEditor';
 import PageShell from '@/components/PageShell';
@@ -32,10 +31,10 @@ function LoginRequiredPanel() {
     >
       <div className="system-news-list">
         {loginRoutes.map((route) => (
-          <Link className="system-news-link" href={route.href} key={route.href}>
+          <a className="system-news-link" href={route.href} key={route.href}>
             <span>{route.label}</span>
             <small>Return to /admin/dyson after login</small>
-          </Link>
+          </a>
         ))}
       </div>
     </AdminPanel>

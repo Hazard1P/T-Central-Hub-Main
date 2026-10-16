@@ -1,7 +1,5 @@
-import AdminDysonAssetEditor from '@/components/AdminDysonAssetEditor';
-
-export const metadata = { title: 'Admin Dyson Assets' };
+import { redirect } from 'next/navigation';
 
 export default function AdminDysonAssetsPage() {
-  return <AdminDysonAssetEditor />;
+  redirect('/admin/dyson');
 }

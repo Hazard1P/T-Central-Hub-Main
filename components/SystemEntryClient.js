@@ -29,6 +29,10 @@ function canUseWebGL() {
 }
 
 export default function SystemEntryClient() {
+  const [settingsOpen, setSettingsOpen] = useState(true);
+  useEffect(() => {
+    if (window.matchMedia('(max-width: 700px)').matches) setSettingsOpen(false);
+  }, []);
   const [launchPhase, setLaunchPhase] = useState('idle');
   const [selectedNode, setSelectedNode] = useState(null);
   const [launchError, setLaunchError] = useState('');
@@ -90,18 +94,20 @@ export default function SystemEntryClient() {
   };
 
   return (
-    <>
-      <SteamLoginHud />
+    <div className={`system-entry-screen phase-${launchPhase}`}>
+      {launchPhase !== 'in_sim' ? <SteamLoginHud /> : null}
       <SystemStatusStrip />
       <Link className="button secondary system-home-link" href="/">Back to homepage</Link>
       {launchPhase === 'in_sim' ? (
         <SystemErrorBoundary onReset={resetLauncher}>
-          <SystemNewsInfoPanel lobbyMode={lobbyMode} selected={selectedNode} />
           <MultiplayerSessionProvider>
-            <div className="system-top-left-controls">
+            <button type="button" className="button secondary system-settings-toggle" aria-expanded={settingsOpen} aria-controls="system-settings" onClick={() => setSettingsOpen((open) => !open)}>{settingsOpen ? 'Hide settings' : 'Account & settings'}</button>
+            <aside id="system-settings" className={`system-interface-sidebar${settingsOpen ? '' : ' is-collapsed'}`} aria-label="Account and game settings">
+              <SteamLoginHud />
+              <SystemNewsInfoPanel lobbyMode={lobbyMode} selected={selectedNode} />
               <LobbyModePanel lobbyMode={lobbyMode} onChange={setLobbyMode} steamUser={steamUser} universe={universe} />
               <SystemShellControlLayer steamUser={steamUser} lobbyMode={lobbyMode} onChange={setLobbyMode} activeNode={selectedNode} />
-            </div>
+            </aside>
             <StableSystemWorld lobbyMode={lobbyMode} steamUser={steamUser} onSelectionChange={setSelectedNode} />
           </MultiplayerSessionProvider>
         </SystemErrorBoundary>
@@ -120,6 +126,6 @@ export default function SystemEntryClient() {
           ) : null}
         </>
       )}
-    </>
+    </div>
   );
 }

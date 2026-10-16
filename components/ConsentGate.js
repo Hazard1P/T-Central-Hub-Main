@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { legalDocuments } from '@/lib/legalContent';
 
 const STORAGE_KEY = 'tcentral_consent_v1';
@@ -75,6 +76,9 @@ function DocumentButton({ documentKey, children, onSelect }) {
 }
 
 export default function ConsentGate() {
+  const pathname = usePathname();
+  const dialogRef = useRef(null);
+  const legalPage = Object.values(legalDocuments).some((document) => document.route === pathname);
   const [mounted, setMounted] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [terms, setTerms] = useState(false);
@@ -94,6 +98,39 @@ export default function ConsentGate() {
     } catch {}
   }, []);
 
+  useEffect(() => {
+    if (!mounted || accepted || legalPage) return;
+    const previousFocus = document.activeElement;
+    const content = document.getElementById('site-content');
+    const previousInert = content?.inert;
+    const previousOverflow = document.body.style.overflow;
+    if (content) content.inert = true;
+    document.body.style.overflow = 'hidden';
+    dialogRef.current?.focus();
+
+    function trapFocus(event) {
+      if (event.key !== 'Tab') return;
+      const controls = [...dialogRef.current.querySelectorAll('a[href], button:not(:disabled), input, [tabindex="0"]')];
+      const first = controls[0];
+      const last = controls.at(-1);
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || document.activeElement === dialogRef.current)) {
+        event.preventDefault();
+        first?.focus();
+      }
+    }
+    const dialog = dialogRef.current;
+    dialog.addEventListener('keydown', trapFocus);
+    return () => {
+      dialog.removeEventListener('keydown', trapFocus);
+      if (content) content.inert = previousInert;
+      document.body.style.overflow = previousOverflow;
+      if (previousFocus instanceof HTMLElement) previousFocus.focus();
+    };
+  }, [mounted, accepted, legalPage]);
+
   const ready = useMemo(() => terms && privacy, [terms, privacy]);
 
   const handleAccept = () => {
@@ -103,14 +140,14 @@ export default function ConsentGate() {
       acceptedAt: Date.now(),
       version: 1,
     };
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload)); } catch {}
     setAccepted(true);
   };
 
-  if (!mounted || accepted) return null;
+  if (!mounted || accepted || legalPage) return null;
 
   return (
-    <div className="consent-gate" role="dialog" aria-modal="true" aria-labelledby="consent-title">
+    <div ref={dialogRef} tabIndex={-1} className="consent-gate" role="dialog" aria-modal="true" aria-labelledby="consent-title">
       <div className="consent-gate__panel">
         <p className="eyebrow">System initialization</p>
         <h2 id="consent-title">Initialize system access</h2>
@@ -132,7 +169,7 @@ export default function ConsentGate() {
         </div>
         <LegalDocumentViewer documentKey={activeDocument} onClose={() => setActiveDocument(null)} />
         <div className="consent-gate__check">
-          <input type="checkbox" checked={terms} aria-describedby="terms-consent-label" onChange={(e) => setTerms(e.target.checked)} />
+          <input type="checkbox" checked={terms} aria-labelledby="terms-consent-label" onChange={(e) => setTerms(e.target.checked)} />
           <span id="terms-consent-label">
             I accept the{' '}
             <DocumentButton documentKey="terms" onSelect={setActiveDocument}>Terms &amp; Conditions</DocumentButton>{' '}
@@ -141,7 +178,7 @@ export default function ConsentGate() {
           </span>
         </div>
         <div className="consent-gate__check">
-          <input type="checkbox" checked={privacy} aria-describedby="privacy-consent-label" onChange={(e) => setPrivacy(e.target.checked)} />
+          <input type="checkbox" checked={privacy} aria-labelledby="privacy-consent-label" onChange={(e) => setPrivacy(e.target.checked)} />
           <span id="privacy-consent-label">
             I accept the{' '}
             <DocumentButton documentKey="privacy" onSelect={setActiveDocument}>Privacy Policy</DocumentButton>{' '}

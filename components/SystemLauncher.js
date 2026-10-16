@@ -8,8 +8,10 @@ export default function SystemLauncher({ onEnter }) {
   const [entering, setEntering] = useState(false);
 
   const handleEnter = () => {
+    if (entering) return;
     setEntering(true);
-    window.setTimeout(() => onEnter?.(), 260);
+    onEnter?.();
+    setEntering(false);
   };
 
   return (
@@ -22,7 +24,7 @@ export default function SystemLauncher({ onEnter }) {
         </p>
 
         <div className="entry-actions">
-          <button className="button primary" onClick={handleEnter}>
+          <button type="button" className="button primary" disabled={entering} onClick={handleEnter}>
             {entering ? 'Initializing…' : 'Launch navigation system'}
           </button>
           <Link className="button secondary" href="/servers/arma3-cth">

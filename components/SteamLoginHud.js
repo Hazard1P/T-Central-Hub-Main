@@ -10,7 +10,7 @@ export default function SteamLoginHud() {
     <div className="steam-login-hud sim-zone-top-status-auth">
       <div className="steam-login-card">
         <div className="steam-login-topline">
-          <span className="steam-kicker">Steam Access</span>
+          <span className="steam-kicker">Your account</span>
           {session ? <span className="steam-status online">Steam linked</span> : <span className="steam-status">Steam guest</span>}
           {googleUser ? <span className="steam-status online">Google linked</span> : <span className="steam-status">Google guest</span>}
           {support ? <span className="steam-status support">Supporter</span> : null}
@@ -34,14 +34,12 @@ export default function SteamLoginHud() {
                 <strong>{session.personaname || 'Steam user'}</strong>
                 <small>{session.steamid}</small>
                 <small className="steam-subtle">Observer and pilot layers synchronized</small>
-                {universe?.privacy?.observanceScope ? <small className="steam-subtle">{universe.privacy.observanceScope}</small> : null}
               </>
             ) : (
               <>
-                <strong>Sign in with Steam</strong>
-                <small>Connect your Steam profile</small>
-                <small className="steam-subtle">Guest observer shell stays synchronized until login</small>
-                {universe?.privacy?.observanceScope ? <small className="steam-subtle">{universe.privacy.observanceScope}</small> : null}
+                <strong>{googleUser?.name || 'Welcome, explorer'}</strong>
+                <small>{googleUser ? 'Signed in with Google' : 'Play as a guest or sign in'}</small>
+                <small className="steam-subtle">Sign in to keep your account connected</small>
               </>
             )}
           </div>
@@ -52,7 +50,7 @@ export default function SteamLoginHud() {
           {presence?.length ? <span className="steam-mini-link">Pilots {presence.length}</span> : null}
           {session || googleUser ? (
             <>
-              {session.profileurl ? (
+              {session?.profileurl ? (
                 <a className="steam-mini-link" href={session.profileurl} target="_blank" rel="noreferrer">
                   Profile
                 </a>
