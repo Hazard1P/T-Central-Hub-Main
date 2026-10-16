@@ -90,3 +90,8 @@ APP_SMOKE_BASE_URL=http://127.0.0.1:3000 node scripts/verify-pages.mjs
 ```
 
 Stop the development server before building; both use `.next`. The page check uses anonymous requests and does not submit forms or exercise external login/payment services. Review desktop and mobile layouts, keyboard consent, server-address copying, and the simulation launcher when changing shared UI. The legacy `/admin/dyson-assets` address redirects to the protected `/admin/dyson` page.
+
+## Simulation visuals
+Launch `/system` to enter the rendered flight scene. The **Visuals** selector offers Auto, High, and Performance. Auto uses a lighter shader, fewer stars/asteroids, a 1x render-resolution cap, and no bloom on mobile. High enables bloom with a bounded resolution; Performance keeps the scene detail while reducing GPU work on desktop too.
+
+Use **Hide HUD** (or H) for an unobstructed scene and **Show HUD** to restore controls. Drag the scene to look around; moving over account or settings controls does not turn the camera. Nebulae, planet surfaces, stars, and accretion disks are generated locally, so the new visual assets need no external texture service. Reduced-motion preferences stop animated nebula and surface effects while flight and orbital simulation continue.

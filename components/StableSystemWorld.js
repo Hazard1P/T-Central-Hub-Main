@@ -30,9 +30,12 @@ import AccountProgressPanel from '@/components/AccountProgressPanel';
 import { HYPERSPACE_DIMENSION_COUNT, HYPERSPACE_SIGNATURE_PREFIX } from '@/lib/simulationConfig';
 import { SESSION_MODES } from '@/lib/sessionModeEngine';
 import { FLIGHT_CONTROL_COPY } from '@/lib/siteContent';
+import { BlackHoleVisual, CinematicBloom, DeepSpaceScenery, InterceptorHull, PlanetSurface, StellarSurface } from '@/components/SimulationVisuals';
+import { getGraphicsProfile } from '@/lib/graphicsProfile';
 import { gameEngine } from '@/lib/gameEngine';
 
 const UI_VISUAL_DEBUG = false;
+const SIM_RENDERER_OPTIONS = { antialias: true, powerPreference: 'high-performance', toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.0 };
 const SHIP_MODEL_FORWARD = new THREE.Vector3(0, 0, 1);
 const SHIP_CAMERA_BACK = new THREE.Vector3(0, 0, -1);
 const FLIGHT_PRESETS = Object.freeze({
@@ -82,6 +85,7 @@ function useDeviceTier() {
       const isMobile = window.matchMedia('(max-width: 820px), (pointer: coarse)').matches;
       setTier({
         isMobile,
+        reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
         dpr: isMobile ? [1, 1.2] : [1, 1.6],
         stars: isMobile ? 3600 : 7600,
         sparkles: isMobile ? 120 : 220,
@@ -117,77 +121,19 @@ function RouteBeam({ from, to, color = '#67dfff', arc = 1.8, opacity = 0.18, rad
 
   useFrame(({ clock }) => {
     if (!beamRef.current) return;
-    beamRef.current.material.opacity = opacity + Math.sin(clock.elapsedTime * 1.4) * 0.04;
+    beamRef.current.material.opacity = opacity * (.85 + Math.sin(clock.elapsedTime * 1.4) * .15);
   });
 
   return (
     <mesh ref={beamRef}>
-      <tubeGeometry args={[curve, 64, radius, 14, false]} />
+      <tubeGeometry args={[curve, 64, radius, 6, false]} />
       <meshBasicMaterial color={color} transparent opacity={opacity} />
     </mesh>
   );
 }
 
-function EventHorizon({ radius = 1.25, color = '#9fdcff' }) {
-  const ringA = useRef(null);
-  const ringB = useRef(null);
-  const glow = useRef(null);
-  const stringShellRef = useRef(null);
-  const stringFilaments = useMemo(
-    () => Array.from({ length: 14 }, (_, index) => ({
-      key: `string-filament-${index}`,
-      phase: (Math.PI * 2 * index) / 14,
-      tilt: ((index % 7) - 3) * 0.12,
-      radiusScale: 1.04 + (index % 4) * 0.06,
-      arc: Math.PI * (0.45 + (index % 3) * 0.12),
-      speed: 0.24 + (index % 5) * 0.05,
-      opacity: 0.18 + (index % 4) * 0.05,
-    })),
-    []
-  );
-
-  useFrame(({ clock }, delta) => {
-    if (ringA.current) ringA.current.rotation.z += delta * 0.85;
-    if (ringB.current) ringB.current.rotation.z -= delta * 0.42;
-    if (stringShellRef.current) stringShellRef.current.rotation.y += delta * 0.24;
-    if (glow.current) {
-      const pulse = 1 + Math.sin(clock.elapsedTime * 2.1) * 0.08;
-      glow.current.scale.setScalar(pulse);
-    }
-
-    stringShellRef.current?.children?.forEach((filament, index) => {
-      const spec = stringFilaments[index];
-      if (!filament || !spec) return;
-      filament.rotation.y = spec.phase + clock.elapsedTime * spec.speed;
-      filament.rotation.z = spec.tilt + Math.sin(clock.elapsedTime * (spec.speed + 0.08) + index) * 0.12;
-    });
-  });
-
-  return (
-    <group>
-      <mesh ref={glow}>
-        <sphereGeometry args={[radius * 1.8, 32, 32]} />
-        <meshBasicMaterial color={color} transparent opacity={0.08} depthWrite={false} />
-      </mesh>
-      <mesh ref={ringA} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[radius, radius * 0.26, 28, 160]} />
-        <meshBasicMaterial color={color} transparent opacity={0.82} depthWrite={false} />
-      </mesh>
-      <mesh ref={ringB} rotation={[Math.PI / 2.35, Math.PI / 4, 0]}>
-        <torusGeometry args={[radius * 1.34, radius * 0.06, 16, 120]} />
-        <meshBasicMaterial color="#d7f7ff" transparent opacity={0.34} depthWrite={false} />
-      </mesh>
-      <group ref={stringShellRef}>
-        {stringFilaments.map((filament) => (
-          <mesh key={filament.key} rotation={[Math.PI / 2 + filament.tilt, filament.phase, 0]}>
-            <torusGeometry args={[radius * filament.radiusScale, radius * 0.018, 10, 128, filament.arc]} />
-            <meshBasicMaterial color="#effbff" transparent opacity={filament.opacity} depthWrite={false} />
-          </mesh>
-        ))}
-      </group>
-      <Sparkles count={18} scale={radius * 3.1} size={2.4} speed={0.22} color="#f7fdff" opacity={0.5} />
-    </group>
-  );
+function EventHorizon({ radius = 1.25, animate = true }) {
+  return <BlackHoleVisual radius={radius * .66} animate={animate} />;
 }
 
 function MeteorSwarm({ count = 10, radius = 24 }) {
@@ -484,7 +430,7 @@ function DysonSphereStructure({ node, sessionMode = SESSION_MODES.IDLE, ringAdju
       {profile === 'csis' ? <CsisNetworkLinks pulse={csisState.linkagePulse || 0.5} /> : null}
       {profile === 'csis' ? <CsisFirewallShell sweep={csisState.firewallSweep || 0} /> : null}
       {profile === 'csis' ? (
-        <Html center distanceFactor={16} position={[0, 2.6, 0]}>
+        <Html style={{ pointerEvents: 'none' }} center zIndexRange={[30, 0]} position={[0, 2.6, 0]}>
           <>
             <div className={`dyson-logic-tag ${dysonTagVariantClass}`.trim()}>
               <strong>CSIS dual ring</strong>
@@ -498,7 +444,7 @@ function DysonSphereStructure({ node, sessionMode = SESSION_MODES.IDLE, ringAdju
         </Html>
       ) : null}
       {isSynaptics ? (
-        <Html center distanceFactor={16} position={[0, 3.0, 0]}>
+        <Html style={{ pointerEvents: 'none' }} center zIndexRange={[30, 0]} position={[0, 3.0, 0]}>
           <div className={`dyson-logic-tag ${dysonTagVariantClass}`.trim()}>
             <strong>Synaptics tri-ring</strong>
             <span>{dysonState.ringOneLabel || 'Collector ring'} · {dysonState.ringTwoLabel || 'Habitat ring'} · {dysonState.ringThreeLabel || 'Encryption ring'}</span>
@@ -530,7 +476,7 @@ function PlayableAnchorDatapoints({ node }) {
             <line geometry={new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(-position[0], -position[1], -position[2])])}>
               <lineBasicMaterial color={datapoint.color || '#9fdcff'} transparent opacity={0.28} />
             </line>
-            <Html center distanceFactor={18} position={[0, 0.42, 0]}>
+            <Html style={{ pointerEvents: 'none' }} center zIndexRange={[30, 0]} position={[0, 0.42, 0]}>
               <div className="dyson-logic-tag playable-datapoint-tag">
                 <strong>{datapoint.label}</strong>
                 <span>{datapoint.kind} datapoint · {metadata.anchorRole}</span>
@@ -543,21 +489,15 @@ function PlayableAnchorDatapoints({ node }) {
   );
 }
 
-function SolarSubSystem({ node }) {
+function SolarSubSystem({ node, animate = true }) {
   const orbitRefs = useRef([]);
-  const starRef = useRef(null);
-  const coronaRef = useRef(null);
   const stellarProfile = node.stellarProfile || {};
   const starColor = stellarProfile.color || node.color || '#ffd46b';
   const luminosity = stellarProfile.luminositySolar || 1;
   const radiusScale = 1 + Math.min((stellarProfile.radiusSolar || 1) * 0.12, 0.35);
 
   useFrame(({ clock }, delta) => {
-    if (starRef.current) starRef.current.rotation.y += delta * (0.15 + (node.epochAnchor?.dysonAlignment || 0) * 0.08);
-    if (coronaRef.current) {
-      const pulse = 1 + Math.sin(clock.elapsedTime * (1.2 + luminosity * 0.05)) * 0.05;
-      coronaRef.current.scale.setScalar(pulse * radiusScale);
-    }
+
     node.orbiters?.forEach((orbit, index) => {
       const planet = orbitRefs.current[index];
       if (!planet) return;
@@ -573,29 +513,21 @@ function SolarSubSystem({ node }) {
   });
 
   return (
-    <group position={node.position}>
-      <mesh ref={coronaRef} scale={2.8 * radiusScale}>
-        <sphereGeometry args={[1, 28, 28]} />
-        <meshBasicMaterial color={starColor} transparent opacity={0.08 + Math.min(luminosity * 0.01, 0.06)} depthWrite={false} />
-      </mesh>
-      <mesh ref={starRef} scale={radiusScale}>
-        <sphereGeometry args={[1.15, 32, 32]} />
-        <meshStandardMaterial color={starColor} emissive={starColor} emissiveIntensity={0.72 + Math.min(luminosity * 0.03, 0.35)} roughness={0.38} metalness={0.12} />
-      </mesh>
+    <group>
+      <StellarSurface radius={1.15 * radiusScale} color={starColor} animate={animate} />
       {node.orbiters?.map((orbit, index) => (
         <group key={orbit.key}>
           <mesh rotation={[Math.PI / 2 + orbit.tilt, 0, 0]}>
             <torusGeometry args={[orbit.radius, 0.015, 8, 96]} />
-            <meshBasicMaterial color={orbit.zone === 'habitable' ? '#b2ffd9' : '#dff8ff'} transparent opacity={orbit.zone === 'habitable' ? 0.22 : 0.14} depthWrite={false} />
+            <meshBasicMaterial color={orbit.zone === 'habitable' ? '#b2ffd9' : '#dff8ff'} transparent opacity={orbit.zone === 'habitable' ? 0.065 : 0.035} depthWrite={false} />
           </mesh>
-          <mesh ref={(el) => { orbitRefs.current[index] = el; }}>
-            <sphereGeometry args={[orbit.size, 14, 14]} />
-            <meshStandardMaterial color={orbit.color} emissive={orbit.color} emissiveIntensity={orbit.zone === 'habitable' ? 0.3 : 0.24} roughness={0.55} metalness={0.12} />
-          </mesh>
+          <group ref={(el) => { orbitRefs.current[index] = el; }}>
+            <PlanetSurface radius={orbit.size} color={orbit.color} gas={index > 3} segments={32} />
+          </group>
         </group>
       ))}
       <PlayableAnchorDatapoints node={node} />
-      <Html center distanceFactor={18} position={[0, 2.8 * radiusScale, 0]}>
+      <Html style={{ pointerEvents: 'none' }} center zIndexRange={[30, 0]} position={[0, 2.8 * radiusScale, 0]}>
         <div className="dyson-logic-tag">
           <strong>{node.playableAnchor ? 'Playable solar-system anchor' : (stellarProfile.spectralClass || 'G-class') + ' star'}</strong>
           <span>{node.playableAnchor ? `${node.anchorRole} · ${node.playableMapMetadata?.datapoints?.length || 0} string datapoints` : `${stellarProfile.temperatureK || 5778} K · L ${stellarProfile.luminositySolar || 1}☉ · HZ ${stellarProfile.habitableInnerAu || 0.95}-${stellarProfile.habitableOuterAu || 1.67} AU`}</span>
@@ -605,32 +537,23 @@ function SolarSubSystem({ node }) {
   );
 }
 
-function NodeVisual({ node, onSelect, selectedKey, graphNode, condensedLabels = false, sessionMode = SESSION_MODES.IDLE, ringAdjustments = null }) {
+function NodeVisual({ node, onSelect, selectedKey, graphNode, condensedLabels = false, animate = true, sessionMode = SESSION_MODES.IDLE, ringAdjustments = null }) {
   const isBlackhole = node.kind === 'blackhole';
   const isDyson = node.kind === 'dyson';
   const isSolar = node.kind === 'solar';
   const isMapAsset = Boolean(node.mapAsset && node.kind === 'node');
   const spinRef = useRef(null);
-  const auraRef = useRef(null);
   const securityState = graphNode?.securityState || node.securityState || 'open';
   const quarantined = securityState === 'quarantined';
 
   useFrame(({ clock }, delta) => {
     if (spinRef.current) spinRef.current.rotation.y += delta * (isBlackhole ? 0.42 : isDyson ? 0.3 : 0.14);
-    if (auraRef.current) {
-      const pulse = 1 + Math.sin(clock.elapsedTime * 1.8 + node.position[0]) * 0.08;
-      auraRef.current.scale.setScalar(pulse);
-    }
+
   });
 
   return (
     <group position={node.position || [0, 0, 0]}>
-      <mesh ref={auraRef} scale={isBlackhole ? 2.25 : isDyson ? 1.8 : isSolar ? 2.8 : isMapAsset ? 1.7 : 0.95}>
-        <sphereGeometry args={[1, 28, 28]} />
-        <meshBasicMaterial color={quarantined ? '#8aa0b3' : node.color || '#9fdcff'} transparent opacity={quarantined ? 0.02 : isBlackhole ? 0.09 : isSolar ? 0.06 : 0.05} depthWrite={false} />
-      </mesh>
-
-      {isSolar ? <SolarSubSystem node={graphNode || node} /> : null}
+      {isSolar ? <group onClick={() => onSelect(node)}><SolarSubSystem node={graphNode || node} animate={animate} /></group> : null}
 
       <group ref={spinRef} scale={quarantined ? 0.88 : 1}>
         {isBlackhole ? (
@@ -639,7 +562,7 @@ function NodeVisual({ node, onSelect, selectedKey, graphNode, condensedLabels = 
               <sphereGeometry args={[0.46, 24, 24]} />
               <meshStandardMaterial color="#020409" emissive="#000000" roughness={0.32} metalness={0.2} />
             </mesh>
-            <EventHorizon radius={1.08} color={node.color || '#9fdcff'} />
+            <EventHorizon radius={1.08} animate={animate} />
           </>
         ) : isDyson ? (
           <group onClick={() => onSelect(node)}>
@@ -661,11 +584,11 @@ function NodeVisual({ node, onSelect, selectedKey, graphNode, condensedLabels = 
         ) : null}
       </group>
 
-      {isBlackhole || isSolar || isMapAsset ? <GravityFieldRings position={[0, 0, 0]} color={node.color || '#9fdcff'} /> : null}
+      {selectedKey === node.key && (isBlackhole || isSolar || isMapAsset) ? <GravityFieldRings position={[0, 0, 0]} color={node.color || '#9fdcff'} /> : null}
       {node.key === 'deep_blackhole' ? <MeteorSwarm count={12} radius={8.6} /> : null}
 
-      {(!node.generated || isBlackhole) && (!condensedLabels || selectedKey === node.key || isBlackhole) ? (
-        <Html center distanceFactor={14} position={[0, isSolar ? 2.25 : 1.65, 0]}>
+      {(!node.generated || isBlackhole) && (!condensedLabels || selectedKey === node.key) ? (
+        <Html center zIndexRange={[30, 0]} position={[0, isSolar ? 2.25 : 1.65, 0]}>
           <button className={`stable-node-label polished ${selectedKey === node.key ? 'is-selected' : ''}`} onClick={() => onSelect(node)}>
             <strong>{node.label}</strong>
             <span>{node.privateOnly ? 'private asset' : node.kind}</span>
@@ -679,7 +602,6 @@ function NodeVisual({ node, onSelect, selectedKey, graphNode, condensedLabels = 
 
 function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTelemetryChange, onCombatAction, touchInput, isMobile = false, authenticated = false, epochSummary = null, flightConfig = null, multiplayerMode = false, simulationSeed = 'tcentral-main', simulationGravitySources = [], onSimulationFrame = null, correctionState = null, resetTick = 0 }) {
   const groupRef = useRef(null);
-  const hullGlowRef = useRef(null);
   const engineCoreRef = useRef(null);
   const enginePortRef = useRef(null);
   const engineStarboardRef = useRef(null);
@@ -700,7 +622,8 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
     };
     const up = (event) => { keys.current[event.code] = false; };
     const look = (event) => {
-      if (!flightConfig?.mouseLook && !document.pointerLockElement) return;
+      const draggingScene = event.buttons === 1 && event.target instanceof HTMLCanvasElement;
+      if (!document.pointerLockElement && (!flightConfig?.mouseLook || !draggingScene)) return;
       yaw.current -= event.movementX * 0.0022;
       pitch.current -= event.movementY * 0.0018;
       const limit = Math.PI / 2.35;
@@ -823,14 +746,9 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
     [engineCoreRef, enginePortRef, engineStarboardRef].forEach((ref, index) => {
       if (!ref.current) return;
       const pulse = 0.9 + Math.sin(state.clock.elapsedTime * (20 + index * 3)) * 0.08;
-      ref.current.scale.set(1, 1, flameScale * pulse);
+      ref.current.scale.set(1, flameScale * pulse, 1);
     });
 
-    if (hullGlowRef.current) {
-      const glowPulse = 0.96 + Math.sin(state.clock.elapsedTime * 2.4) * 0.06;
-      hullGlowRef.current.scale.setScalar(glowPulse + quantumRef.current.coherence * 0.05);
-      hullGlowRef.current.material.opacity = 0.12 + horizonFactor * 0.08;
-    }
 
     const zoom = flightConfig?.chaseZoom || 1;
     const routeAssistLift = flightConfig?.routeAssist ? 0.9 : 0.25;
@@ -838,7 +756,7 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
     cameraOffset.y = 3.6 + routeAssistLift;
     if (flightConfig?.mouseLook || flightConfig?.sixAxis) cameraOffset.applyQuaternion(lookQuat);
     const cameraTarget = groupRef.current.position.clone().add(cameraOffset);
-    camera.position.lerp(cameraTarget, 0.07);
+    camera.position.lerp(cameraTarget, 1 - Math.exp(-6 * Math.min(delta, .1)));
     const lookAhead = groupRef.current.position.clone().add(SHIP_MODEL_FORWARD.clone().multiplyScalar(5.5).applyQuaternion(lookQuat));
     camera.lookAt((flightConfig?.mouseLook || flightConfig?.sixAxis) ? lookAhead : groupRef.current.position.clone().add(new THREE.Vector3(0, 0.4, 1.1)));
 
@@ -891,71 +809,17 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
 
   return (
     <group ref={groupRef} position={[0, 0.2, 18]}>
-      <mesh ref={hullGlowRef} scale={[1.85, 0.92, 2.45]}>
-        <sphereGeometry args={[0.92, 24, 24]} />
-        <meshBasicMaterial color="#7fe7ff" transparent opacity={0.14} depthWrite={false} />
-      </mesh>
-      <mesh position={[0, 0.03, 0.28]} scale={[0.92, 0.62, 2.32]}>
-        <capsuleGeometry args={[0.46, 1.9, 14, 22]} />
-        <meshStandardMaterial color="#aecfff" emissive="#355a92" emissiveIntensity={0.24} roughness={0.2} metalness={0.82} />
-      </mesh>
-      <mesh position={[0, 0.22, 1.08]} scale={[0.44, 0.26, 1.1]} rotation={[0.12, 0, 0]}>
-        <coneGeometry args={[0.52, 1.2, 24]} />
-        <meshStandardMaterial color="#dcefff" emissive="#6fa5d8" emissiveIntensity={0.18} roughness={0.16} metalness={0.88} />
-      </mesh>
-      <mesh position={[0, 0.3, 0.72]} scale={[0.9, 0.42, 1.08]}>
-        <sphereGeometry args={[0.34, 22, 22]} />
-        <meshStandardMaterial color="#d8f8ff" emissive="#8fe4ff" emissiveIntensity={0.3} transparent opacity={0.8} />
-      </mesh>
-      <mesh position={[0, -0.02, -0.94]} scale={[0.72, 0.42, 1.35]}>
-        <capsuleGeometry args={[0.34, 1.2, 12, 18]} />
-        <meshStandardMaterial color="#6d809b" emissive="#1f3048" emissiveIntensity={0.14} roughness={0.34} metalness={0.76} />
-      </mesh>
-      <mesh position={[1.08, -0.02, -0.12]} rotation={[0.08, 0.16, -0.18]}>
-        <boxGeometry args={[1.9, 0.08, 0.62]} />
-        <meshStandardMaterial color="#a7c8ff" roughness={0.3} metalness={0.82} />
-      </mesh>
-      <mesh position={[-1.08, -0.02, -0.12]} rotation={[0.08, -0.16, 0.18]}>
-        <boxGeometry args={[1.9, 0.08, 0.62]} />
-        <meshStandardMaterial color="#a7c8ff" roughness={0.3} metalness={0.82} />
-      </mesh>
-      <mesh position={[1.52, 0.02, -0.44]} rotation={[0.1, 0.22, -0.34]}>
-        <boxGeometry args={[0.82, 0.12, 0.32]} />
-        <meshStandardMaterial color="#8fb2ef" roughness={0.34} metalness={0.78} />
-      </mesh>
-      <mesh position={[-1.52, 0.02, -0.44]} rotation={[0.1, -0.22, 0.34]}>
-        <boxGeometry args={[0.82, 0.12, 0.32]} />
-        <meshStandardMaterial color="#8fb2ef" roughness={0.34} metalness={0.78} />
-      </mesh>
-      <mesh position={[0, 0.62, -0.18]} rotation={[0.22, 0, 0]}>
-        <boxGeometry args={[0.16, 0.78, 0.42]} />
-        <meshStandardMaterial color="#7f96b3" roughness={0.4} metalness={0.7} />
-      </mesh>
-      <mesh position={[0, -0.22, -1.42]} scale={[0.82, 0.24, 0.98]}>
-        <boxGeometry args={[0.92, 0.5, 0.88]} />
-        <meshStandardMaterial color="#5c6f87" roughness={0.3} metalness={0.8} />
-      </mesh>
-      <mesh position={[0.58, -0.16, -1.54]} rotation={[0, 0.06, 0]}>
-        <capsuleGeometry args={[0.15, 0.62, 10, 14]} />
-        <meshStandardMaterial color="#7288a5" roughness={0.24} metalness={0.84} />
-      </mesh>
-      <mesh position={[-0.58, -0.16, -1.54]} rotation={[0, -0.06, 0]}>
-        <capsuleGeometry args={[0.15, 0.62, 10, 14]} />
-        <meshStandardMaterial color="#7288a5" roughness={0.24} metalness={0.84} />
-      </mesh>
-      <mesh position={[0, -0.14, -1.9]}>
-        <capsuleGeometry args={[0.2, 0.44, 10, 14]} />
-        <meshStandardMaterial color="#6c7e96" roughness={0.26} metalness={0.82} />
-      </mesh>
-      <mesh ref={engineCoreRef} position={[0, -0.16, -2.34]} rotation={[Math.PI, 0, 0]}>
-        <coneGeometry args={[0.18, 0.96, 20]} />
+      <InterceptorHull />
+      <pointLight position={[0, 1, 1]} color="#b8dcff" intensity={4} distance={7} />
+      <mesh ref={engineCoreRef} position={[0, -.06, -2.1]} rotation={[-Math.PI / 2, 0, 0]}>
+        <coneGeometry args={[0.12, 1.05, 16]} />
         <meshBasicMaterial color="#90e8ff" transparent opacity={0.92} depthWrite={false} />
       </mesh>
-      <mesh ref={enginePortRef} position={[0.58, -0.16, -1.92]} rotation={[Math.PI, 0, 0]}>
+      <mesh ref={enginePortRef} position={[.69, .22, -2.15]} rotation={[-Math.PI / 2, 0, 0]}>
         <coneGeometry args={[0.09, 0.46, 16]} />
         <meshBasicMaterial color="#7fe7ff" transparent opacity={0.84} depthWrite={false} />
       </mesh>
-      <mesh ref={engineStarboardRef} position={[-0.58, -0.16, -1.92]} rotation={[Math.PI, 0, 0]}>
+      <mesh ref={engineStarboardRef} position={[-.69, .22, -2.15]} rotation={[-Math.PI / 2, 0, 0]}>
         <coneGeometry args={[0.09, 0.46, 16]} />
         <meshBasicMaterial color="#7fe7ff" transparent opacity={0.84} depthWrite={false} />
       </mesh>
@@ -987,7 +851,7 @@ function RemotePilot({ pilot, isSelf = false }) {
         <coneGeometry args={[0.08, 0.38, 12]} />
         <meshBasicMaterial color={isSelf ? '#9ff7ff' : '#7fe7ff'} transparent opacity={0.72} depthWrite={false} />
       </mesh>
-      <Html distanceFactor={12} position={[0, 0.68, 0]} center>
+      <Html style={{ pointerEvents: 'none' }} zIndexRange={[30, 0]} position={[0, 0.68, 0]} center>
         <div className="pilot-tag anchored-label-panel small">
           <strong>{pilot?.displayName || 'Pilot'}</strong>
           <span>{Math.round(pilot?.health || 0)}% hull</span>
@@ -1010,7 +874,7 @@ function ProjectileSwarm({ projectiles = [] }) {
   );
 }
 
-function StableSceneContent({ simRuntimeClient, graph, displayNodes, onSelect, selectedKey, onAutoFocus, onTelemetryChange, onCombatAction, touchInput, deviceTier, authenticated = false, flightConfig = null, remotePilots = [], projectiles = [], presentationMode = true, multiplayerMode = false, simulationSeed = 'tcentral-main', simulationGravitySources = [], onSimulationFrame = null, correctionState = null, resetTick = 0, sessionMode = SESSION_MODES.IDLE, ringAdjustments = null }) {
+function StableSceneContent({ simRuntimeClient, graph, displayNodes, onSelect, selectedKey, onAutoFocus, onTelemetryChange, onCombatAction, touchInput, deviceTier, graphicsProfile, authenticated = false, flightConfig = null, remotePilots = [], projectiles = [], presentationMode = true, multiplayerMode = false, simulationSeed = 'tcentral-main', simulationGravitySources = [], onSimulationFrame = null, correctionState = null, resetTick = 0, sessionMode = SESSION_MODES.IDLE, ringAdjustments = null }) {
   const epochSummary = useMemo(() => summarizeEpochRelativity(graph.epochAnchor), [graph]);
   const graphByKey = useMemo(() => Object.fromEntries(graph.nodes.map((node) => [node.key, node])), [graph]);
   const positions = useMemo(() => getNodePositionMap(graph), [graph]);
@@ -1022,31 +886,13 @@ function StableSceneContent({ simRuntimeClient, graph, displayNodes, onSelect, s
 
   return (
     <>
-      <color attach="background" args={['#030712']} />
-      <fog attach="fog" args={['#07111d', 20, 105]} />
-      <ambientLight intensity={1.0} />
-      <directionalLight position={[8, 10, 6]} intensity={1.15} color="#dff8ff" />
-      <pointLight position={[-10, 6, 10]} intensity={1.28} color="#9f7cff" />
-      <pointLight position={[12, -2, 6]} intensity={1.12} color="#6dffb5" />
-      <Stars radius={140} depth={72} count={presentationMode ? Math.round(deviceTier.stars * 0.58) : deviceTier.stars} factor={5.8} saturation={0} fade speed={1.1} />
-      <Sparkles count={presentationMode ? Math.round(deviceTier.sparkles * 0.45) : deviceTier.sparkles} scale={[60, 34, 44]} size={3.0} speed={0.25} opacity={0.7} />
-      <MeteorSwarm count={presentationMode ? Math.max(4, Math.round(deviceTier.meteors * 0.5)) : deviceTier.meteors} radius={26} />
+      <fog attach="fog" args={['#07101b', 110, 360]} />
+      <DeepSpaceScenery profile={graphicsProfile} />
+      <Stars radius={220} depth={120} count={graphicsProfile.stars} factor={3.2} saturation={.3} fade speed={graphicsProfile.animate ? .15 : 0} />
+      <Sparkles count={deviceTier.isMobile ? 28 : 64} scale={[85, 50, 100]} size={1.2} speed={graphicsProfile.animate ? .12 : 0} opacity={.35} />
+      {graphicsProfile.bloom ? <CinematicBloom /> : null}
 
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -14, 0]}>
-        <circleGeometry args={[62, 72]} />
-        <meshBasicMaterial color="#060d18" transparent opacity={0.56} />
-      </mesh>
-
-      <mesh position={[0, 12, -26]} scale={[2.6, 1.1, 1]}>
-        <sphereGeometry args={[7.2, 40, 40]} />
-        <meshBasicMaterial color="#132947" transparent opacity={0.18} depthWrite={false} />
-      </mesh>
-      <mesh position={[-18, 8, -18]} scale={[2.1, 1.0, 1]}>
-        <sphereGeometry args={[5.8, 30, 30]} />
-        <meshBasicMaterial color="#6b4dff" transparent opacity={0.12} depthWrite={false} />
-      </mesh>
-
-      {graph.routeLinks.map((link) => {
+      {graph.routeLinks.filter((link) => !presentationMode || link.from === selectedKey || link.to === selectedKey).map((link) => {
         const from = positions[link.from];
         const to = positions[link.to];
         if (!from || !to) return null;
@@ -1057,14 +903,14 @@ function StableSceneContent({ simRuntimeClient, graph, displayNodes, onSelect, s
             to={to}
             color={link.color}
             arc={link.arc}
-            opacity={link.faint ? 0.09 : 0.18}
-            radius={link.faint ? 0.02 : 0.04}
+            opacity={link.faint ? 0.035 : 0.09}
+            radius={link.faint ? 0.008 : 0.015}
           />
         );
       })}
 
       {displayNodes.map((node) => (
-        <NodeVisual key={node.key} node={node} graphNode={graphByKey[node.key]} onSelect={onSelect} selectedKey={selectedKey} condensedLabels={presentationMode} sessionMode={sessionMode} ringAdjustments={ringAdjustments} />
+        <NodeVisual key={node.key} node={node} graphNode={graphByKey[node.key]} onSelect={onSelect} selectedKey={selectedKey} condensedLabels={presentationMode} animate={graphicsProfile.animate} sessionMode={sessionMode} ringAdjustments={ringAdjustments} />
       ))}
 
       <ProjectileSwarm projectiles={projectiles} />
@@ -1119,6 +965,8 @@ function TouchFlightPad({ onInputChange }) {
 export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null, onSelectionChange = null }) {
   const router = useRouter();
   const deviceTier = useDeviceTier();
+  const [graphicsQuality, setGraphicsQuality] = useState('auto');
+  const graphicsProfile = useMemo(() => getGraphicsProfile(graphicsQuality, deviceTier), [graphicsQuality, deviceTier]);
   const { googleUser, universe, presence, updatePresence, refresh } = useSteamSession();
   const [selected, setSelected] = useState(null);
   const [touchInput, setTouchInput] = useState({ x: 0, y: 0, z: 0, boost: 0 });
@@ -1128,6 +976,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   const toggleFlightDeckOpen = useCallback(() => setFlightDeckOpen((value) => !value), []);
   const [flightResetTick, setFlightResetTick] = useState(0);
   const [presentationMode, setPresentationMode] = useState(true);
+  const cameraConfig = useMemo(() => ({ position: [0, 5, 4], fov: deviceTier.isMobile ? 58 : 52, near: .1, far: 1000 }), [deviceTier.isMobile]);
   const [hudVisible, setHudVisible] = useState(true);
   const [correctionState, setCorrectionState] = useState(null);
   const lastPresenceBroadcast = useRef(0);
@@ -1692,6 +1541,14 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
     <div className="stable-system-page polished-shell cinematic-system-page">
       <div className="stable-system-backdrop" />
       <div className="stable-system-veil" />
+      {hudVisible ? <label className="simulation-visual-settings">
+        Visuals
+        <select aria-label="Graphics quality" value={graphicsQuality} onChange={(event) => setGraphicsQuality(event.target.value)}>
+          <option value="auto">Auto</option>
+          <option value="high">High</option>
+          <option value="performance">Performance</option>
+        </select>
+      </label> : null}
 
       {!hudVisible ? (
         <button
@@ -1705,7 +1562,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       ) : null}
 
       {hudVisible ? <div className="stable-system-hud">
-        <div className="stable-hud-chrome" role="note">Press H to hide/show HUD.</div>
+        <button type="button" className="stable-hud-chrome" onClick={() => gameEngine.setHUDVisible(false)}>Hide HUD · H</button>
         <aside className="left-ops-rail">
           <OperationsDirectorPanel operations={operations} lobbyMode={lobbyMode} validationSummary={validatorSummary} />
           <AccountProgressPanel profile={{ ...accountProfile, progression: accountProgression, progress }} lobbyMode={lobbyMode} />
@@ -2023,7 +1880,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             </p>
             <div className="free-flight-control-grid">
               <article><strong>Move</strong><span>W/S forward-back along the ship nose · A/D strafe · Space/R rise · Shift/F descend</span></article>
-              <article><strong>Look</strong><span>Move mouse over the scene. Free-flight thrust, camera, and hull attitude all follow the ship nose.</span></article>
+              <article><strong>Look</strong><span>Drag the scene to look around. Free-flight thrust, camera, and hull attitude follow the ship nose.</span></article>
               <article><strong>Boost</strong><span>Hold Ctrl for high-thrust travel through the hub routes.</span></article>
             </div>
             <div className="stable-chip-row alt">
@@ -2038,7 +1895,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       </div> : null}
 
       <div className="stable-world-canvas polished-canvas cinematic-polished-canvas sim-zone-center-canvas" aria-label="Center simulation canvas">
-        <Canvas camera={{ position: [0, 8, 26], fov: deviceTier.isMobile ? 52 : (presentationMode ? 49 : 46) }} dpr={deviceTier.dpr} gl={{ antialias: !deviceTier.isMobile }}>
+        <Canvas camera={cameraConfig} dpr={graphicsProfile.dpr} gl={SIM_RENDERER_OPTIONS}>
           <StableSceneContent
             simRuntimeClient={simRuntimeClient}
             graph={graph}
@@ -2048,6 +1905,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             onAutoFocus={handleAutoFocus}
             touchInput={touchInput}
             deviceTier={deviceTier}
+            graphicsProfile={graphicsProfile}
             authenticated={Boolean(steamUser?.steamid || googleUser?.sub)}
             onTelemetryChange={setTelemetry}
             onCombatAction={handleCombatAction}

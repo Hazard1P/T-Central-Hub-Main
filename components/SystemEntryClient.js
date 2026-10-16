@@ -29,6 +29,12 @@ function canUseWebGL() {
 }
 
 export default function SystemEntryClient() {
+  const [hudVisible, setHudVisible] = useState(true);
+  useEffect(() => {
+    const onHudToggle = (event) => setHudVisible(Boolean(event.detail));
+    window.addEventListener('hudToggle', onHudToggle);
+    return () => window.removeEventListener('hudToggle', onHudToggle);
+  }, []);
   const [settingsOpen, setSettingsOpen] = useState(true);
   useEffect(() => {
     if (window.matchMedia('(max-width: 700px)').matches) setSettingsOpen(false);
@@ -94,7 +100,7 @@ export default function SystemEntryClient() {
   };
 
   return (
-    <div className={`system-entry-screen phase-${launchPhase}`}>
+    <div className={`system-entry-screen phase-${launchPhase}${hudVisible ? '' : ' hud-hidden'}`}>
       {launchPhase !== 'in_sim' ? <SteamLoginHud /> : null}
       <SystemStatusStrip />
       <Link className="button secondary system-home-link" href="/">Back to homepage</Link>

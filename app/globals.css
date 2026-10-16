@@ -7047,3 +7047,19 @@ body:has(.system-interface-sidebar) .stable-system-hud {
   .page-section .card-grid.two { grid-template-columns: minmax(0, 1fr); }
   .page-section .discord-panel { flex-direction: column; align-items: stretch; }
 }
+
+/* Let the renderer establish scene contrast; retain only a subtle edge vignette. */
+.cinematic-system-page .stable-system-veil { background: radial-gradient(ellipse at center, transparent 55%, rgba(1, 5, 12, .22) 100%); }
+.cinematic-system-page .stable-system-backdrop { display: none; }
+.cinematic-system-page .stable-world-canvas::after { background: none; }
+.simulation-visual-settings { position: fixed; left: 18px; bottom: 18px; z-index: 65; display: flex; align-items: center; gap: .75rem; padding: .65rem .8rem; background: rgba(5, 15, 28, .9); border: 1px solid rgba(125, 220, 255, .25); border-radius: 12px; font-size: .8rem; color: #bdd9e8; }
+.simulation-visual-settings select { color: #e6f6ff; background: #102233; padding: .35rem .5rem; border: 1px solid #2c4f66; border-radius: 7px; font: inherit; }
+.stable-system-hud .left-ops-rail { max-height: calc(100dvh - 180px); }
+@media (max-width: 700px) {
+  .simulation-visual-settings { left: auto; right: 14px; bottom: max(14px, env(safe-area-inset-bottom)); }
+}
+.system-entry-screen.hud-hidden :is(.system-interface-sidebar, .system-settings-toggle, .system-status-strip, .system-home-link) { display: none; }
+.system-entry-screen.hud-hidden :is(.dyson-logic-tag, .stable-node-label, .pilot-tag) { display: none; }
+.stable-system-hud > button.stable-hud-chrome { border: 1px solid rgba(125, 220, 255, .3); border-radius: 999px; padding: .4rem .7rem; background: rgba(5, 15, 28, .85); color: #cbe8f2; cursor: pointer; font: inherit; font-size: .7rem; }
+.cinematic-system-page :is(.dyson-logic-tag, .stable-node-label, .pilot-tag) { max-width: 230px; font-size: 11px; }
+.stable-system-hud > button.stable-hud-chrome { position: fixed; top: 70px; left: 18px; pointer-events: auto; z-index: 66; }
