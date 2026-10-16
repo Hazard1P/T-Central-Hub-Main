@@ -1,3 +1,14 @@
-arma-cth-shot.png: README.md, CONFORMANCE_PASS.txt, app/servers/arma3-cth/page.js, lib/gameAssets.js
-cosmic-map.jpg: CONFORMANCE_PASS.txt, lib/gameAssets.js
-blackhole-anchor.jpg: lib/gameAssets.js
+Photo audit — 2026-10-16
+
+Retained public assets:
+- public/arma-cth-shot.png: genuine Arma 3 editor screenshot recovered from the root copy; shown once on app/servers/arma3-cth/page.js with an accurate caption and alt text.
+- public/assets/cosmic-bg.jpg: relevant space background used by app/globals.css.
+- public/cosmic-map-reference.jpg: original universe concept drawing, declared as the canonical reference in lib/integrations/standaloneBlackholeGateway.js.
+- public/cosmic-map.jpg: alternate concept-map reference retained for the gateway fallbackAssetPath contract.
+
+Removed:
+- public/blackhole-anchor.jpg: unused marble photo unrelated to the rendered blackhole.
+- The marble photo incorrectly stored as public/arma-cth-shot.png was replaced with the real screenshot.
+- Root arma-cth-shot.png, assets/cosmic-bg.jpg, blackhole-anchor.jpg, cosmic-map-reference.jpg and cosmic-map.jpg: unused copies outside Next.js public assets; the genuine Arma screenshot was moved into public before removal.
+
+The playable map, blackhole and route visuals are procedural. The concept-map photos remain reference material, not simulation screenshots.

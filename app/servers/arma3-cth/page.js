@@ -64,17 +64,20 @@ export default function ArmaPage() {
         </article>
 
         <article className="content-card arma-hero-image-card">
-          <Image
-            src="/arma-cth-shot.png"
-            alt="Arma 3 CTH map and command reference"
-            width={1366}
-            height={1024}
-            className="page-image"
-            priority
-          />
+          <figure className="arma-screenshot">
+            <Image
+              src="/arma-cth-shot.png"
+              alt="Arma 3 editor view of a coastal base with a crane, radar dome and aircraft hangar"
+              width={2048}
+              height={1323}
+              sizes="(max-width: 900px) 100vw, 50vw"
+              className="page-image"
+              priority
+            />
+            <figcaption>Arma 3 development reference from the project archive. This editor view is not a live server feed.</figcaption>
+          </figure>
         </article>
       </div>
-
       <div className="arma-brief-grid">
         <article className="content-card">
           <p className="eyebrow">What CTH is</p>
@@ -87,18 +90,18 @@ export default function ArmaPage() {
         </article>
 
         <article className="content-card">
-          <p className="eyebrow">Map reference</p>
-          <h3>Visual context</h3>
+          <p className="eyebrow">Before you join</p>
+          <h3>Get into the session</h3>
           <div className="arma-highlight">
-            <strong>Current map and field reference</strong>
+            <strong>Have Arma 3 installed</strong>
             <p className="muted">
-              This page restores the Altis battlefield image so players have a quick visual reference for the Arma3 CTH environment before joining.
+              Open Steam and make sure Arma 3 is installed and up to date before using the launch or quick-connect actions.
             </p>
           </div>
           <div className="arma-highlight">
-            <strong>Join priority</strong>
+            <strong>Connecting manually?</strong>
             <p className="muted">
-              The page is meant to shorten the path from website → Steam → server as much as possible.
+              Copy the server address above and use Direct Connect in the Arma 3 server browser. Follow any mod or version prompts shown by the game.
             </p>
           </div>
         </article>
@@ -158,29 +161,6 @@ export default function ArmaPage() {
         </article>
       </div>
 
-      <div className="arma-entry-grid">
-        <article className="content-card arma-hero-image-card">
-          <Image
-            src="/arma-cth-shot.png"
-            alt="Uploaded Arma reference photo"
-            width={1366}
-            height={1024}
-            className="page-image"
-          />
-        </article>
-
-        <article className="content-card">
-          <p className="eyebrow">Altis map reference</p>
-          <h3>Additional battlefield reference</h3>
-          <p className="muted">
-            This keeps the Arma3 route visually aligned around the Altis battlefield map for a cleaner and more consistent server entry.
-          </p>
-          <div className="server-inline-meta">
-            <span>Server IP: tcentral.game.nfoservers.com:2302</span>
-            <span>One live server overall</span>
-          </div>
-        </article>
-      </div>
     </PageShell>
   );
 }

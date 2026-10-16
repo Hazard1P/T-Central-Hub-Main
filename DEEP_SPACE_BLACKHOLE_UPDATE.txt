@@ -1,4 +1,6 @@
-Deep-space blackhole now reuses existing project assets for the map and anchor.
-Map asset: /public/cosmic-map.jpg
-Anchor asset: /public/blackhole-anchor.jpg
-Removed duplicate standalone asset copies for a lighter package and cleaner deployment.
+Current asset note (2026-10-16):
+The deep-space blackhole and playable map use procedural visuals.
+Canonical concept reference: /public/cosmic-map-reference.jpg
+Gateway fallback reference: /public/cosmic-map.jpg
+The unrelated marble photo previously named blackhole-anchor.jpg has been removed.
+See ASSET_AUDIT.txt for retained references and removed duplicate copies.
