@@ -95,3 +95,8 @@ Stop the development server before building; both use `.next`. The page check us
 Launch `/system` to enter the rendered flight scene. The **Visuals** selector offers Auto, High, and Performance. Auto uses a lighter shader, fewer stars/asteroids, a 1x render-resolution cap, and no bloom on mobile. High enables bloom with a bounded resolution; Performance keeps the scene detail while reducing GPU work on desktop too.
 
 Use **Hide HUD** (or H) for an unobstructed scene and **Show HUD** to restore controls. Drag the scene to look around; moving over account or settings controls does not turn the camera. Nebulae, planet surfaces, stars, and accretion disks are generated locally, so the new visual assets need no external texture service. Reduced-motion preferences stop animated nebula and surface effects while flight and orbital simulation continue.
+
+### Flight controls
+Keyboard flight is active when focus is on the scene. Text fields, selectors, buttons, and links keep their normal keyboard behavior. Releasing a key, switching away from the window, or hiding the tab clears held inputs. The H shortcut is attached only while the simulation is running.
+
+On touch devices, hold a direction and Boost with separate fingers, and drag open space to steer at the same time. Each finger releases independently; cancelled touches also stop their input. **Recenter view** in the flight command deck restores the forward camera heading without teleporting the ship or resetting progression.

@@ -32,6 +32,8 @@ import { SESSION_MODES } from '@/lib/sessionModeEngine';
 import { FLIGHT_CONTROL_COPY } from '@/lib/siteContent';
 import { BlackHoleVisual, CinematicBloom, DeepSpaceScenery, InterceptorHull, PlanetSurface, StellarSurface } from '@/components/SimulationVisuals';
 import { getGraphicsProfile } from '@/lib/graphicsProfile';
+import TouchFlightPad from '@/components/TouchFlightPad';
+import { FLIGHT_KEYS, isInteractiveTarget, shouldIgnoreFlightKey } from '@/lib/flightInput';
 import { gameEngine } from '@/lib/gameEngine';
 
 const UI_VISUAL_DEBUG = false;
@@ -611,40 +613,72 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
   const roll = useRef(0);
   const keys = useRef({});
   const lastNearest = useRef(null);
-  const { camera } = useThree();
+  const { camera, gl } = useThree();
 
   useEffect(() => {
+    const canvas = gl.domElement;
+    let lookPointer = null;
+    const clearInput = () => {
+      keys.current = {};
+      lookPointer = null;
+      // Background tabs can stop rendering while network timers keep sending snapshots.
+      onSimulationFrame?.({ controlVector: [0, 0, 0] });
+    };
     const down = (event) => {
+      if (shouldIgnoreFlightKey(event) || !FLIGHT_KEYS.has(event.code)) return;
       keys.current[event.code] = true;
-      if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyR', 'KeyF', 'KeyQ', 'Space', 'ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) {
-        event.preventDefault();
-      }
+      event.preventDefault();
     };
     const up = (event) => { keys.current[event.code] = false; };
+    const focus = (event) => { if (isInteractiveTarget(event.target)) clearInput(); };
+    const visibility = () => { if (document.hidden) clearInput(); };
+    const startLook = (event) => {
+      if (!flightConfig?.mouseLook || event.button !== 0 || lookPointer) return;
+      lookPointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
+      canvas.setPointerCapture(event.pointerId);
+    };
     const look = (event) => {
-      const draggingScene = event.buttons === 1 && event.target instanceof HTMLCanvasElement;
-      if (!document.pointerLockElement && (!flightConfig?.mouseLook || !draggingScene)) return;
-      yaw.current -= event.movementX * 0.0022;
-      pitch.current -= event.movementY * 0.0018;
+      if (!lookPointer || lookPointer.id !== event.pointerId) return;
+      const dx = event.clientX - lookPointer.x;
+      const dy = event.clientY - lookPointer.y;
+      lookPointer.x = event.clientX;
+      lookPointer.y = event.clientY;
+      yaw.current -= dx * .0022;
+      pitch.current -= dy * .0018;
       const limit = Math.PI / 2.35;
       pitch.current = Math.max(-limit, Math.min(limit, pitch.current));
     };
+    const endLook = (event) => { if (lookPointer?.id === event.pointerId) lookPointer = null; };
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
-    window.addEventListener('mousemove', look);
+    window.addEventListener('blur', clearInput);
+    document.addEventListener('focusin', focus);
+    document.addEventListener('visibilitychange', visibility);
+    canvas.addEventListener('pointerdown', startLook);
+    canvas.addEventListener('pointermove', look);
+    canvas.addEventListener('pointerup', endLook);
+    canvas.addEventListener('pointercancel', endLook);
+    canvas.addEventListener('lostpointercapture', endLook);
     return () => {
+      clearInput();
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
-      window.removeEventListener('mousemove', look);
+      window.removeEventListener('blur', clearInput);
+      document.removeEventListener('focusin', focus);
+      document.removeEventListener('visibilitychange', visibility);
+      canvas.removeEventListener('pointerdown', startLook);
+      canvas.removeEventListener('pointermove', look);
+      canvas.removeEventListener('pointerup', endLook);
+      canvas.removeEventListener('pointercancel', endLook);
+      canvas.removeEventListener('lostpointercapture', endLook);
     };
-  }, [flightConfig?.mouseLook]);
+  }, [flightConfig?.mouseLook, gl, onSimulationFrame]);
 
   useEffect(() => {
-    velocity.current.set(0, 0, 0);
+    keys.current = {};
     yaw.current = 0;
-    pitch.current = -0.08;
+    pitch.current = -.08;
     roll.current = 0;
-    if (groupRef.current) groupRef.current.position.set(0, 0.2, 18);
   }, [resetTick]);
 
   const quantumRef = useRef(createQuantumState(12));
@@ -940,27 +974,6 @@ function StableSceneContent({ simRuntimeClient, graph, displayNodes, onSelect, s
   );
 }
 
-function TouchFlightPad({ onInputChange }) {
-  const setAxis = (axis, value) => onInputChange((prev) => ({ ...prev, [axis]: value }));
-
-  return (
-    <div className="touch-flight-pad" aria-hidden="true">
-      <div className="touch-flight-cluster">
-        <button onTouchStart={() => setAxis('z', 1)} onTouchEnd={() => setAxis('z', 0)} onMouseDown={() => setAxis('z', 1)} onMouseUp={() => setAxis('z', 0)}>↑</button>
-        <div className="touch-flight-row">
-          <button onTouchStart={() => setAxis('x', -1)} onTouchEnd={() => setAxis('x', 0)} onMouseDown={() => setAxis('x', -1)} onMouseUp={() => setAxis('x', 0)}>←</button>
-          <button className="touch-flight-boost" onTouchStart={() => setAxis('boost', 1)} onTouchEnd={() => setAxis('boost', 0)} onMouseDown={() => setAxis('boost', 1)} onMouseUp={() => setAxis('boost', 0)}>Boost</button>
-          <button onTouchStart={() => setAxis('x', 1)} onTouchEnd={() => setAxis('x', 0)} onMouseDown={() => setAxis('x', 1)} onMouseUp={() => setAxis('x', 0)}>→</button>
-        </div>
-        <button onTouchStart={() => setAxis('z', -1)} onTouchEnd={() => setAxis('z', 0)} onMouseDown={() => setAxis('z', -1)} onMouseUp={() => setAxis('z', 0)}>↓</button>
-      </div>
-      <div className="touch-flight-cluster vertical">
-        <button onTouchStart={() => setAxis('y', 1)} onTouchEnd={() => setAxis('y', 0)} onMouseDown={() => setAxis('y', 1)} onMouseUp={() => setAxis('y', 0)}>Ascend</button>
-        <button onTouchStart={() => setAxis('y', -1)} onTouchEnd={() => setAxis('y', 0)} onMouseDown={() => setAxis('y', -1)} onMouseUp={() => setAxis('y', 0)}>Descend</button>
-      </div>
-    </div>
-  );
-}
 
 export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null, onSelectionChange = null }) {
   const router = useRouter();
@@ -1862,7 +1875,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
                 Free-flight preset
               </button>
               <button className="stable-route-button compact" onClick={() => setFlightResetTick((tick) => tick + 1)}>
-                Reset ship
+                Recenter view
               </button>
             </div>
             <div className="flight-slider-grid">
@@ -1880,7 +1893,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             </p>
             <div className="free-flight-control-grid">
               <article><strong>Move</strong><span>W/S forward-back along the ship nose · A/D strafe · Space/R rise · Shift/F descend</span></article>
-              <article><strong>Look</strong><span>Drag the scene to look around. Free-flight thrust, camera, and hull attitude follow the ship nose.</span></article>
+              <article><strong>Look</strong><span>Drag the scene to look around. Click the scene after using a control to resume keyboard flight. Free-flight thrust, camera, and hull attitude follow the ship nose.</span></article>
               <article><strong>Boost</strong><span>Hold Ctrl for high-thrust travel through the hub routes.</span></article>
             </div>
             <div className="stable-chip-row alt">
@@ -1916,6 +1929,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             multiplayerMode={lobbyMode === 'hub'}
             simulationSeed={simulationSeed}
             simulationGravitySources={simulationGravitySources}
+            resetTick={flightResetTick}
             onSimulationFrame={handleSimulationFrame}
             correctionState={correctionState}
             sessionMode={sessionMode}

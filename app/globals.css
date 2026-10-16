@@ -7063,3 +7063,16 @@ body:has(.system-interface-sidebar) .stable-system-hud {
 .stable-system-hud > button.stable-hud-chrome { border: 1px solid rgba(125, 220, 255, .3); border-radius: 999px; padding: .4rem .7rem; background: rgba(5, 15, 28, .85); color: #cbe8f2; cursor: pointer; font: inherit; font-size: .7rem; }
 .cinematic-system-page :is(.dyson-logic-tag, .stable-node-label, .pilot-tag) { max-width: 230px; font-size: 11px; }
 .stable-system-hud > button.stable-hud-chrome { position: fixed; top: 70px; left: 18px; pointer-events: auto; z-index: 66; }
+.touch-flight-pad button { touch-action: none; user-select: none; -webkit-user-select: none; min-height: 44px; }
+.touch-flight-pad button.is-held { background: rgba(105, 221, 255, .3); border-color: #83ebff; box-shadow: 0 0 18px rgba(105, 221, 255, .2); }
+.touch-look-hint { align-self: center; margin: 0; color: #b4d6e6; font-size: .7rem; text-align: center; pointer-events: none; }
+.touch-flight-pad { position: fixed; left: 14px; right: 14px; bottom: max(14px, env(safe-area-inset-bottom)); z-index: 64; display: flex; justify-content: space-between; align-items: flex-end; gap: .5rem; pointer-events: none; }
+.touch-flight-cluster { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.touch-flight-row { display: flex; gap: 5px; }
+.touch-flight-pad button { min-width: 44px; border: 1px solid rgba(131,235,255,.35); border-radius: 12px; background: rgba(5,18,30,.92); color: #e4f7ff; pointer-events: auto; padding: .6rem; font: inherit; font-size: .8rem; }
+.touch-flight-cluster.vertical button { width: 74px; }
+@media (max-width: 700px) {
+  .simulation-visual-settings { left: 14px; right: auto; bottom: 176px; }
+}
+body:has(.touch-flight-pad) .simulation-visual-settings { left: 14px; right: auto; bottom: 176px; }
+.stable-world-canvas canvas { touch-action: none; }

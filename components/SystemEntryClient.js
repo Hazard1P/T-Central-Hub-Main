@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import SteamLoginHud from '@/components/SteamLoginHud';
 import SystemStatusStrip from '@/components/SystemStatusStrip';
 import SystemLauncher from '@/components/SystemLauncher';
@@ -42,7 +42,6 @@ export default function SystemEntryClient() {
   const [launchPhase, setLaunchPhase] = useState('idle');
   const [selectedNode, setSelectedNode] = useState(null);
   const [launchError, setLaunchError] = useState('');
-  const previousLaunchPhaseRef = useRef(launchPhase);
   const { steamUser, universe, lobbyMode, setLobbyMode } = useSteamSession();
 
   useEffect(() => {
@@ -68,10 +67,7 @@ export default function SystemEntryClient() {
   }, [launchPhase]);
 
   useEffect(() => {
-    const previousLaunchPhase = previousLaunchPhaseRef.current;
-    previousLaunchPhaseRef.current = launchPhase;
-
-    if (previousLaunchPhase === 'in_sim' || launchPhase !== 'in_sim' || typeof window === 'undefined') return;
+    if (launchPhase !== 'in_sim' || typeof window === 'undefined') return;
 
     try {
       gameEngine.init();
@@ -79,6 +75,7 @@ export default function SystemEntryClient() {
       console.error('Game engine initialization failed during simulation handoff.', error);
       setLaunchPhase('error');
     }
+    return () => gameEngine.destroy();
   }, [launchPhase]);
 
   const handleEnter = () => {
