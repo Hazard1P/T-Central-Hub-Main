@@ -8,6 +8,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { EXPLORATION_LANDMARKS } from '@/lib/exploration';
 
 const noise = `
 float hash(vec3 p) { p=fract(p*.3183099+vec3(.11,.27,.39)); p*=17.; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }
@@ -17,8 +18,8 @@ float noise3(vec3 p) {
 }
 float fbm(vec3 p) { float v=0.,a=.5; for(int i=0;i<5;i++){v+=a*noise3(p); p=p*2.03+vec3(7.3,2.8,1.9);a*=.5;}return v; }
 `;
-const vertex = `varying vec3 vLocal; varying vec3 vNormal; varying vec3 vView;
-void main(){vLocal=position;vNormal=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(position,1.);vView=-mv.xyz;gl_Position=projectionMatrix*mv;}`;
+const vertex = `varying vec3 vLocal; varying vec3 vNormal; varying vec3 vView; varying vec3 vWorldNormal;
+void main(){vLocal=position;vWorldNormal=normalize(mat3(modelMatrix)*normal);vNormal=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(position,1.);vView=-mv.xyz;gl_Position=projectionMatrix*mv;}`;
 const finish = `
 #include <tonemapping_fragment>\n#include <colorspace_fragment>`;
 
@@ -56,8 +57,8 @@ export const Atmosphere = memo(function Atmosphere({ radius, color = '#73cfff', 
   return <mesh scale={1.055}>
     <sphereGeometry args={[radius, segments, segments / 2]} />
     <shaderMaterial uniforms={uniforms} vertexShader={vertex} transparent depthWrite={false} blending={THREE.AdditiveBlending} fragmentShader={`
-      varying vec3 vNormal; varying vec3 vView; uniform vec3 uColor;
-      void main(){float rim=pow(1.-max(dot(normalize(vNormal),normalize(vView)),0.),3.8);gl_FragColor=vec4(uColor*1.4,rim*.65);${finish}}
+      varying vec3 vNormal; varying vec3 vView; varying vec3 vWorldNormal; uniform vec3 uColor;
+      void main(){float rim=pow(1.-max(dot(normalize(vNormal),normalize(vView)),0.),3.8);float day=smoothstep(-.4,.6,dot(normalize(vWorldNormal),normalize(vec3(-.7,.4,-.8))));vec3 color=mix(uColor*.28,uColor*1.4,day);gl_FragColor=vec4(color,rim*.62);${finish}}
     `} />
   </mesh>;
 });
@@ -67,19 +68,24 @@ export const PlanetSurface = memo(function PlanetSurface({ radius = 1, color = '
   return <mesh>
     <sphereGeometry args={[radius, segments, segments / 2]} />
     <shaderMaterial uniforms={uniforms} vertexShader={vertex} fragmentShader={`
-      varying vec3 vLocal;varying vec3 vNormal;varying vec3 vView;uniform vec3 uColor;uniform float uGas;${noise}
+      varying vec3 vLocal;varying vec3 vNormal;varying vec3 vView;varying vec3 vWorldNormal;uniform vec3 uColor;uniform float uGas;${noise}
       void main(){
         vec3 n=normalize(vLocal);float terrain=fbm(n*5.);float detail=fbm(n*24.);
-        float bands=sin(n.y*38.+terrain*11.)*.5+.5;
+        float storm=fbm(n*13.+vec3(terrain*4.));
+        float bands=sin(n.y*38.+terrain*11.+storm*3.)*.5+.5;
         vec3 rock=mix(vec3(.025,.085,.13),uColor,smoothstep(.4,.58,terrain));
         rock=mix(rock,vec3(.78,.88,.92),smoothstep(.83,.98,abs(n.y)));
         vec3 gas=mix(uColor*.32,uColor*1.35,bands*.7+detail*.3);
         vec3 surface=mix(rock,gas,uGas);
-        float sun=dot(n,normalize(vec3(-.7,.4,-.8)));
-        float lighting=.055+max(sun,0.)*.95;
+        vec3 sunDirection=normalize(vec3(-.7,.4,-.8));
+        float sun=dot(normalize(vWorldNormal),sunDirection);
+        float lighting=.035+max(sun,0.)*.95;
         float clouds=smoothstep(.56,.72,fbm(n*8.+vec3(.7,0.,0.)));
         surface=mix(surface,vec3(.85,.9,.95),clouds*.7*(1.-uGas));
-        gl_FragColor=vec4(surface*lighting,1.);${finish}
+        float ocean=(1.-smoothstep(.4,.5,terrain))*(1.-uGas);
+        float spec=pow(max(dot(reflect(-normalize((viewMatrix*vec4(sunDirection,0.)).xyz),normalize(vNormal)),normalize(vView)),0.),48.)*ocean;
+        vec3 twilight=vec3(.15,.28,.4)*exp(-abs(sun)*12.)*(1.-uGas);
+        gl_FragColor=vec4(surface*lighting+spec*.55+twilight*.12,1.);${finish}
       }`} />
   </mesh>;
 });
@@ -133,6 +139,47 @@ export const StellarSurface = memo(function StellarSurface({ radius = 1, color =
   </group>;
 });
 
+export const PlanetRings = memo(function PlanetRings({ radius, color = '#c6b8a4' }) {
+  const uniforms = useMemo(() => ({ uColor: { value: new THREE.Color(color) }, uRadius: { value: radius } }), [color, radius]);
+  return <mesh rotation={[Math.PI / 2 + .34, .13, -.12]}>
+    <ringGeometry args={[radius * 1.28, radius * 2.05, 160]} />
+    <shaderMaterial uniforms={uniforms} vertexShader={vertex} side={THREE.DoubleSide} transparent depthWrite={false} fragmentShader={`
+      varying vec3 vLocal;uniform vec3 uColor;uniform float uRadius;
+      void main(){
+        float r=length(vLocal.xy)/uRadius;
+        float lanes=sin(r*330.)*.12+sin(r*119.)*.16+sin(r*53.)*.12;
+        float gap=1.-smoothstep(.008,.022,abs(r-1.73));
+        float fade=smoothstep(1.28,1.32,r)*(1.-smoothstep(1.98,2.05,r));
+        float shadow=mix(.2,1.,smoothstep(-.2,.1,vLocal.x/uRadius+abs(vLocal.y/uRadius)*.8));
+        vec3 c=mix(uColor*.5,uColor*1.15,smoothstep(1.3,2.,r)+lanes);
+        gl_FragColor=vec4(c*shadow,fade*(.65+lanes)*(1.-gap*.93));${finish}
+      }`} />
+  </mesh>;
+});
+
+function OrbitalClouds({ radius, animate }) {
+  const mesh = useRef();
+  useFrame((_, delta) => { if (mesh.current && animate) mesh.current.rotation.y += delta * .008; });
+  return <mesh ref={mesh}>
+    <sphereGeometry args={[radius * 1.009, 64, 32]} />
+    <shaderMaterial vertexShader={vertex} transparent depthWrite={false} fragmentShader={`
+      varying vec3 vLocal; varying vec3 vWorldNormal; ${noise}
+      void main(){vec3 n=normalize(vLocal);float cloud=smoothstep(.54,.72,fbm(n*8.+fbm(n*4.)*2.));float day=max(dot(normalize(vWorldNormal),normalize(vec3(-.7,.4,-.8))),.025);gl_FragColor=vec4(vec3(.87,.94,1.)*day,cloud*.7);${finish}}
+    `} />
+  </mesh>;
+}
+
+function OrbitalPlanet({ node, profile }) {
+  const surface = useRef();
+  useFrame((_, delta) => { if (surface.current && profile.animate) surface.current.rotation.y += delta * .012; });
+  const gas = node.key === 'halcyon';
+  return <group position={node.position} rotation={gas ? [.1, -.4, -.27] : [0, 0, -.16]}>
+    <group ref={surface}><PlanetSurface radius={node.radius} color={node.color} gas={gas} segments={profile.segments} /></group>
+    <Atmosphere radius={node.radius} color={gas ? '#efd0a1' : '#70d6ff'} segments={profile.segments} />
+    {gas ? <PlanetRings radius={node.radius} /> : profile.clouds ? <OrbitalClouds radius={node.radius} animate={profile.animate} /> : null}
+  </group>;
+}
+
 function AsteroidBelt({ count }) {
   const mesh = useRef();
   useEffect(() => {
@@ -143,28 +190,20 @@ function AsteroidBelt({ count }) {
       dummy.rotation.set(i*1.7,i*.7,i*.3);
       const scale=.18+(Math.sin(i*13.1)*.5+.5)*.8;
       dummy.scale.set(scale,scale*.65,scale*1.4);dummy.updateMatrix();mesh.current.setMatrixAt(i,dummy.matrix);
+      mesh.current.setColorAt(i, new THREE.Color(['#8c8172', '#7e929e', '#b2a69a'][i % 3]));
     }
     mesh.current.instanceMatrix.needsUpdate=true;
+    mesh.current.instanceColor.needsUpdate=true;
   },[count]);
   return <instancedMesh ref={mesh} args={[null,null,count]}>
-    <icosahedronGeometry args={[1,1]} /><meshStandardMaterial color="#657585" roughness={.96} metalness={.12} />
+    <icosahedronGeometry args={[1,1]} /><meshStandardMaterial color="#5e646b" roughness={1} metalness={.04} flatShading />
   </instancedMesh>;
 }
 
 export const DeepSpaceScenery = memo(function DeepSpaceScenery({ profile }) {
   return <>
     <NebulaSky animate={profile.animate} detail={profile.bloom ? 5 : 3} />
-    <group position={[34, 15, 96]} rotation={[.1, -.4, -.27]}>
-      <PlanetSurface radius={18} color="#ddb787" gas segments={profile.segments} />
-      <Atmosphere radius={18} color="#efd0a1" segments={profile.segments} />
-      <group rotation={[.48, .05, 0]}>
-        <AccretionDisk radius={13.5} color="#b1c8d7" animate={false} emissive={false} />
-      </group>
-    </group>
-    <group position={[-44,-12,135]}>
-      <PlanetSurface radius={22} color="#64c8d5" segments={profile.segments} />
-      <Atmosphere radius={22} segments={profile.segments} />
-    </group>
+    {EXPLORATION_LANDMARKS.filter((node) => node.kind === 'planet').map((node) => <OrbitalPlanet key={node.key} node={node} profile={profile} />)}
     <AsteroidBelt count={profile.asteroids} />
     <hemisphereLight args={['#99c8ec','#10182e',1.1]} />
     <directionalLight position={[-30,25,-15]} color="#ffe3bd" intensity={2.6} />

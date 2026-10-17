@@ -3,13 +3,9 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import SteamLoginHud from '@/components/SteamLoginHud';
-import SystemStatusStrip from '@/components/SystemStatusStrip';
 import SystemLauncher from '@/components/SystemLauncher';
-import LobbyModePanel from '@/components/LobbyModePanel';
 import SystemErrorBoundary from '@/components/SystemErrorBoundary';
 import StableSystemWorld from '@/components/StableSystemWorld';
-import SystemNewsInfoPanel from '@/components/SystemNewsInfoPanel';
-import SystemShellControlLayer from '@/components/SystemShellControlLayer';
 import { MultiplayerSessionProvider } from '@/components/MultiplayerSessionProvider';
 import { useSteamSession } from '@/components/SteamSessionProvider';
 import { gameEngine } from '@/lib/gameEngine';
@@ -35,14 +31,9 @@ export default function SystemEntryClient() {
     window.addEventListener('hudToggle', onHudToggle);
     return () => window.removeEventListener('hudToggle', onHudToggle);
   }, []);
-  const [settingsOpen, setSettingsOpen] = useState(true);
-  useEffect(() => {
-    if (window.matchMedia('(max-width: 700px)').matches) setSettingsOpen(false);
-  }, []);
   const [launchPhase, setLaunchPhase] = useState('idle');
-  const [selectedNode, setSelectedNode] = useState(null);
   const [launchError, setLaunchError] = useState('');
-  const { steamUser, universe, lobbyMode, setLobbyMode } = useSteamSession();
+  const { steamUser, lobbyMode, setLobbyMode } = useSteamSession();
 
   useEffect(() => {
     if (launchPhase !== 'launching') return undefined;
@@ -91,7 +82,6 @@ export default function SystemEntryClient() {
   };
 
   const resetLauncher = () => {
-    setSelectedNode(null);
     setLaunchError('');
     setLaunchPhase('idle');
   };
@@ -99,19 +89,11 @@ export default function SystemEntryClient() {
   return (
     <div className={`system-entry-screen phase-${launchPhase}${hudVisible ? '' : ' hud-hidden'}`}>
       {launchPhase !== 'in_sim' ? <SteamLoginHud /> : null}
-      <SystemStatusStrip />
-      <Link className="button secondary system-home-link" href="/">Back to homepage</Link>
+      {launchPhase !== 'in_sim' ? <Link className="button secondary system-home-link" href="/">Back to homepage</Link> : null}
       {launchPhase === 'in_sim' ? (
         <SystemErrorBoundary onReset={resetLauncher}>
           <MultiplayerSessionProvider>
-            <button type="button" className="button secondary system-settings-toggle" aria-expanded={settingsOpen} aria-controls="system-settings" onClick={() => setSettingsOpen((open) => !open)}>{settingsOpen ? 'Hide settings' : 'Account & settings'}</button>
-            <aside id="system-settings" className={`system-interface-sidebar${settingsOpen ? '' : ' is-collapsed'}`} aria-label="Account and game settings">
-              <SteamLoginHud />
-              <SystemNewsInfoPanel lobbyMode={lobbyMode} selected={selectedNode} />
-              <LobbyModePanel lobbyMode={lobbyMode} onChange={setLobbyMode} steamUser={steamUser} universe={universe} />
-              <SystemShellControlLayer steamUser={steamUser} lobbyMode={lobbyMode} onChange={setLobbyMode} activeNode={selectedNode} />
-            </aside>
-            <StableSystemWorld lobbyMode={lobbyMode} steamUser={steamUser} onSelectionChange={setSelectedNode} />
+            <StableSystemWorld lobbyMode={lobbyMode} steamUser={steamUser} onModeChange={setLobbyMode} />
           </MultiplayerSessionProvider>
         </SystemErrorBoundary>
       ) : (

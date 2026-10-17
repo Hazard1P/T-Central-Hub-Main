@@ -1,14 +1,12 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { disconnectDurablePlayer, hasDurableMultiplayer } from '@/lib/durableMultiplayerStore';
+import { disconnectAuthoritativePlayer } from '@/lib/authoritativeMultiplayerStore';
 
 export async function POST(request) {
-  if (!hasDurableMultiplayer()) {
-    return NextResponse.json({ ok: true, skipped: true });
-  }
-
   const body = await request.json().catch(() => ({}));
-  const result = await disconnectDurablePlayer({
+  const disconnect = hasDurableMultiplayer() ? disconnectDurablePlayer : disconnectAuthoritativePlayer;
+  const result = await disconnect({
     roomName: body?.roomName,
     id: body?.id,
     token: body?.token,

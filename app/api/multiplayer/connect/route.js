@@ -6,9 +6,9 @@ import { resolveGameAuthContext } from '@/lib/auth/resolveGameAuthContext';
 import { awardMultiplayerProgressionEvent } from '@/lib/multiplayerProgression';
 import { SESSION_MODES, buildRingAdjustmentOutputs, getSessionModeSnapshot, normalizeSessionMode, transitionSessionMode } from '@/lib/sessionModeEngine';
 import { createModeBridgeTransfer, rehydrateModeBridgeState, validateModeBridgeTransfer } from '@/lib/persistence/modeBridgeState';
+import { resolveGuestPilotSession } from '@/lib/guestPilotIdentity';
 
 const ROOM_NAME_PATTERN = /^[a-zA-Z0-9_-]{1,64}$/;
-const GUEST_ID_PATTERN = /^[a-zA-Z0-9_-]{3,64}$/;
 
 function sanitizeRoomName(value) {
   const roomName = String(value ?? '').trim();
@@ -40,7 +40,7 @@ function resolveScopedAccountId(authContext) {
   return `${String(authContext.provider).toLowerCase()}:${String(authContext.accountId)}`;
 }
 
-function resolveIdentity(body = {}, authContext) {
+function resolveIdentity(body = {}, authContext, guestSession) {
   const scopedAccountId = resolveScopedAccountId(authContext);
   if (authContext?.authenticated && scopedAccountId) {
     return {
@@ -52,20 +52,21 @@ function resolveIdentity(body = {}, authContext) {
     };
   }
 
-  const candidateGuestId = String(body?.identity?.id || body?.guestId || '')
-    .trim()
-    .toLowerCase();
-  const guestSuffix = GUEST_ID_PATTERN.test(candidateGuestId)
-    ? candidateGuestId
-    : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
-
   return {
-    id: `guest-${guestSuffix}`,
+    id: guestSession.id,
     displayName: sanitizeDisplayName(body?.identity?.displayName || body?.displayName, 'Guest Pilot'),
     identityKind: 'guest',
     authenticated: false,
     steamUser: null,
   };
+}
+
+function sessionResponse(payload, guestSession, status = 200) {
+  const response = NextResponse.json(payload, { status });
+  if (guestSession?.setCookie) response.cookies.set('tcentral_guest_pilot', guestSession.value, {
+    httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/',
+  });
+  return response;
 }
 
 
@@ -136,8 +137,10 @@ export async function POST(request) {
     return NextResponse.json({ ok: false, error: 'Invalid roomName' }, { status: 400 });
   }
 
-  const authContext = resolveGameAuthContext(cookies());
-  const identity = resolveIdentity(body, authContext);
+  const cookieStore = cookies();
+  const authContext = resolveGameAuthContext(cookieStore);
+  const guestSession = authContext.authenticated ? null : resolveGuestPilotSession(cookieStore.get('tcentral_guest_pilot')?.value);
+  const identity = resolveIdentity(body, authContext, guestSession);
   const responseAuthContext = toApiAuthContext(authContext);
   const requestedMode = resolveRequestedMode(body);
   const incomingTransfer = body?.modeBridgeTransfer && typeof body.modeBridgeTransfer === 'object' ? body.modeBridgeTransfer : null;
@@ -191,7 +194,7 @@ export async function POST(request) {
     if (!bridgePayload.ok) {
       return NextResponse.json({ ok: false, error: bridgePayload.error, details: bridgePayload.details || null }, { status: bridgePayload.status || 409 });
     }
-    return NextResponse.json(bridgePayload.payload, { status: result.status || 200 });
+    return sessionResponse(bridgePayload.payload, guestSession, result.status || 200);
   }
 
   pruneAuthoritativeRooms();
@@ -220,5 +223,5 @@ export async function POST(request) {
   if (!bridgePayload.ok) {
     return NextResponse.json({ ok: false, error: bridgePayload.error, details: bridgePayload.details || null }, { status: bridgePayload.status || 409 });
   }
-  return NextResponse.json(bridgePayload.payload);
+  return sessionResponse(bridgePayload.payload, guestSession);
 }

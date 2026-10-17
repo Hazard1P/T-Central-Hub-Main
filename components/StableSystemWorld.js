@@ -4,39 +4,30 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Html, Sparkles, Stars } from '@react-three/drei';
 import * as THREE from 'three';
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { useSteamSession } from '@/components/SteamSessionProvider';
-import { WORLD_LAYOUT } from '@/lib/worldLayout';
-import { getPrivateWorldKey } from '@/lib/securityConfig';
 import { buildUniverseGraph, getNodePositionMap } from '@/lib/universeEngine';
 import { createPrivateWorldAsset } from '@/lib/privateWorldAsset';
 import { summarizeEpochRelativity } from '@/lib/epochDysonEngine';
 import { createGravitySources } from '@/lib/physicsEngine';
-import { buildGravitySourcesFromSeed, computePositionError } from '@/lib/simCore/stepFrame';
+import { buildGravitySourcesFromSeed } from '@/lib/simCore/stepFrame';
 import { createQuantumState, summarizeQuantumState, evolveQuantumState } from '@/lib/quantumFieldEngine';
-import { buildOperationsState } from '@/lib/missionFramework';
-import { ENTROPIC_CURRENCY, computeEntropicIntegrity, resolveEntropicYield, summarizeEntropicEconomy } from '@/lib/entropicEngine';
 import { createSimulationRuntimeClient } from '@/lib/simRuntime/client';
 import { SIM_RUNTIME_STATUS } from '@/lib/simRuntime/contracts';
-import { buildDynamicEngineState } from '@/lib/dynamicEngine';
-import OperationsDirectorPanel from '@/components/OperationsDirectorPanel';
-import EntropyMissionPanel from '@/components/EntropyMissionPanel';
-import usePersistedPanelState from '@/components/usePersistedPanelState';
 import { useMultiplayerSession } from '@/components/MultiplayerSessionProvider';
-import { subscribeToMultiplayerRoom } from '@/lib/multiplayerRealtimeClient';
 import { resolveMultiplayerIdentity } from '@/lib/multiplayerSyncEngine';
-import { buildAccountSnapshot, defaultProgressState, deriveProgression, getAccountStorageKey, normalizeProgressState } from '@/lib/accountProgression';
-import AccountProgressPanel from '@/components/AccountProgressPanel';
-import { HYPERSPACE_DIMENSION_COUNT, HYPERSPACE_SIGNATURE_PREFIX } from '@/lib/simulationConfig';
+import { buildAccountSnapshot, defaultProgressState, getAccountStorageKey, normalizeProgressState } from '@/lib/accountProgression';
 import { SESSION_MODES } from '@/lib/sessionModeEngine';
-import { FLIGHT_CONTROL_COPY } from '@/lib/siteContent';
 import { BlackHoleVisual, CinematicBloom, DeepSpaceScenery, InterceptorHull, PlanetSurface, StellarSurface } from '@/components/SimulationVisuals';
 import { getGraphicsProfile } from '@/lib/graphicsProfile';
 import TouchFlightPad from '@/components/TouchFlightPad';
+import ExplorationHud from '@/components/ExplorationHud';
+import DestinationBearing from '@/components/DestinationBearing';
+import useSharedFlight from '@/components/useSharedFlight';
+import { distanceBetween, getApproachPoint, getCruiseControl, getExplorationDestinations } from '@/lib/exploration';
+import { isValidRoomName } from '@/lib/exploration';
 import { FLIGHT_KEYS, isInteractiveTarget, shouldIgnoreFlightKey } from '@/lib/flightInput';
 import { gameEngine } from '@/lib/gameEngine';
 
-const UI_VISUAL_DEBUG = false;
 const SIM_RENDERER_OPTIONS = { antialias: true, powerPreference: 'high-performance', toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.0 };
 const SHIP_MODEL_FORWARD = new THREE.Vector3(0, 0, 1);
 const SHIP_CAMERA_BACK = new THREE.Vector3(0, 0, -1);
@@ -44,40 +35,6 @@ const FLIGHT_PRESETS = Object.freeze({
   assisted: { thrustScale: 1, inertialDampers: true, chaseZoom: 1, routeAssist: true, mouseLook: false, sixAxis: false },
   freeFlight: { thrustScale: 1.45, inertialDampers: false, chaseZoom: 1.24, routeAssist: false, mouseLook: true, sixAxis: true }
 });
-
-function describeRuntimeStatus(runtime = {}) {
-  const status = runtime?.status || SIM_RUNTIME_STATUS.ONLINE;
-  if (status === SIM_RUNTIME_STATUS.DEGRADED) {
-    return {
-      label: 'Sim runtime degraded',
-      detail: runtime?.degradedReason || 'sim-runtime-unavailable',
-    };
-  }
-
-  return {
-    label: 'Sim runtime online',
-    detail: 'continuity heartbeat healthy',
-  };
-}
-
-async function disconnectMultiplayerSession(session) {
-  if (!session?.token || !session?.id || !session?.room) return;
-
-  try {
-    await fetch('/api/multiplayer/disconnect', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      keepalive: true,
-      body: JSON.stringify({
-        roomName: session.room,
-        id: session.id,
-        token: session.token,
-      }),
-    });
-  } catch (error) {
-    console.warn('Unable to disconnect multiplayer session cleanly.', error);
-  }
-}
 
 function useDeviceTier() {
   const [tier, setTier] = useState({ isMobile: false, dpr: [1, 1.6], stars: 7600, sparkles: 220, meteors: 18 });
@@ -100,13 +57,6 @@ function useDeviceTier() {
   }, []);
 
   return tier;
-}
-
-function resolveClientSessionMode(lobbyMode, authoritativeMode) {
-  if (authoritativeMode === SESSION_MODES.IDLE || authoritativeMode === SESSION_MODES.SINGLE_PLAYER || authoritativeMode === SESSION_MODES.MULTI_PLAYER) {
-    return authoritativeMode;
-  }
-  return lobbyMode === 'hub' ? SESSION_MODES.MULTI_PLAYER : SESSION_MODES.SINGLE_PLAYER;
 }
 
 function RouteBeam({ from, to, color = '#67dfff', arc = 1.8, opacity = 0.18, radius = 0.04 }) {
@@ -432,64 +382,15 @@ function DysonSphereStructure({ node, sessionMode = SESSION_MODES.IDLE, ringAdju
       {profile === 'csis' ? <CsisNetworkLinks pulse={csisState.linkagePulse || 0.5} /> : null}
       {profile === 'csis' ? <CsisFirewallShell sweep={csisState.firewallSweep || 0} /> : null}
       {profile === 'csis' ? (
-        <Html style={{ pointerEvents: 'none' }} center zIndexRange={[30, 0]} position={[0, 2.6, 0]}>
-          <>
-            <div className={`dyson-logic-tag ${dysonTagVariantClass}`.trim()}>
-              <strong>CSIS dual ring</strong>
-              <span>Ring I: network linkage · Ring II: foundation firewall</span>
-            </div>
-            <div className="dyson-logic-tag">
-            <strong>Canada Strings of Intelligence Dispersal tri-ring</strong>
-            <span>Ring 1: intelligence dispersal · Ring 2: routing · Ring 3: entropy regeneration</span>
-            </div>
-          </>
-        </Html>
+        <group />
       ) : null}
       {isSynaptics ? (
-        <Html style={{ pointerEvents: 'none' }} center zIndexRange={[30, 0]} position={[0, 3.0, 0]}>
-          <div className={`dyson-logic-tag ${dysonTagVariantClass}`.trim()}>
-            <strong>Synaptics tri-ring</strong>
-            <span>{dysonState.ringOneLabel || 'Collector ring'} · {dysonState.ringTwoLabel || 'Habitat ring'} · {dysonState.ringThreeLabel || 'Encryption ring'}</span>
-          </div>
-        </Html>
+        <group />
       ) : null}
     </group>
   );
 }
 
-
-function PlayableAnchorDatapoints({ node }) {
-  const metadata = node.playableMapMetadata;
-  const datapoints = Array.isArray(metadata?.datapoints) ? metadata.datapoints : [];
-  if (!metadata?.playableAnchor || datapoints.length === 0) return null;
-
-  return (
-    <group>
-      {datapoints.map((datapoint, index) => {
-        const angle = (Math.PI * 2 * index) / datapoints.length;
-        const radius = 3.6 + (index % 2) * 0.52;
-        const position = [Math.cos(angle) * radius, ((index % 3) - 1) * 0.28, Math.sin(angle) * radius * 0.72];
-        return (
-          <group key={`playable-datapoint-${datapoint.key}`} position={position}>
-            <mesh>
-              <sphereGeometry args={[datapoint.kind === 'dyson' ? 0.18 : 0.14, 12, 12]} />
-              <meshStandardMaterial color={datapoint.color || '#9fdcff'} emissive={datapoint.color || '#9fdcff'} emissiveIntensity={0.6} roughness={0.45} />
-            </mesh>
-            <line geometry={new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(-position[0], -position[1], -position[2])])}>
-              <lineBasicMaterial color={datapoint.color || '#9fdcff'} transparent opacity={0.28} />
-            </line>
-            <Html style={{ pointerEvents: 'none' }} center zIndexRange={[30, 0]} position={[0, 0.42, 0]}>
-              <div className="dyson-logic-tag playable-datapoint-tag">
-                <strong>{datapoint.label}</strong>
-                <span>{datapoint.kind} datapoint · {metadata.anchorRole}</span>
-              </div>
-            </Html>
-          </group>
-        );
-      })}
-    </group>
-  );
-}
 
 function SolarSubSystem({ node, animate = true }) {
   const orbitRefs = useRef([]);
@@ -528,13 +429,7 @@ function SolarSubSystem({ node, animate = true }) {
           </group>
         </group>
       ))}
-      <PlayableAnchorDatapoints node={node} />
-      <Html style={{ pointerEvents: 'none' }} center zIndexRange={[30, 0]} position={[0, 2.8 * radiusScale, 0]}>
-        <div className="dyson-logic-tag">
-          <strong>{node.playableAnchor ? 'Playable solar-system anchor' : (stellarProfile.spectralClass || 'G-class') + ' star'}</strong>
-          <span>{node.playableAnchor ? `${node.anchorRole} · ${node.playableMapMetadata?.datapoints?.length || 0} string datapoints` : `${stellarProfile.temperatureK || 5778} K · L ${stellarProfile.luminositySolar || 1}☉ · HZ ${stellarProfile.habitableInnerAu || 0.95}-${stellarProfile.habitableOuterAu || 1.67} AU`}</span>
-        </div>
-      </Html>
+      <group />
     </group>
   );
 }
@@ -589,20 +484,12 @@ function NodeVisual({ node, onSelect, selectedKey, graphNode, condensedLabels = 
       {selectedKey === node.key && (isBlackhole || isSolar || isMapAsset) ? <GravityFieldRings position={[0, 0, 0]} color={node.color || '#9fdcff'} /> : null}
       {node.key === 'deep_blackhole' ? <MeteorSwarm count={12} radius={8.6} /> : null}
 
-      {(!node.generated || isBlackhole) && (!condensedLabels || selectedKey === node.key) ? (
-        <Html center zIndexRange={[30, 0]} position={[0, isSolar ? 2.25 : 1.65, 0]}>
-          <button className={`stable-node-label polished ${selectedKey === node.key ? 'is-selected' : ''}`} onClick={() => onSelect(node)}>
-            <strong>{node.label}</strong>
-            <span>{node.privateOnly ? 'private asset' : node.kind}</span>
-            <small>{node.address}</small>
-          </button>
-        </Html>
-      ) : null}
+
     </group>
   );
 }
 
-function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTelemetryChange, onCombatAction, touchInput, isMobile = false, authenticated = false, epochSummary = null, flightConfig = null, multiplayerMode = false, simulationSeed = 'tcentral-main', simulationGravitySources = [], onSimulationFrame = null, correctionState = null, resetTick = 0 }) {
+function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTelemetryChange, onCombatAction, touchInput, isMobile = false, authenticated = false, epochSummary = null, flightConfig = null, multiplayerMode = false, simulationSeed = 'tcentral-main', simulationGravitySources = [], onSimulationFrame = null, correctionState = null, resetTick = 0, navigationCommand, cruising, onManualControl, onArrival, explorationNodes = [] }) {
   const groupRef = useRef(null);
   const engineCoreRef = useRef(null);
   const enginePortRef = useRef(null);
@@ -612,7 +499,8 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
   const pitch = useRef(-0.08);
   const roll = useRef(0);
   const keys = useRef({});
-  const lastNearest = useRef(null);
+  const cruiseTarget = useRef(null);
+  const lastGravity = useRef([0, 0, 0]);
   const { camera, gl } = useThree();
 
   useEffect(() => {
@@ -627,6 +515,7 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
     const down = (event) => {
       if (shouldIgnoreFlightKey(event) || !FLIGHT_KEYS.has(event.code)) return;
       keys.current[event.code] = true;
+      onManualControl?.();
       event.preventDefault();
     };
     const up = (event) => { keys.current[event.code] = false; };
@@ -634,6 +523,7 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
     const visibility = () => { if (document.hidden) clearInput(); };
     const startLook = (event) => {
       if (!flightConfig?.mouseLook || event.button !== 0 || lookPointer) return;
+      onManualControl?.();
       lookPointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
       canvas.setPointerCapture(event.pointerId);
     };
@@ -672,7 +562,7 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
       canvas.removeEventListener('pointercancel', endLook);
       canvas.removeEventListener('lostpointercapture', endLook);
     };
-  }, [flightConfig?.mouseLook, gl, onSimulationFrame]);
+  }, [flightConfig?.mouseLook, gl, onSimulationFrame, onManualControl]);
 
   useEffect(() => {
     keys.current = {};
@@ -682,7 +572,18 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
   }, [resetTick]);
 
   const quantumRef = useRef(createQuantumState(12));
-  const fireLatch = useRef(false);
+  useEffect(() => {
+    if (!navigationCommand?.destination || !groupRef.current) return;
+    const direction = new THREE.Vector3(...navigationCommand.destination.position).sub(groupRef.current.position).normalize();
+    yaw.current = Math.atan2(direction.x, direction.z);
+    pitch.current = -Math.asin(Math.max(-1, Math.min(1, direction.y)));
+    keys.current = {};
+    cruiseTarget.current = getApproachPoint(groupRef.current.position.toArray(), navigationCommand.destination);
+  }, [navigationCommand]);
+  useEffect(() => {
+    if (Math.abs(touchInput.x) + Math.abs(touchInput.y) + Math.abs(touchInput.z) > 0 || touchInput.boost) onManualControl?.();
+  }, [touchInput, onManualControl]);
+
   const frameCounter = useRef(0);
   const correctionTargetRef = useRef(null);
 
@@ -691,6 +592,7 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
     correctionTargetRef.current = {
       position: new THREE.Vector3(...correctionState.position),
       velocity: new THREE.Vector3(...correctionState.velocity),
+      snap: correctionState.snap,
     };
   }, [correctionState]);
 
@@ -704,23 +606,29 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
     );
 
     const boostActive = Boolean(keys.current.ControlLeft || keys.current.ControlRight || (touchInput.boost || 0) > 0.5);
-    const fireActive = Boolean(keys.current.KeyQ);
-    if (fireActive && !fireLatch.current) {
-      fireLatch.current = true;
-      onCombatAction?.({ type: 'fire', frameIndex: frameCounter.current, tick: Date.now() });
-    } else if (!fireActive) {
-      fireLatch.current = false;
-    }
+    const fireActive = false;
     const thrustScale = (flightConfig?.thrustScale || 1) * (boostActive ? 1.75 : 1);
     const targetRoll = (keys.current.KeyA || keys.current.ArrowLeft ? 0.32 : 0) + (keys.current.KeyD || keys.current.ArrowRight ? -0.32 : 0);
     roll.current += (targetRoll - roll.current) * 0.08;
     const lookQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch.current, yaw.current, roll.current, 'YXZ'));
     const orientedMove = rawMove.clone();
     if (flightConfig?.sixAxis || flightConfig?.mouseLook) orientedMove.applyQuaternion(lookQuat);
-    const dt = Math.min(delta, 1 / 24);
-    const controlVector = [orientedMove.x * thrustScale, orientedMove.y * thrustScale, orientedMove.z * thrustScale];
+    const dt = Math.max(1 / 240, Math.min(delta, 1 / 24));
+    let controlVector = [orientedMove.x * thrustScale, orientedMove.y * thrustScale, orientedMove.z * thrustScale];
+    const position = groupRef.current.position.toArray();
+    if (cruising && cruiseTarget.current) {
+      controlVector = getCruiseControl({ position, velocity: velocity.current.toArray(), target: cruiseTarget.current, gravity: lastGravity.current });
+      const direction = new THREE.Vector3(...navigationCommand.destination.position).sub(groupRef.current.position).normalize();
+      yaw.current = Math.atan2(direction.x, direction.z);
+      pitch.current = -Math.asin(Math.max(-1, Math.min(1, direction.y)));
+      lookQuat.setFromEuler(new THREE.Euler(pitch.current, yaw.current, roll.current, 'YXZ'));
+      if (distanceBetween(position, cruiseTarget.current) < .8 && velocity.current.length() < .7) onArrival?.(navigationCommand.destination);
+    } else if (keys.current.KeyX || (flightConfig?.inertialDampers && rawMove.lengthSq() === 0)) {
+      controlVector = getCruiseControl({ position, velocity: velocity.current.toArray(), target: position, gravity: lastGravity.current, braking: true });
+    }
     const stepped = simRuntimeClient.stepSnapshot({
       mode: multiplayerMode ? 'multiplayer' : 'singleplayer',
+      unifiedFlight: true,
       frameIndex: frameCounter.current,
       simulationSeed,
       position: [groupRef.current.position.x, groupRef.current.position.y, groupRef.current.position.z],
@@ -730,15 +638,12 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
       controlVector,
       inputVector: orientedMove.clone().multiplyScalar(thrustScale),
       dt,
-      gravitySources: multiplayerMode ? simulationGravitySources : gravitySources,
+      gravitySources: simulationGravitySources,
       isMobile,
     });
 
     velocity.current.set(...(stepped.velocity || [0, 0, 0]));
     groupRef.current.position.set(...(stepped.position || [0, 0, 18]));
-    if (flightConfig?.inertialDampers !== false && rawMove.lengthSq() === 0) {
-      velocity.current.lerp(new THREE.Vector3(0, 0, 0), 0.045);
-    }
     onSimulationFrame?.({
       frameIndex: frameCounter.current,
       controlVector: controlVector.map((v) => Number(v.toFixed(4))),
@@ -752,18 +657,24 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
     });
 
     if (correctionTargetRef.current) {
-      groupRef.current.position.lerp(correctionTargetRef.current.position, 0.2);
-      velocity.current.lerp(correctionTargetRef.current.velocity, 0.2);
-      if (groupRef.current.position.distanceTo(correctionTargetRef.current.position) < 0.08) correctionTargetRef.current = null;
+      const blend = correctionTargetRef.current.snap ? 1 : .45;
+      groupRef.current.position.lerp(correctionTargetRef.current.position, blend);
+      velocity.current.lerp(correctionTargetRef.current.velocity, blend);
+      correctionTargetRef.current = null;
     }
 
     const speed = velocity.current.length();
-    const direction = speed > 0.08 ? velocity.current.clone().normalize() : SHIP_MODEL_FORWARD.clone().applyQuaternion(lookQuat);
+    const direction = flightConfig?.mouseLook || speed <= 0.08 ? SHIP_MODEL_FORWARD.clone().applyQuaternion(lookQuat) : velocity.current.clone().normalize();
     const targetQuat = flightConfig?.mouseLook ? lookQuat : new THREE.Quaternion().setFromUnitVectors(SHIP_MODEL_FORWARD, direction);
     groupRef.current.quaternion.slerp(targetQuat, 0.1);
 
     const gravityMagnitude = Number(stepped.gravityMagnitude || 0);
-    const nearest = stepped.nearest || null;
+    lastGravity.current = stepped.gravity || lastGravity.current;
+    const nearestNode = explorationNodes.reduce((best, node) => {
+      const distance = groupRef.current.position.distanceTo(new THREE.Vector3(...node.position));
+      return !best || distance < best.distance ? { key: node.key, distance } : best;
+    }, null);
+    const nearest = nearestNode;
     const horizonFactor = nearest?.horizonFactor || 0;
 
     quantumRef.current = evolveQuantumState({
@@ -793,11 +704,6 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
     camera.position.lerp(cameraTarget, 1 - Math.exp(-6 * Math.min(delta, .1)));
     const lookAhead = groupRef.current.position.clone().add(SHIP_MODEL_FORWARD.clone().multiplyScalar(5.5).applyQuaternion(lookQuat));
     camera.lookAt((flightConfig?.mouseLook || flightConfig?.sixAxis) ? lookAhead : groupRef.current.position.clone().add(new THREE.Vector3(0, 0.4, 1.1)));
-
-    if (nearest && lastNearest.current !== nearest.key && nearest.distance < nearest.source.influenceRadius) {
-      lastNearest.current = nearest.key;
-      onNearestChange?.(nearest.key);
-    }
 
     onTelemetryChange?.({
       speed: Number(speed.toFixed(2)),
@@ -842,7 +748,7 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
   });
 
   return (
-    <group ref={groupRef} position={[0, 0.2, 18]}>
+    <group ref={groupRef} position={[0, 0, 18]}>
       <InterceptorHull />
       <pointLight position={[0, 1, 1]} color="#b8dcff" intensity={4} distance={7} />
       <mesh ref={engineCoreRef} position={[0, -.06, -2.1]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -877,18 +783,11 @@ function RemotePilot({ pilot, isSelf = false }) {
 
   return (
     <group ref={groupRef} position={pilot?.position || [0, 0, 0]}>
-      <mesh scale={[1.35, 0.5, 1.9]}>
-        <capsuleGeometry args={[0.22, 0.92, 10, 16]} />
-        <meshStandardMaterial color={isSelf ? '#b8f6ff' : '#9fc2ff'} emissive={isSelf ? '#5fdfff' : '#486dd1'} emissiveIntensity={0.28} metalness={0.82} roughness={0.22} />
-      </mesh>
-      <mesh position={[0, 0, -0.92]} rotation={[Math.PI, 0, 0]}>
-        <coneGeometry args={[0.08, 0.38, 12]} />
-        <meshBasicMaterial color={isSelf ? '#9ff7ff' : '#7fe7ff'} transparent opacity={0.72} depthWrite={false} />
-      </mesh>
+      <group scale={.55}><InterceptorHull /></group>
       <Html style={{ pointerEvents: 'none' }} zIndexRange={[30, 0]} position={[0, 0.68, 0]} center>
         <div className="pilot-tag anchored-label-panel small">
           <strong>{pilot?.displayName || 'Pilot'}</strong>
-          <span>{Math.round(pilot?.health || 0)}% hull</span>
+          <span>Explorer</span>
         </div>
       </Html>
     </group>
@@ -908,7 +807,7 @@ function ProjectileSwarm({ projectiles = [] }) {
   );
 }
 
-function StableSceneContent({ simRuntimeClient, graph, displayNodes, onSelect, selectedKey, onAutoFocus, onTelemetryChange, onCombatAction, touchInput, deviceTier, graphicsProfile, authenticated = false, flightConfig = null, remotePilots = [], projectiles = [], presentationMode = true, multiplayerMode = false, simulationSeed = 'tcentral-main', simulationGravitySources = [], onSimulationFrame = null, correctionState = null, resetTick = 0, sessionMode = SESSION_MODES.IDLE, ringAdjustments = null }) {
+function StableSceneContent({ simRuntimeClient, graph, displayNodes, onSelect, selectedKey, onAutoFocus, onTelemetryChange, onCombatAction, touchInput, deviceTier, graphicsProfile, authenticated = false, flightConfig = null, remotePilots = [], projectiles = [], presentationMode = true, multiplayerMode = false, simulationSeed = 'tcentral-main', simulationGravitySources = [], onSimulationFrame = null, correctionState = null, resetTick = 0, sessionMode = SESSION_MODES.IDLE, ringAdjustments = null, navigationCommand, cruising, onManualControl, onArrival, destination }) {
   const epochSummary = useMemo(() => summarizeEpochRelativity(graph.epochAnchor), [graph]);
   const graphByKey = useMemo(() => Object.fromEntries(graph.nodes.map((node) => [node.key, node])), [graph]);
   const positions = useMemo(() => getNodePositionMap(graph), [graph]);
@@ -922,6 +821,7 @@ function StableSceneContent({ simRuntimeClient, graph, displayNodes, onSelect, s
     <>
       <fog attach="fog" args={['#07101b', 110, 360]} />
       <DeepSpaceScenery profile={graphicsProfile} />
+      <DestinationBearing destination={destination} />
       <Stars radius={220} depth={120} count={graphicsProfile.stars} factor={3.2} saturation={.3} fade speed={graphicsProfile.animate ? .15 : 0} />
       <Sparkles count={deviceTier.isMobile ? 28 : 64} scale={[85, 50, 100]} size={1.2} speed={graphicsProfile.animate ? .12 : 0} opacity={.35} />
       {graphicsProfile.bloom ? <CinematicBloom /> : null}
@@ -969,410 +869,126 @@ function StableSceneContent({ simRuntimeClient, graph, displayNodes, onSelect, s
         onSimulationFrame={onSimulationFrame}
         correctionState={correctionState}
         resetTick={resetTick}
+        navigationCommand={navigationCommand} cruising={cruising} onManualControl={onManualControl} onArrival={onArrival}
+        explorationNodes={getExplorationDestinations(displayNodes)}
       />
     </>
   );
 }
 
 
-export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null, onSelectionChange = null }) {
-  const router = useRouter();
+export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null, onSelectionChange = null, onModeChange }) {
   const deviceTier = useDeviceTier();
-  const [graphicsQuality, setGraphicsQuality] = useState('auto');
+  const [graphicsQuality, setGraphicsQuality] = useState(() => {
+    try { const saved = window.localStorage.getItem('tcentral_visual_quality'); return ['auto', 'high', 'performance'].includes(saved) ? saved : 'auto'; } catch { return 'auto'; }
+  });
+  useEffect(() => { try { window.localStorage.setItem('tcentral_visual_quality', graphicsQuality); } catch {} }, [graphicsQuality]);
   const graphicsProfile = useMemo(() => getGraphicsProfile(graphicsQuality, deviceTier), [graphicsQuality, deviceTier]);
-  const { googleUser, universe, presence, updatePresence, refresh } = useSteamSession();
+  const { googleUser } = useSteamSession();
+  const identity = useMemo(() => resolveMultiplayerIdentity(steamUser, googleUser), [steamUser?.steamid, steamUser?.personaname, googleUser?.sub, googleUser?.name]);
+  const [roomName, setRoomName] = useState(() => {
+    const requested = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('room') : '';
+    return isValidRoomName(requested) ? requested : process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main';
+  });
   const [selected, setSelected] = useState(null);
   const [touchInput, setTouchInput] = useState({ x: 0, y: 0, z: 0, boost: 0 });
-  const [flightConfig, setFlightConfig] = useState(FLIGHT_PRESETS.freeFlight);
-  const [flightDeckOpen, setFlightDeckOpen] = useState(false);
-  const [observerDockOpen, setObserverDockOpen] = useState(false);
-  const toggleFlightDeckOpen = useCallback(() => setFlightDeckOpen((value) => !value), []);
+  const [flightConfig, setFlightConfig] = useState({ ...FLIGHT_PRESETS.freeFlight, inertialDampers: true });
   const [flightResetTick, setFlightResetTick] = useState(0);
-  const [presentationMode, setPresentationMode] = useState(true);
-  const cameraConfig = useMemo(() => ({ position: [0, 5, 4], fov: deviceTier.isMobile ? 58 : 52, near: .1, far: 1000 }), [deviceTier.isMobile]);
   const [hudVisible, setHudVisible] = useState(true);
+  const [panelOpen, setPanelOpen] = useState(false);
   const [correctionState, setCorrectionState] = useState(null);
-  const lastPresenceBroadcast = useRef(0);
-  const previousServerSessionRef = useRef(null);
-  const activeSessionTokenRef = useRef(null);
-  const [telemetry, setTelemetry] = useState({
-    speed: 0,
-    gravity: 0,
-    horizonFactor: 0,
-    nearest: null,
-    nearestDistance: 0,
-    escapeVelocity: 0,
-    quantum: summarizeQuantumState(createQuantumState(12)),
-    position: [0, 0, 18],
-    runtime: { status: SIM_RUNTIME_STATUS.ONLINE, degradedReason: null },
-    continuityHeartbeat: null,
-  });
-
-  const [prayerSeedState, setPrayerSeedState] = useState({ status: '', ok: true });
-  const [validatorSummary, setValidatorSummary] = useState(null);
+  const [navigationCommand, setNavigationCommand] = useState(null);
+  const [cruising, setCruising] = useState(false);
+  const [notice, setNotice] = useState('');
+  const commandIndex = useRef(0);
+  const lastTelemetryPublish = useRef(0);
+  const [telemetry, setTelemetry] = useState({ speed: 0, gravity: 0, horizonFactor: 0, nearest: null, position: [0, 0, 18], velocity: [0, 0, 0], direction: [0, 0, 1], quantum: summarizeQuantumState(createQuantumState(12)) });
+  const telemetryRef = useRef(telemetry);
+  const predictionHistoryRef = useRef([]);
   const simRuntimeClient = useMemo(() => createSimulationRuntimeClient(), []);
-  const identity = useMemo(() => resolveMultiplayerIdentity(steamUser, googleUser), [steamUser, googleUser]);
-  const progressIdentityKey = `${identity.id}:${identity.kind}:${Boolean(identity.authenticated)}`;
+  const { session: serverSession, authoritativeState, serverStatus } = useMultiplayerSession();
+
+  const privateWorldAsset = useMemo(() => createPrivateWorldAsset({ steamUser, lobbyMode, identity }), [steamUser?.steamid, lobbyMode, identity]);
+  const graph = useMemo(() => buildUniverseGraph(Date.now(), { lobbyMode, roomName, extraNodes: privateWorldAsset?.nodes || [], extraRouteLinks: privateWorldAsset?.routeLinks || [] }), [privateWorldAsset, lobbyMode, roomName]);
+  const displayNodes = useMemo(() => graph.nodes.filter((node) => ['blackhole', 'dyson', 'solar', 'node'].includes(node.kind)), [graph]);
+  const destinations = useMemo(() => getExplorationDestinations(displayNodes), [displayNodes]);
+  const destination = selected || destinations.find((node) => node.key === 'halcyon');
+  const simulationGravitySources = useMemo(() => buildGravitySourcesFromSeed(roomName), [roomName]);
+  const cameraConfig = useMemo(() => ({ position: [0, 5, 4], fov: deviceTier.isMobile ? 58 : 52, near: .1, far: 1000 }), [deviceTier.isMobile]);
+  const remotePilots = useMemo(() => (authoritativeState.players || []).filter((pilot) => pilot.id !== serverSession?.id), [authoritativeState.players, serverSession?.id]);
+
+  const handleTelemetry = useCallback((next) => {
+    telemetryRef.current = next;
+    const now = performance.now();
+    if (now - lastTelemetryPublish.current >= 100) {
+      lastTelemetryPublish.current = now;
+      setTelemetry(next);
+    }
+  }, []);
+  const handleSimulationFrame = useCallback((frame) => {
+    if (Number.isFinite(frame.frameIndex)) {
+      predictionHistoryRef.current = [...predictionHistoryRef.current.slice(-119), { frameIndex: frame.frameIndex, dt: frame.dt, controlVector: frame.controlVector }];
+    }
+  }, []);
+
+  useSharedFlight({ lobbyMode, roomName, identity, telemetryRef, inputsRef: predictionHistoryRef, simRuntimeClient, gravitySources: simulationGravitySources, onCorrection: setCorrectionState });
+
+  const progressIdentityKey = identity.id + ':' + identity.kind + ':' + Boolean(identity.authenticated);
   const [progress, setProgress] = useState(defaultProgressState());
   const [progressHydrated, setProgressHydrated] = useState(false);
   const [hydratedProgressIdentityKey, setHydratedProgressIdentityKey] = useState(null);
-  const [accountProfile, setAccountProfile] = useState(() => buildAccountSnapshot({ identity: { id: 'boot', displayName: 'Boot Pilot', kind: 'guest', authenticated: false }, progress: defaultProgressState() }));
-  const {
-    session: serverSession,
-    authoritativeState,
-    serverStatus,
-    setSession: setServerSession,
-    setAuthoritativeState,
-    setServerStatus,
-    resetSessionState,
-  } = useMultiplayerSession();
+  const [, setAccountProfile] = useState(null);
 
-  const privateWorldAsset = useMemo(() => createPrivateWorldAsset({ steamUser, lobbyMode, identity }), [steamUser, lobbyMode, identity]);
-  const graph = useMemo(() => buildUniverseGraph(Date.now(), { lobbyMode, roomName: process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main', extraNodes: privateWorldAsset?.nodes || [], extraRouteLinks: privateWorldAsset?.routeLinks || [] }), [privateWorldAsset, lobbyMode]);
-  const epochSummary = useMemo(() => summarizeEpochRelativity(graph.epochAnchor), [graph]);
-  const graphByKey = useMemo(() => Object.fromEntries(graph.nodes.map((node) => [node.key, node])), [graph]);
-  const displayNodes = useMemo(() => graph.nodes.filter((node) => !node.playableDatapoint && ['blackhole', 'dyson', 'solar', 'node'].includes(node.kind)), [graph]);
-
-  const markVisited = (nodeKey) => {
-    if (!nodeKey) return;
-    setProgress((current) => ({
-      ...current,
-      visitedNodes: current.visitedNodes.includes(nodeKey) ? current.visitedNodes : [...current.visitedNodes, nodeKey],
-    }));
-  };
-
+  const markVisited = useCallback((nodeKey) => {
+    if (!nodeKey || nodeKey.startsWith('pilot:')) return;
+    setProgress((current) => current.visitedNodes.includes(nodeKey) ? current : { ...current, visitedNodes: [...current.visitedNodes, nodeKey] });
+  }, []);
   const handleSelect = (node) => {
     setSelected(node);
-    if (node?.key !== 'csis') markVisited(node?.key);
+    setCruising(false);
+    setNavigationCommand(null);
+    setNotice('Waypoint set: ' + node.label);
     onSelectionChange?.(node);
   };
-
-  const handleAutoFocus = (key) => {
-    const match = displayNodes.find((node) => node.key === key) || graphByKey[key] || null;
-    if (!match) return;
-    setSelected((current) => (current?.key === match.key ? current : match));
-    markVisited(match?.key);
-    onSelectionChange?.(match);
+  const cancelCruise = useCallback(() => { setCruising(false); }, []);
+  const arrive = useCallback((node) => {
+    markVisited(node.key);
+    setCruising(false);
+    setNotice('Arrived at ' + node.label + '. Take the controls and explore.');
+  }, [markVisited]);
+  const navigate = (mode) => {
+    if (!destination) return;
+    setNavigationCommand({ id: ++commandIndex.current, destination, mode });
+    setCruising(mode === 'cruise');
+    setNotice(mode === 'cruise' ? 'Cruise engaged. Steer or drag space to take over.' : 'Facing ' + destination.label + '.');
   };
-
-  const activeNode = selected || displayNodes.find((node) => node.key === (privateWorldAsset?.blackholeKey || 'deep_blackhole')) || displayNodes.find((node) => node.key === 'deep_blackhole') || null;
-  const entropicEconomy = useMemo(() => summarizeEntropicEconomy(progress), [progress]);
-
-  const accountProgression = useMemo(() => deriveProgression(progress), [progress]);
-  const showVisualDebugCards = UI_VISUAL_DEBUG && !presentationMode;
-
-  const operations = useMemo(() => buildOperationsState({
-    lobbyMode,
-    steamUser,
-    activeNode,
-    telemetry,
-    presence,
-    universe,
-    progress,
-  }), [lobbyMode, steamUser, activeNode, telemetry, presence, universe, progress]);
-
-  const handleRouteOpen = () => {
-    if (!activeNode?.route) return;
-    setProgress((current) => ({ ...current, routeTrips: current.routeTrips + 1 }));
-    if (activeNode.external) {
-      window.open(activeNode.route, '_blank', 'noopener,noreferrer');
-    } else {
-      router.push(activeNode.route);
-    }
-  };
-
-  const highlightedTags = activeNode?.tags || ['blackhole', 'route shell', '3D anchor'];
-
-  const remotePilots = useMemo(() => (authoritativeState.players || []).filter((pilot) => pilot.id !== serverSession?.id), [authoritativeState.players, serverSession?.id]);
-  const projectiles = useMemo(() => authoritativeState.projectiles || [], [authoritativeState.projectiles]);
-  const simulationSeed = authoritativeState?.simulation?.seed || serverSession?.room || (process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main');
-  const simulationGravitySources = useMemo(() => buildGravitySourcesFromSeed(simulationSeed), [simulationSeed]);
-  const sessionMode = resolveClientSessionMode(lobbyMode, authoritativeState?.mode);
-  const ringAdjustments = authoritativeState?.ringAdjustments || { ringThreeSpinIntensity: 0, ringThreePulse: 0.12, intensity: 0 };
-
-  const latestSimulationFrameRef = useRef({
-    frameIndex: 0,
-    controlVector: [0, 0, 0],
-    dt: 1 / 60,
-    simulationSeed: process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main',
-    heartbeat: null,
-    runtimeStatus: SIM_RUNTIME_STATUS.ONLINE,
-    degradedReason: null,
-  });
-  const predictionHistoryRef = useRef([]);
 
   useEffect(() => {
-    const handleHudToggle = (event) => {
-      setHudVisible(Boolean(event.detail));
-    };
+    setCruising(false);
+    setNavigationCommand(null);
+    const requested = new URLSearchParams(window.location.search).get('room');
+    if (requested !== roomName && isValidRoomName(roomName)) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('room', roomName);
+      window.history.replaceState(null, '', url);
+    }
+  }, [roomName, lobbyMode]);
 
+  useEffect(() => {
+    const handleHudToggle = (event) => setHudVisible(Boolean(event.detail));
     window.addEventListener('hudToggle', handleHudToggle);
     return () => window.removeEventListener('hudToggle', handleHudToggle);
   }, []);
-
-  const showHud = useCallback(() => {
-    gameEngine.setHUDVisible(true);
-  }, []);
-
-  const handleCombatAction = useCallback(async (action) => {
-    if (lobbyMode !== 'hub' || !serverSession?.token) return;
-    try {
-      const response = await fetch('/api/multiplayer/action', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomName: serverSession.room, id: serverSession.id, token: serverSession.token, mode: SESSION_MODES.MULTI_PLAYER, action }),
-      });
-      const data = await response.json().catch(() => null);
-      if (response.ok && data?.state) {
-        setAuthoritativeState(data.state);
-        setServerStatus({ connected: true, label: data?.state?.durable ? 'Durable sync' : 'Authoritative sync', tick: data.tick || 0 });
-      }
-    } catch {}
-  }, [lobbyMode, serverSession]);
-
-  const handleSimulationFrame = useCallback((frame) => {
-    const normalizedFrame = {
-      frameIndex: Number.isFinite(frame?.frameIndex) ? frame.frameIndex : latestSimulationFrameRef.current.frameIndex,
-      controlVector: Array.isArray(frame?.controlVector) ? frame.controlVector : latestSimulationFrameRef.current.controlVector,
-      dt: Number.isFinite(frame?.dt) ? frame.dt : latestSimulationFrameRef.current.dt,
-      simulationSeed: frame?.simulationSeed || latestSimulationFrameRef.current.simulationSeed,
-      heartbeat: frame?.heartbeat || latestSimulationFrameRef.current.heartbeat || null,
-      runtimeStatus: frame?.runtimeStatus || latestSimulationFrameRef.current.runtimeStatus || SIM_RUNTIME_STATUS.ONLINE,
-      degradedReason: frame?.degradedReason || latestSimulationFrameRef.current.degradedReason || null,
-    };
-    latestSimulationFrameRef.current = normalizedFrame;
-    predictionHistoryRef.current = [...predictionHistoryRef.current.slice(-179), normalizedFrame];
-  }, []);
-
   useEffect(() => {
-    if (!telemetry?.quantum) return;
-    const now = Date.now();
-    if (now - lastPresenceBroadcast.current < 1200) return;
-    lastPresenceBroadcast.current = now;
-    updatePresence?.(telemetry);
-  }, [telemetry, updatePresence]);
-
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(''), 5500);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
   useEffect(() => {
-    let active = true;
-    let cancelled = false;
-
-    const connect = async () => {
-      if (lobbyMode !== 'hub') return;
-      if (serverSession?.token) return;
-
-      try {
-        const identity = resolveMultiplayerIdentity(steamUser, googleUser);
-        const response = await fetch('/api/multiplayer/connect', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identity, steamUser, roomName: process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main', mode: SESSION_MODES.MULTI_PLAYER }),
-        });
-        const data = await response.json().catch(() => null);
-        if (!active || cancelled || !response.ok || !data?.ok) return;
-        activeSessionTokenRef.current = data.token || null;
-        setServerSession({ room: data.room, token: data.token, id: data.player?.id, displayName: data.player?.displayName });
-        setServerStatus({ connected: true, label: data?.server?.durable ? 'Durable sync' : 'Authoritative sync', tick: data.server?.tick || 0 });
-      } catch {
-        if (!active || cancelled) return;
-        setServerStatus({ connected: false, label: 'Server unavailable', tick: 0 });
-      }
-    };
-
-    void connect();
-    return () => {
-      active = false;
-      cancelled = true;
-    };
-  }, [lobbyMode, steamUser, googleUser, setServerSession, setServerStatus]);
-
-  useEffect(() => {
-    const previousSession = previousServerSessionRef.current;
-    const previousToken = previousSession?.token;
-    const currentToken = serverSession?.token;
-
-    if (previousToken && previousToken !== currentToken) {
-      void disconnectMultiplayerSession(previousSession);
-    }
-
-    if (lobbyMode !== 'hub') {
-      if (currentToken) {
-        void disconnectMultiplayerSession(serverSession);
-      }
-      if (serverSession) {
-        setServerSession(null);
-      }
-      activeSessionTokenRef.current = null;
-      setAuthoritativeState({ authoritative: false, players: [], projectiles: [], world: { contestedNodes: [], combatHeat: 0, anomalyPhase: 0 }, playerCount: 0, mode: SESSION_MODES.SINGLE_PLAYER, modeTransition: { from: SESSION_MODES.MULTI_PLAYER, to: SESSION_MODES.SINGLE_PLAYER, changedAt: Date.now(), source: 'lobby' }, ringAdjustments: { ringThreeSpinIntensity: 0, ringThreePulse: 0.12, intensity: 0 } });
-      setServerStatus({ connected: false, label: 'Private universe isolated', tick: 0 });
-    } else if (currentToken) {
-      activeSessionTokenRef.current = currentToken;
-    }
-
-    previousServerSessionRef.current = serverSession;
-  }, [lobbyMode, serverSession, setAuthoritativeState, setServerSession, setServerStatus]);
-
-  useEffect(() => {
-    if (lobbyMode !== 'hub' || !serverSession?.token) return;
-    let cancelled = false;
-    let stopRealtime = () => {};
-    const tick = async () => {
-      try {
-        const snapshot = {
-          position: telemetry.position,
-          velocity: telemetry.velocity,
-          direction: telemetry.direction,
-          nearest: telemetry.nearest,
-          speed: telemetry.speed,
-          frameIndex: telemetry.frameIndex,
-          tick: telemetry.tick,
-          quantumSignature: telemetry.quantum?.signature,
-          firing: telemetry.firing,
-          frameIndex: Number.isFinite(latestSimulationFrameRef.current?.frameIndex) ? latestSimulationFrameRef.current.frameIndex : 0,
-          controlVector: Array.isArray(latestSimulationFrameRef.current?.controlVector) ? latestSimulationFrameRef.current.controlVector : [0, 0, 0],
-          dt: Number.isFinite(latestSimulationFrameRef.current?.dt) ? latestSimulationFrameRef.current.dt : 1 / 60,
-          simulationSeed: latestSimulationFrameRef.current?.simulationSeed || simulationSeed || process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main',
-          runtime: telemetry.runtime || { status: SIM_RUNTIME_STATUS.ONLINE, degradedReason: null },
-          continuityHeartbeat: telemetry.continuityHeartbeat || latestSimulationFrameRef.current?.heartbeat || null,
-          continuityHealthSnapshot: telemetry.continuityHeartbeat?.continuityHealthSnapshot || null,
-        };
-        const response = await fetch('/api/multiplayer/state', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${serverSession.token}`,
-            'x-multiplayer-token': serverSession.token,
-          },
-          body: JSON.stringify({ roomName: serverSession.room, id: serverSession.id, token: serverSession.token, mode: SESSION_MODES.MULTI_PLAYER, snapshot }),
-        });
-        const data = await response.json().catch(() => null);
-        if (cancelled) return;
-        if (response.ok && data?.ok && data?.state) {
-          setAuthoritativeState(data.state);
-          setServerStatus({ connected: true, label: data?.state?.durable ? 'Durable sync' : 'Authoritative sync', tick: data.tick || 0 });
-          const authoritativeSelf = (data?.state?.players || []).find((pilot) => pilot.id === serverSession.id);
-          if (authoritativeSelf?.position && authoritativeSelf?.velocity) {
-            const error = computePositionError(telemetry.position, authoritativeSelf.position);
-            if (error > 1.2) {
-              const replayInputs = predictionHistoryRef.current
-                .filter((entry) => Number(entry.frameIndex) > Number(authoritativeSelf.frameIndex || 0))
-                .slice(-48);
-              const replayed = simRuntimeClient.replayAuthoritativeState({
-                frames: replayInputs,
-                authoritativePosition: authoritativeSelf.position,
-                authoritativeVelocity: authoritativeSelf.velocity,
-                simulationSeed,
-                gravitySources: simulationGravitySources,
-              });
-              setCorrectionState({ position: replayed.position, velocity: replayed.velocity });
-            } else {
-              setCorrectionState({ position: authoritativeSelf.position, velocity: authoritativeSelf.velocity });
-            }
-            predictionHistoryRef.current = predictionHistoryRef.current
-              .filter((entry) => Number(entry.frameIndex) > Number(authoritativeSelf.frameIndex || 0))
-              .slice(-120);
-          }
-        } else if (response.status === 401) {
-          setServerSession(null);
-          setServerStatus({ connected: false, label: 'Rejoin required', tick: 0 });
-        }
-      } catch {
-        if (!cancelled) setServerStatus((current) => ({ ...current, connected: false, label: 'Desynced' }));
-      }
-    };
-    tick();
-    stopRealtime = subscribeToMultiplayerRoom({ roomName: serverSession.room, onSignal: () => { void tick(); } });
-    const id = window.setInterval(tick, serverStatus.label === 'Durable sync' ? 1500 : 300);
-    return () => {
-      cancelled = true;
-      stopRealtime();
-      window.clearInterval(id);
-    };
-  }, [lobbyMode, serverSession, telemetry, serverStatus.label, setAuthoritativeState, setServerSession, setServerStatus, simRuntimeClient, simulationSeed, simulationGravitySources]);
-
-  useEffect(() => {
-    if (lobbyMode !== 'hub' || !serverSession?.room) {
-      setValidatorSummary(null);
-      return;
-    }
-
-    let cancelled = false;
-    let intervalId = null;
-    const refreshValidator = async () => {
-      try {
-        const params = new URLSearchParams({
-          roomName: serverSession.room,
-          strictMode: 'true',
-          minCoverage: '0.9',
-          limit: '300',
-        });
-        const response = await fetch(`/api/multiplayer/symmetry-validator?${params.toString()}`, { cache: 'no-store' });
-        const data = await response.json().catch(() => null);
-        if (cancelled || !response.ok || !data?.ok) return;
-        setValidatorSummary({
-          checked: data?.checked || 0,
-          confidence: data?.report?.confidence || 'low',
-          driftCount: data?.report?.summary?.driftCount || 0,
-          gapCount: data?.report?.summary?.gapCount || 0,
-          coverage: data?.report?.summary?.coverage || 0,
-          strictCoverageFailed: Boolean(data?.report?.summary?.strictCoverageFailed),
-        });
-      } catch {}
-    };
-
-    void refreshValidator();
-    intervalId = window.setInterval(() => { void refreshValidator(); }, 12000);
-    return () => {
-      cancelled = true;
-      if (intervalId) window.clearInterval(intervalId);
-    };
-  }, [lobbyMode, serverSession?.room]);
-
-
-  useEffect(() => {
-    const onUnload = () => {
-      if (lobbyMode !== 'hub' || !serverSession?.token) return;
-      void disconnectMultiplayerSession(serverSession);
-    };
-    window.addEventListener('beforeunload', onUnload);
-    return () => {
-      window.removeEventListener('beforeunload', onUnload);
-    };
-  }, [lobbyMode, serverSession]);
-
-  useEffect(() => () => {
-    resetSessionState();
-  }, [resetSessionState]);
-
-  const handlePrayerSeed = async () => {
-    const body = window.prompt('Plant a private Prayer Seed into the Solar System vault:', activeNode?.label ? `${activeNode.label} / ` : '');
-    if (!body || !body.trim()) return;
-
-    setPrayerSeedState({ status: 'Planting Prayer Seed...', ok: true });
-
-    try {
-      const response = await fetch('/api/universe/prayer-seeds', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ body, solarSystemKey: 'solar_system', tags: [activeNode?.key || 'deep_blackhole', lobbyMode], lobbyMode }),
-      });
-
-      const data = await response.json().catch(() => null);
-
-      if (!response.ok || !data?.ok) {
-        setPrayerSeedState({
-          status: data?.error || data?.message || 'Prayer Seed planting is unavailable right now.',
-          ok: false,
-        });
-        return;
-      }
-
-      setPrayerSeedState({ status: data?.message || 'Prayer Seed planted.', ok: true });
-      setProgress((current) => ({ ...current, seedCount: current.seedCount + 1 }));
-      await refresh?.();
-    } catch {
-      setPrayerSeedState({ status: 'Prayer Seed request failed. Try again in a moment.', ok: false });
-    }
-  };
+    if (!destination) return;
+    const distance = distanceBetween(telemetry.position, destination.position);
+    if (distance < (destination.approachRadius || 5) + 1) markVisited(destination.key);
+  }, [destination, telemetry.position, markVisited]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1447,514 +1063,32 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
     setProgress((current) => ({ ...current, multiplayerJumped: true }));
   }, [lobbyMode, progress.multiplayerJumped, progress.visitedNodes]);
 
-  const singularityEnvelope = useMemo(() => simRuntimeClient.resolveSingularitySnapshot({
-    gravity: telemetry.gravity,
-    horizonFactor: telemetry.horizonFactor,
-    coherencePercent: telemetry.quantum?.coherencePercent || 50,
-    entropyPercent: telemetry.quantum?.entropyPercent || 50,
-    spinPolarization: telemetry.quantum?.spinPolarization || 0,
-    spinStabilityPercent: telemetry.quantum?.spinStabilityPercent || 50,
-    spinHalfProjection: telemetry.quantum?.spinHalfProjection || 0,
-    spinQuarterProjection: telemetry.quantum?.spinQuarterProjection || 0,
-    speed: telemetry.speed,
-    epochPhase: (telemetry.epoch?.phasePercent ?? epochSummary.phasePercent) / 100,
-    nearestKey: telemetry.nearest || activeNode?.key || 'deep_blackhole',
-    simulationSeed,
-    frameIndex: telemetry.frameIndex || 0,
-    position: telemetry.position,
-    velocity: telemetry.velocity,
-    controlVector: telemetry.controlVector,
-    dt: telemetry.dt,
-  }), [simRuntimeClient, telemetry, activeNode, epochSummary.phasePercent, simulationSeed]);
-  const singularityState = singularityEnvelope.singularity;
 
-  const dynamicState = useMemo(() => buildDynamicEngineState({ telemetry, flightConfig, operations, singularity: singularityState, entropic: entropicEconomy }), [telemetry, flightConfig, operations, singularityState, entropicEconomy]);
-
-  const handleMineEntropy = () => {
-    if (lobbyMode !== 'hub' || activeNode?.key !== 'entropic_node') return;
-    const extractionBase = activeNode?.priority || 4;
-    const quantumFactor = Number(telemetry?.quantum?.entropyPercent || 50) / 100;
-    const singularityBonus = singularityState.resolvedWindow * 2.2;
-    const extracted = Math.max(1, Math.round(extractionBase * 0.45 + quantumFactor * 3 + singularityBonus));
-    setProgress((current) => ({
-      ...current,
-      entropyMined: current.entropyMined + extracted,
-      visitedNodes: current.visitedNodes.includes('entropic_node') ? current.visitedNodes : [...current.visitedNodes, 'entropic_node'],
-    }));
-  };
-
-  const handleResolveEntropy = () => {
-    if (activeNode?.key !== 'entropic_node') return;
-    const unresolved = Math.max(0, Number(progress.entropyMined || 0) - Number(progress.entropyResolved || 0));
-    if (!unresolved) return;
-    const routeIntegrity = computeEntropicIntegrity({
-      coherence: Number(telemetry?.quantum?.coherencePercent || 50) / 100,
-      horizonFactor: telemetry.horizonFactor,
-      routeAssist: flightConfig.routeAssist,
-      dampers: flightConfig.inertialDampers,
-      boostActive: Boolean(telemetry.boosting),
-    });
-    const settlement = resolveEntropicYield({
-      entropyUnits: unresolved,
-      coherencePercent: telemetry?.quantum?.coherencePercent || 50,
-      entropyPercent: telemetry?.quantum?.entropyPercent || 50,
-      horizonFactor: telemetry.horizonFactor,
-      routeIntegrity,
-      singularityContainment: singularityState.containment,
-      engineScale: 0.92 + dynamicState.dynamicBalance * 0.3,
-    });
-
-    setProgress((current) => ({
-      ...current,
-      entropyResolved: current.entropyResolved + unresolved,
-      credits: Number((current.credits + settlement.quote).toFixed(2)),
-      visitedNodes: current.visitedNodes.includes('entropic_node') ? current.visitedNodes : [...current.visitedNodes, 'entropic_node'],
-    }));
-  };
-
-  const perspective = steamUser?.steamid
-    ? { role: lobbyMode === 'hub' ? 'Player-linked observer' : 'Private player layer', note: lobbyMode === 'hub' ? 'Steam session linked. Shared observance and pilot state remain synchronized.' : 'Private Steam world active with isolated route ownership and synchronized pilot state.' }
-    : { role: 'Observer layer', note: 'Guest observer mode stays synchronized across the HUD and world while route flight remains available.' };
-  const observerStatus = {
-    mode: lobbyMode === 'hub' ? 'Shared Hub' : 'Private Universe',
-    identity: steamUser?.steamid ? 'Steam' : googleUser?.sub ? 'Google' : 'Guest',
-    pilotCount: Math.max(authoritativeState.playerCount || 0, presence.length || 0, identity?.id ? 1 : 0),
-  };
-  const runtimeDisplay = describeRuntimeStatus(telemetry.runtime);
-
-  const layerDefinitions = [
-    {
-      kicker: 'Layer 01',
-      title: 'Cinematic background',
-      detail: 'Animated universe canvas, starfields, route ribbons, and blackhole motion remain behind the interface shell.',
-    },
-    {
-      kicker: 'Layer 02',
-      title: 'Backdrop veil',
-      detail: 'Gradient and cosmic image veil separate the playable scene from HUD glass so the background stays readable.',
-    },
-    {
-      kicker: 'Layer 03',
-      title: 'System cards',
-      detail: 'Intro, route, observer, and telemetry cards stay pinned above the scene with stable click priority.',
-    },
-    {
-      kicker: 'Layer 04',
-      title: 'Live controls',
-      detail: 'Steam controls, status strip, lobby mode, and the flight pad sit above all passive panels.',
-    },
-    {
-      kicker: 'Layer 05',
-      title: 'Pilot focus',
-      detail: `Active node: ${activeNode?.label || 'Deep Space Blackhole'} · ${activeNode?.kind || 'blackhole'} route emphasis`,
-    },
-  ];
 
   return (
-    <div className="stable-system-page polished-shell cinematic-system-page">
-      <div className="stable-system-backdrop" />
-      <div className="stable-system-veil" />
-      {hudVisible ? <label className="simulation-visual-settings">
-        Visuals
-        <select aria-label="Graphics quality" value={graphicsQuality} onChange={(event) => setGraphicsQuality(event.target.value)}>
-          <option value="auto">Auto</option>
-          <option value="high">High</option>
-          <option value="performance">Performance</option>
-        </select>
-      </label> : null}
-
-      {!hudVisible ? (
-        <button
-          type="button"
-          className="stable-show-hud-button"
-          onClick={showHud}
-          aria-label="Show HUD"
-        >
-          Show HUD
-        </button>
-      ) : null}
-
+    <div className="stable-system-page polished-shell cinematic-system-page exploration-world">
       {hudVisible ? <div className="stable-system-hud">
-        <button type="button" className="stable-hud-chrome" onClick={() => gameEngine.setHUDVisible(false)}>Hide HUD · H</button>
-        <aside className="left-ops-rail">
-          <OperationsDirectorPanel operations={operations} lobbyMode={lobbyMode} validationSummary={validatorSummary} />
-          <AccountProgressPanel profile={{ ...accountProfile, progression: accountProgression, progress }} lobbyMode={lobbyMode} />
-          <EntropyMissionPanel
-            lobbyMode={lobbyMode}
-            activeNode={activeNode}
-            progress={progress}
-            operations={operations}
-            onMineEntropy={handleMineEntropy}
-            onResolveEntropy={handleResolveEntropy}
-          />
-        </aside>
+        <ExplorationHud telemetry={telemetry} destinations={destinations} destination={destination} onSelect={handleSelect}
+          onNavigate={() => navigate('cruise')} onFace={() => navigate('face')} cruising={cruising} onCancelCruise={cancelCruise}
+          visited={progress.visitedNodes} lobbyMode={lobbyMode} onModeChange={onModeChange} roomName={roomName} onRoomChange={setRoomName}
+          pilots={authoritativeState.players || []} selfId={serverSession?.id} serverStatus={serverStatus}
+          graphicsQuality={graphicsQuality} onGraphicsChange={setGraphicsQuality} dampers={flightConfig.inertialDampers}
+          onDampersChange={() => setFlightConfig((current) => ({ ...current, inertialDampers: !current.inertialDampers }))}
+          onRecenter={() => setFlightResetTick((tick) => tick + 1)} notice={notice} onPanelChange={setPanelOpen} />
+      </div> : <button type="button" className="stable-show-hud-button" onClick={() => gameEngine.setHUDVisible(true)}>Show HUD · H</button>}
 
-        <section className="stable-system-right-dock sim-zone-right-controls" aria-label="System controls and telemetry dock">
-          {UI_VISUAL_DEBUG ? <div className="content-card stable-card intro stable-card-layer primary-layer">
-          <p className="eyebrow">Stability layer</p>
-          <h3>{lobbyMode === 'hub' ? 'Shared Hub shell' : 'Private Universe shell'}</h3>
-          <p className="muted">
-            Built for focus view: fewer overlays, clearer object visibility, and direct access to full diagnostics when needed.
-          </p>
-          <div className="focus-meta">
-            <span>{lobbyMode === 'hub' ? 'Shared route layer · discrepant hub star online' : privateWorldAsset?.privateScope || getPrivateWorldKey(steamUser?.steamid)}</span>
-            <span>{steamUser?.personaname || googleUser?.name || identity.displayName || 'Guest'}</span>
-          </div>
-          <div className="stable-chip-row">
-            <span>Gravity flight</span>
-            <span>{steamUser?.steamid ? 'Steam-linked shell' : googleUser?.sub ? 'Google-linked shell' : 'Guest shell sync'}</span>
-            <span>{`${HYPERSPACE_SIGNATURE_PREFIX} state-space`}</span>
-            <span>{universe?.privacy?.privacyTier || 'guest-public'}</span>
-            <span>{lobbyMode === 'hub' ? 'Hub star sync' : `${privateWorldAsset?.replicaSystems?.length || 1}x epoch-rolling private systems`}</span>
-            <span>Epoch {(privateWorldAsset?.epochWindow ?? epochSummary.unix)}</span>
-            <span>Ops {operations.completionPercent}%</span>
-          </div>
-          <div className="stable-chip-row alt">
-            <button className={`stable-route-button compact ${presentationMode ? 'is-live' : ''}`} onClick={() => setPresentationMode((current) => !current)}>
-              {presentationMode ? 'Presentation mode on' : 'Presentation mode off'}
-            </button>
-            <span>{presentationMode ? 'Condensed HUD + cleaner scene' : 'Full HUD + full telemetry cards'}</span>
-          </div>
-        </div> : null}
-
-          {UI_VISUAL_DEBUG ? <div className="content-card stable-card focus stable-card-layer route-layer">
-          <p className="eyebrow">Route focus</p>
-          <h3>{activeNode?.label || 'Deep Space Blackhole'}</h3>
-          <p className="muted">{activeNode?.description || 'Primary anchor route.'}</p>
-          <div className="focus-meta">
-            <span>{activeNode?.address || 'Primary anchor'}</span>
-            <span>{activeNode?.kind || 'blackhole'}</span>
-          </div>
-          <div className="stable-chip-row alt">
-            {highlightedTags.map((tag) => (
-              <span key={tag}>{tag}</span>
-            ))}
-          </div>
-          <div className="stable-chip-row alt">
-            <span>Epoch {privateWorldAsset?.unixEpoch ?? epochSummary.unix}</span>
-            <span>Dyson {epochSummary.dysonPercent}%</span>
-            <span>Phase {epochSummary.phasePercent}%</span>
-          </div>
-          {activeNode?.route ? (
-            <button className="stable-route-button" onClick={handleRouteOpen}>
-              Travel to route
-            </button>
-          ) : null}
-          {activeNode?.key === 'entropic_node' ? <p className="stable-flight-note">Mine this seam after switching to the multiplayer hub, then settle unresolved entropy locally into {ENTROPIC_CURRENCY.shortLabel} without leaving the simulation.</p> : null}
-          {activeNode?.key === 'ss_dock' ? <p className="stable-flight-note">Dock here in proximity to the Synaptics.Systems Dyson Sphere before and after long-range sorties.</p> : null}
-          {activeNode?.key === 'csis' ? <p className="stable-flight-note">Canada Strings of Intelligence Dispersal ring 1 drives intelligence dispersal outputs, ring 2 handles ingress/egress server and external system database routing, and ring 3 regenerates entropy for star singularity state. Spin integers 1/2, 1/4, and 3/4 stay active at an astrological quantum tier with bidirectional API links. This sphere is sealed to players and remains a system-owned defense anchor. Linked anchors: {graph.csisState?.linkedNodeKeys?.length || 0} · quarantined relays: {graph.csisState?.quarantinedNodeKeys?.length || 0}.</p> : null}
-        </div> : null}
-
-        {showVisualDebugCards && privateWorldAsset ? (
-          <div className="content-card stable-card observer stable-card-layer observer-layer">
-            <p className="eyebrow">Private map asset</p>
-            <h3>{privateWorldAsset.label}</h3>
-            <p className="muted">Singleplayer fabric stays private to each account world while multiplayer remains shared for flight and combat. The nested blackhole and the four server-linked private blackholes stay inside the map mesh, and the independent Central.Star replica systems roll with Unix epoch timing.</p>
-            <div className="focus-meta">
-              <span>{privateWorldAsset.privateScope}</span>
-              <span>Anchor {privateWorldAsset.anchorToken}</span>
-            </div>
-            <div className="stable-chip-row alt">
-              <span>Steam-linked private mesh</span>
-              <span>Epoch {privateWorldAsset.unixEpoch}</span>
-              <span>Window {privateWorldAsset.epochWindow}</span>
-              <span>Nested blackhole core</span>
-              <span>{privateWorldAsset.serverBlackholeKeys?.length || 0} server blackholes</span>
-            </div>
-          </div>
-        ) : null}
-
-        <div className="content-card stable-card observer observer-summary-card stable-card-layer observer-layer">
-          <button
-            type="button"
-            className="panel-minimize-toggle"
-            onClick={() => setObserverDockOpen((value) => !value)}
-            aria-expanded={observerDockOpen}
-            aria-label={observerDockOpen ? 'Collapse observer and pilot details' : 'Expand observer and pilot details'}
-          >
-            <div>
-              <p className="eyebrow">Observer / Pilot</p>
-              <h3>{perspective.role}</h3>
-            </div>
-            <span className="panel-minimize-indicator" aria-hidden="true">{observerDockOpen ? '−' : '+'}</span>
-          </button>
-          <div className="stable-chip-row alt observer-status-pill-row" aria-label="Current observer and pilot status">
-            <span>Mode {observerStatus.mode}</span>
-            <span>Pilot {observerStatus.identity}</span>
-            <span>Pilots {observerStatus.pilotCount}</span>
-          </div>
-          {observerDockOpen ? (
-            <>
-              <p className="muted">{perspective.note}</p>
-              <div className="focus-meta">
-                <span>{steamUser?.personaname || googleUser?.name || 'Guest observer'}</span>
-                <span>{lobbyMode === 'hub' ? 'Shared world visibility' : 'Private world visibility'}</span>
-              </div>
-              <div className="stable-chip-row alt">
-                <span>Inspect</span>
-                <span>Fly</span>
-                <span>Overlay-safe</span>
-                <span>{observerStatus.pilotCount} pilots</span>
-              </div>
-              <p className="stable-flight-note">
-                Desktop: {FLIGHT_CONTROL_COPY.desktopSummary} + {FLIGHT_CONTROL_COPY.verticalSummary}. Mobile: use the {FLIGHT_CONTROL_COPY.touchSummary}.
-              </p>
-              {lobbyMode === 'private' ? (
-                <button className="stable-route-button" onClick={handlePrayerSeed}>
-                  Plant Prayer Seed
-                </button>
-              ) : null}
-              {prayerSeedState.status ? (
-                <p className={`report-status ${prayerSeedState.ok ? 'success' : 'error'}`}>{prayerSeedState.status}</p>
-              ) : null}
-            </>
-          ) : null}
-        </div>
-
-
-          {showVisualDebugCards ? <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
-          <p className="eyebrow">Private universe matrix</p>
-          <h3>{universe?.privacy?.observanceScope || 'hub:public'}</h3>
-          <p className="muted">Prayer Seeds stay bound to the private universe vault while the Solar System remains anchored to Unix epoch timing and Dyson-sphere relativity.</p>
-          <div className="focus-meta">
-            <span>{universe?.privacy?.storageKey || 'vault:guest'}</span>
-            <span>{universe?.privacy?.multiplayerChannel || 'mp:public'}</span>
-          </div>
-          <div className="stable-chip-row alt">
-            <span>{universe?.privacy?.privacyTier || 'guest-public'}</span>
-            <span>Seeds {universe?.prayerSeeds?.total ?? 0}</span>
-            <span>Pilots {authoritativeState.playerCount || presence.length}</span>
-          </div>
-        </div> : null}
-
-
-        {showVisualDebugCards ? <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
-          <p className="eyebrow">Canada Strings of Intelligence Dispersal lattice state</p>
-          <h3>{(graph.csisState?.ringOneLabel || 'Intelligence dispersal outputs')} + {(graph.csisState?.ringTwoLabel || 'Ingress / egress + database routing')} + {(graph.csisState?.ringThreeLabel || 'Entropy regeneration / singularity state')}</h3>
-          <p className="muted">The Canada Strings of Intelligence Dispersal tri-ring lattice maps to ring 1 intelligence dispersal outputs, ring 2 ingress/egress server plus external system database routing, and ring 3 entropy regeneration for star singularity state. Spin integers {graph.csisState?.spinProfile?.join(' · ') || '1/2 · 1/4 · 3/4'} run in an astrological quantum tier with bidirectional API exchange while non-foundation relays stay quarantined inside game space.</p>
-          <div className="focus-meta">
-            <span>Linked anchors {graph.csisState?.linkedNodeKeys?.length || 0}</span>
-            <span>Quarantined relays {graph.csisState?.quarantinedNodeKeys?.length || 0}</span>
-          </div>
-          <div className="stable-chip-row alt">
-            <span>Pulse {Math.round((graph.csisState?.linkagePulse || 0) * 100)}%</span>
-            <span>Sweep {Math.round((((graph.csisState?.firewallSweep || 0) / (Math.PI * 2)) % 1) * 100)}%</span>
-            <span>API flow {graph.csisState?.apiFlow || 'bidirectional'}</span>
-            <span>Player access {graph.csisState?.playerAccess || 'sealed'}</span>
-          </div>
-        </div> : null}
-
-
-        {showVisualDebugCards ? <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
-          <p className="eyebrow">Engine stack / singularity equation</p>
-          <h3>{singularityState.stateLabel}</h3>
-          <p className="muted">The multiplayer realm now resolves a stellar singularity window before entropy is stabilized. The engine stack blends mathematical, physical, entropic, quantum, singularity, and dynamic states into one route outcome.</p>
-          <div className="focus-meta">
-            <span>{singularityState.equation}</span>
-            <span>{ENTROPIC_CURRENCY.symbol} = ΔE × C × S × (1 - H) × R</span>
-          </div>
-          <div className="stable-chip-row alt">
-            <span>Containment {Math.round(singularityState.containment * 100)}%</span>
-            <span>Window {Math.round(singularityState.resolvedWindow * 100)}%</span>
-            <span>Engine load {Math.round(dynamicState.engineLoad * 100)}%</span>
-          </div>
-          <div className="stable-chip-row alt">
-            <span>Route stability {Math.round(dynamicState.routeStability * 100)}%</span>
-            <span>Mission pressure {Math.round(dynamicState.missionPressure * 100)}%</span>
-            <span>Dynamic balance {Math.round(dynamicState.dynamicBalance * 100)}%</span>
-          </div>
-          <p className="stable-flight-note">Resolved scalar balance: {entropicEconomy.scalarCredits.toFixed(2)} {ENTROPIC_CURRENCY.shortLabel} · unresolved cargo {entropicEconomy.unresolved}</p>
-        </div> : null}
-
-        {showVisualDebugCards ? <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
-          <p className="eyebrow">{`${HYPERSPACE_SIGNATURE_PREFIX} / Physics telemetry`}</p>
-          <h3>{telemetry.quantum.signature}</h3>
-          <p className="muted">{`Mathematical flight now resolves a live singularity window using RK4 integration, inverse-square gravity, event-horizon stress, entropic containment, and a ${HYPERSPACE_DIMENSION_COUNT}-dimensional state-space that reacts to your motion and the nearest anchor.`}</p>
-          <div className="focus-meta">
-            <span>Speed {telemetry.speed}</span>
-            <span>Gravity {telemetry.gravity}</span>
-          </div>
-          <div className="stable-chip-row alt">
-            <span>Coherence {telemetry.quantum.coherencePercent}%</span>
-            <span>Entropy {telemetry.quantum.entropyPercent}%</span>
-            <span>{telemetry.quantum.dominantDimension}</span>
-          </div>
-          <div className="stable-chip-row alt" aria-label="Simulation runtime telemetry">
-            <span>{runtimeDisplay.label}</span>
-            <span>{runtimeDisplay.detail}</span>
-          </div>
-          <p className="stable-flight-note">
-            Nearest anchor: {telemetry.nearest || 'deep-space drift'} · Δr {telemetry.nearestDistance} · vₑ {telemetry.escapeVelocity}
-          </p>
-          <div className="stable-chip-row alt">
-            <span>Epoch {telemetry.epoch?.unix ?? epochSummary.unix}</span>
-            <span>Dyson {telemetry.epoch?.dysonPercent ?? epochSummary.dysonPercent}%</span>
-            <span>Seeds {universe?.prayerSeeds?.total ?? 0}</span>
-          </div>
-        </div> : null}
-
-          {showVisualDebugCards ? <div className="content-card stable-card observer quantum-telemetry-card stable-card-layer telemetry-layer">
-        <p className="eyebrow">Authoritative multiplayer state</p>
-        <h3>{serverStatus.label}</h3>
-        <p className="muted">The multiplayer hub now maintains server-side player transforms, projectile state, contested nodes, and combat heat so the shared multiverse is more than just presence sync.</p>
-        <div className="focus-meta">
-          <span>Room {serverSession?.room || (process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main')}</span>
-          <span>Tick {serverStatus.tick}</span>
-        </div>
-        <div className="stable-chip-row alt">
-          <span>Pilots {authoritativeState.playerCount || 0}</span>
-          <span>Projectiles {projectiles.length}</span>
-          <span>Combat heat {authoritativeState.world?.combatHeat || 0}%</span>
-        </div>
-        <div className="stable-chip-row alt">
-          <span>Contested {(authoritativeState.world?.contestedNodes || []).map((node) => node.key).join(' · ') || 'none'}</span>
-          <span>Anomaly {Math.round((authoritativeState.world?.anomalyPhase || 0) * 100)}%</span>
-        </div>
-      </div> : null}
-        </section>
-
-        <div className="content-card stable-card observer flight-command-card stable-card-layer telemetry-layer sim-zone-bottom-command">
-        <button
-          type="button"
-          className="panel-minimize-toggle"
-          onClick={toggleFlightDeckOpen}
-          aria-expanded={flightDeckOpen}
-          aria-label={flightDeckOpen ? 'Minimize flight command deck panel' : 'Expand flight command deck panel'}
-        >
-          <div>
-            <p className="eyebrow">Flight command deck</p>
-            <h3>Flight-command deck interface</h3>
-            <span className="panel-toggle-summary">
-              <strong>{lobbyMode === 'hub' ? 'Shared Hub' : 'Private Universe'} · {telemetry.speed}</strong>
-              <small>{telemetry.nearest || 'Deep-space drift'} · {authoritativeState.playerCount || presence.length} pilots · {flightConfig.routeAssist ? 'Assist on' : 'Assist off'}</small>
-            </span>
-          </div>
-          <span className="panel-minimize-indicator" aria-hidden="true">{flightDeckOpen ? '−' : '+'}</span>
-        </button>
-        {flightDeckOpen ? (
-          <>
-            <p className="muted">
-              Free-roam flight now starts immediately with the panel minimized, nose-aligned controls, grouped tuning, and live readability for multiplayer and private missions.
-            </p>
-            <div className="flight-command-stat-grid">
-              <article>
-                <small>Current speed</small>
-                <strong>{telemetry.speed}</strong>
-              </article>
-              <article>
-                <small>Nearest anchor</small>
-                <strong>{telemetry.nearest || 'deep-space drift'}</strong>
-              </article>
-              <article>
-                <small>Position vector</small>
-                <strong>{telemetry.position.map((value) => value.toFixed ? value.toFixed(1) : value).join(' / ')}</strong>
-              </article>
-            </div>
-            <div className="stable-chip-row alt">
-              <span>Math engine live</span>
-              <span>Physics engine live</span>
-              <span>Entropic engine live</span>
-              <span>Quantum engine live</span>
-              <span>Singularity engine live</span>
-              <span>Dynamic engine live</span>
-              <span>{runtimeDisplay.label}</span>
-            </div>
-            <div className="stable-chip-row alt flight-command-toggle-row">
-              <button className={`stable-route-button compact ${flightConfig.inertialDampers ? 'is-live' : ''}`} onClick={() => setFlightConfig((current) => ({ ...current, inertialDampers: !current.inertialDampers }))}>
-                {flightConfig.inertialDampers ? 'Dampers online' : 'Dampers offline'}
-              </button>
-              <button className={`stable-route-button compact ${flightConfig.routeAssist ? 'is-live' : ''}`} onClick={() => setFlightConfig((current) => ({ ...current, routeAssist: !current.routeAssist }))}>
-                {flightConfig.routeAssist ? 'Route assist on' : 'Route assist off'}
-              </button>
-            </div>
-            <div className="stable-chip-row alt flight-command-toggle-row">
-              <button className="stable-route-button compact" onClick={() => setFlightConfig(FLIGHT_PRESETS.assisted)}>
-                Assisted preset
-              </button>
-              <button className="stable-route-button compact" onClick={() => setFlightConfig(FLIGHT_PRESETS.freeFlight)}>
-                Free-flight preset
-              </button>
-              <button className="stable-route-button compact" onClick={() => setFlightResetTick((tick) => tick + 1)}>
-                Recenter view
-              </button>
-            </div>
-            <div className="flight-slider-grid">
-              <label>
-                <span>Thrust bias</span>
-                <input type="range" min="0.65" max="1.8" step="0.05" value={flightConfig.thrustScale} onChange={(event) => setFlightConfig((current) => ({ ...current, thrustScale: Number(event.target.value) }))} />
-              </label>
-              <label>
-                <span>Chase zoom</span>
-                <input type="range" min="0.8" max="1.4" step="0.05" value={flightConfig.chaseZoom} onChange={(event) => setFlightConfig((current) => ({ ...current, chaseZoom: Number(event.target.value) }))} />
-              </label>
-            </div>
-            <p className="stable-flight-note">
-              {FLIGHT_CONTROL_COPY.fullSummary}
-            </p>
-            <div className="free-flight-control-grid">
-              <article><strong>Move</strong><span>W/S forward-back along the ship nose · A/D strafe · Space/R rise · Shift/F descend</span></article>
-              <article><strong>Look</strong><span>Drag the scene to look around. Click the scene after using a control to resume keyboard flight. Free-flight thrust, camera, and hull attitude follow the ship nose.</span></article>
-              <article><strong>Boost</strong><span>Hold Ctrl for high-thrust travel through the hub routes.</span></article>
-            </div>
-            <div className="stable-chip-row alt">
-              <button className="stable-route-button compact" onClick={() => handleCombatAction({ type: 'fire' })} disabled={lobbyMode !== 'hub' || !serverSession?.token}>
-                Fire pulse
-              </button>
-              <span>{lobbyMode === 'hub' ? 'Shared combat lane' : 'Combat disabled in private world'}</span>
-            </div>
-          </>
-        ) : null}
-        </div>
-      </div> : null}
-
-      <div className="stable-world-canvas polished-canvas cinematic-polished-canvas sim-zone-center-canvas" aria-label="Center simulation canvas">
+      <div className="stable-world-canvas polished-canvas cinematic-polished-canvas sim-zone-center-canvas" aria-label="Explorable universe">
         <Canvas camera={cameraConfig} dpr={graphicsProfile.dpr} gl={SIM_RENDERER_OPTIONS}>
-          <StableSceneContent
-            simRuntimeClient={simRuntimeClient}
-            graph={graph}
-            displayNodes={displayNodes}
-            onSelect={handleSelect}
-            selectedKey={activeNode?.key}
-            onAutoFocus={handleAutoFocus}
-            touchInput={touchInput}
-            deviceTier={deviceTier}
-            graphicsProfile={graphicsProfile}
-            authenticated={Boolean(steamUser?.steamid || googleUser?.sub)}
-            onTelemetryChange={setTelemetry}
-            onCombatAction={handleCombatAction}
-            flightConfig={flightConfig}
-            remotePilots={remotePilots}
-            projectiles={projectiles}
-            presentationMode={presentationMode}
-            multiplayerMode={lobbyMode === 'hub'}
-            simulationSeed={simulationSeed}
-            simulationGravitySources={simulationGravitySources}
-            resetTick={flightResetTick}
-            onSimulationFrame={handleSimulationFrame}
-            correctionState={correctionState}
-            sessionMode={sessionMode}
-            ringAdjustments={ringAdjustments}
-          />
+          <StableSceneContent simRuntimeClient={simRuntimeClient} graph={graph} displayNodes={displayNodes} onSelect={handleSelect}
+            selectedKey={destination?.key} onTelemetryChange={handleTelemetry} touchInput={touchInput} deviceTier={deviceTier}
+            graphicsProfile={graphicsProfile} authenticated={Boolean(identity.authenticated)} flightConfig={flightConfig} remotePilots={remotePilots}
+            presentationMode multiplayerMode={lobbyMode === 'hub'} simulationSeed={roomName} simulationGravitySources={simulationGravitySources}
+            resetTick={flightResetTick} onSimulationFrame={handleSimulationFrame} correctionState={correctionState}
+            sessionMode={lobbyMode === 'hub' ? SESSION_MODES.MULTI_PLAYER : SESSION_MODES.SINGLE_PLAYER} ringAdjustments={authoritativeState.ringAdjustments}
+            navigationCommand={navigationCommand} cruising={cruising} onManualControl={cancelCruise} onArrival={arrive} destination={destination} />
         </Canvas>
       </div>
-
-      {hudVisible && showVisualDebugCards ? <div className="stable-layer-dock">
-        <div className="stable-layer-dock-head">
-          <strong>System object layering</strong>
-          <span className="eyebrow">Defined render stack</span>
-        </div>
-        <div className="stable-layer-grid">
-          {layerDefinitions.map((item) => (
-            <article className="stable-layer-pill" key={item.title}>
-              <span>{item.kicker}</span>
-              <strong>{item.title}</strong>
-              <small>{item.detail}</small>
-            </article>
-          ))}
-        </div>
-      </div> : null}
-
-      {hudVisible && deviceTier.isMobile ? <TouchFlightPad onInputChange={setTouchInput} /> : null}
+      {hudVisible && deviceTier.isMobile && !panelOpen ? <TouchFlightPad onInputChange={setTouchInput} /> : null}
     </div>
   );
 }
