@@ -67,7 +67,7 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
               </button>)}
               {!visibleDestinations.length ? <p className="exploration-help">No destinations match. Try another name.</p> : null}
             </div>
-            {destination ? <div className="exploration-selection"><h3>{destination.label}</h3><p>{destination.description}</p><div className="exploration-actions"><button className="button primary" onClick={() => { onNavigate(); setPanel(null); }}>Cruise to destination</button><button className="button secondary" onClick={() => { onFace(); setPanel(null); }}>Face destination</button></div></div> : null}
+            {destination ? <div className="exploration-selection"><h3>{destination.label}</h3><p>{destination.description}</p><div className="exploration-actions">{destination.key === 'solar_system' ? <Link className="button primary" href="/system/solar-system">Enter our Solar System</Link> : null}<button className="button primary" onClick={() => { onNavigate(); setPanel(null); }}>Cruise to destination</button><button className="button secondary" onClick={() => { onFace(); setPanel(null); }}>Face destination</button></div></div> : null}
           </> : null}
           {panel === 'crew' ? <>
             <p className="exploration-help">Fly solo, or join a shared room to see other pilots and travel together. Anyone with the room name can join.</p>

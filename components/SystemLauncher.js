@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { FLIGHT_CONTROL_COPY } from '@/lib/siteContent';
+import Link from 'next/link';
 
 export default function SystemLauncher({ onEnter }) {
   const [entering, setEntering] = useState(false);
@@ -26,6 +27,7 @@ export default function SystemLauncher({ onEnter }) {
           <button type="button" className="button primary" disabled={entering} onClick={handleEnter}>
             {entering ? 'Initializing…' : 'Launch simulation'}
           </button>
+          <Link className="button secondary" href="/system/solar-system">Explore our Solar System</Link>
         </div>
 
         <div className="system-launcher-grid">

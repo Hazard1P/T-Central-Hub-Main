@@ -29,6 +29,7 @@ import { FLIGHT_KEYS, isInteractiveTarget, shouldIgnoreFlightKey } from '@/lib/f
 import { gameEngine } from '@/lib/gameEngine';
 import PrayerSeedRelic from '@/components/PrayerSeedRelic';
 import PrayerSeedEncounter from '@/components/PrayerSeedEncounter';
+import SolarSystemMiniature from '@/components/SolarSystemMiniature';
 
 const SIM_RENDERER_OPTIONS = { antialias: true, powerPreference: 'high-performance', toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.0 };
 const SHIP_MODEL_FORWARD = new THREE.Vector3(0, 0, 1);
@@ -452,7 +453,7 @@ function NodeVisual({ node, onSelect, selectedKey, graphNode, condensedLabels = 
 
   return (
     <group position={node.position || [0, 0, 0]}>
-      {isSolar ? <group onClick={() => onSelect(node)}><SolarSubSystem node={graphNode || node} animate={animate} /></group> : null}
+      {isSolar ? <group onClick={() => onSelect(node)}>{node.key === 'solar_system' ? <SolarSystemMiniature /> : <SolarSubSystem node={graphNode || node} animate={animate} />}</group> : null}
 
       <group ref={spinRef} scale={quarantined ? 0.88 : 1}>
         {isBlackhole ? (

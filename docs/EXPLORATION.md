@@ -4,6 +4,8 @@ Launch `/system` to fly. The default HUD has a toolbar and a compact speed, wayp
 
 ## Exploration
 
+The main Solar System now uses real planetary ephemerides. Choose **Explore our Solar System** from the launcher, or enter it from the Solar System destination. See [SOLAR-SYSTEM.md](SOLAR-SYSTEM.md) for physical scale, real-time UTC, date previews and Earth GEO.
+
 - Fly with WASD/arrows, Space/R to rise, Shift/F to descend, Ctrl to boost and X to brake. Drag the scene to look around. Touch devices have a flight pad and drag steering.
 - Select a destination, then **Face destination** to orient without moving, or **Cruise to destination** to travel using bounded thrust. Steering or dragging cancels cruise. **Cancel cruise** returns manual control; automatic braking is enabled initially and can be changed in Settings.
 - Cruise approaches a viewing point outside a planet, ring system or structure. Outer-world viewing points stay within the existing simulation bounds. The universe is a bounded space, not an infinite or surface-landing simulation; object collisions are not modeled.

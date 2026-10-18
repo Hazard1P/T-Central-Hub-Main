@@ -14,6 +14,7 @@ import { getPrivateWorldKey } from '@/lib/securityConfig';
 import { DEFAULT_FLIGHT_STATS, normalizeFlightStats, getSafePosition } from '@/lib/playerRuntime';
 import ServerRoutePanel from '@/components/ServerRoutePanel';
 import RoomObjectives from '@/components/RoomObjectives';
+import SolarSystemMiniature from '@/components/SolarSystemMiniature';
 
 function formatStatus(status) {
   if (!status) return 'Status unavailable';
@@ -619,77 +620,21 @@ function StarNode({ node, onSelect }) {
   );
 }
 
-function Planet({ planet, index }) {
-  const planetRef = useRef(null);
-  const ringRef = useRef(null);
-
-  useFrame((state) => {
-    const t = state.clock.elapsedTime * planet.speed + index;
-    const x = Math.cos(t) * planet.orbit;
-    const z = Math.sin(t) * planet.orbit;
-    if (planetRef.current) {
-      planetRef.current.position.set(x, 0, z);
-      planetRef.current.rotation.y += 0.02;
-    }
-    if (ringRef.current) {
-      ringRef.current.position.set(x, 0, z);
-      ringRef.current.rotation.z += 0.01;
-    }
-  });
-
-  return (
-    <>
-      <mesh ref={planetRef}><sphereGeometry args={[planet.radius, 20, 20]} /><meshStandardMaterial color={planet.color} emissive={planet.color} emissiveIntensity={0.35} /></mesh>
-      {planet.ring ? (
-        <mesh ref={ringRef} rotation={[Math.PI / 2.5, 0, 0]}>
-          <torusGeometry args={[planet.radius * 1.65, planet.radius * 0.18, 10, 80]} />
-          <meshStandardMaterial color="#e8d7ab" emissive="#e8d7ab" emissiveIntensity={0.25} />
-        </mesh>
-      ) : null}
-    </>
-  );
-}
-
 function SolarSystem({ node, onSelect }) {
-  const group = useRef(null);
   if (!node) return null;
-  const sunRef = useRef(null);
-  const planets = useMemo(() => [
-    { name: 'Mercury', radius: 0.06, orbit: 0.9, speed: 1.3, color: '#c7b39a' },
-    { name: 'Venus', radius: 0.09, orbit: 1.25, speed: 1.05, color: '#d8b47a' },
-    { name: 'Earth', radius: 0.1, orbit: 1.65, speed: 0.88, color: '#5fb7ff' },
-    { name: 'Mars', radius: 0.08, orbit: 2.0, speed: 0.76, color: '#d86d54' },
-    { name: 'Jupiter', radius: 0.2, orbit: 2.55, speed: 0.54, color: '#d9b48b' },
-    { name: 'Saturn', radius: 0.16, orbit: 3.15, speed: 0.43, color: '#e0c582', ring: true },
-    { name: 'Uranus', radius: 0.12, orbit: 3.75, speed: 0.34, color: '#9ce3ff' },
-    { name: 'Neptune', radius: 0.12, orbit: 4.25, speed: 0.28, color: '#628dff' },
-    { name: 'Pluto', radius: 0.05, orbit: 4.8, speed: 0.22, color: '#b3b3c9' },
-  ], []);
-
-  useFrame((_, delta) => {
-    if (group.current) group.current.rotation.y += delta * 0.04;
-    if (sunRef.current) sunRef.current.rotation.y += delta * 0.18;
-  });
-
   return (
-    <group position={node.position} ref={group} onClick={(e) => { e.stopPropagation(); onSelect(node); }}>
-      <mesh ref={sunRef}><sphereGeometry args={[0.42, 32, 32]} /><meshStandardMaterial color="#ffd46b" emissive="#ffd46b" emissiveIntensity={2.2} /></mesh>
-      {planets.map((planet, i) => (
-        <group key={planet.name}>
-          <mesh rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[planet.orbit, 0.008, 8, 120]} /><meshBasicMaterial color="white" transparent opacity={0.12} /></mesh>
-          <Planet planet={planet} index={i} />
-        </group>
-      ))}
-      <pointLight position={[0, 0, 0]} color="#ffd46b" intensity={18} distance={10} />
+    <group position={node.position} onClick={(event) => { event.stopPropagation(); onSelect(node); }}>
+      <SolarSystemMiniature />
       <Html position={[0, -1.25, 0]} center distanceFactor={11}>
         <button className="map-anchor-label clickable" onClick={() => onSelect(node)}>
           <span className="anchor-title">Solar System</span>
-          <span className="anchor-copy">Sun + 9 planets</span>
+          <span className="anchor-copy">Sun + eight planets · Live UTC</span>
         </button>
       </Html>
     </group>
   );
 }
+
 
 function SectorRing({ position, radius, color, label }) {
   const ref = useRef(null);

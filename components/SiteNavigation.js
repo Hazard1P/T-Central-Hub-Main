@@ -17,7 +17,7 @@ const links = [
 export default function SiteNavigation() {
   const pathname = usePathname();
   // The simulation has its own controls and home link.
-  if (pathname === '/system') return null;
+  if (pathname === '/system' || pathname.startsWith('/system/')) return null;
 
   return (
     <header className="site-header">
