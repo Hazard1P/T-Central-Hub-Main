@@ -27,6 +27,8 @@ import { distanceBetween, getApproachPoint, getCruiseControl, getExplorationDest
 import { isValidRoomName } from '@/lib/exploration';
 import { FLIGHT_KEYS, isInteractiveTarget, shouldIgnoreFlightKey } from '@/lib/flightInput';
 import { gameEngine } from '@/lib/gameEngine';
+import PrayerSeedRelic from '@/components/PrayerSeedRelic';
+import PrayerSeedEncounter from '@/components/PrayerSeedEncounter';
 
 const SIM_RENDERER_OPTIONS = { antialias: true, powerPreference: 'high-performance', toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.0 };
 const SHIP_MODEL_FORWARD = new THREE.Vector3(0, 0, 1);
@@ -513,7 +515,7 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
       onSimulationFrame?.({ controlVector: [0, 0, 0] });
     };
     const down = (event) => {
-      if (shouldIgnoreFlightKey(event) || !FLIGHT_KEYS.has(event.code)) return;
+      if (flightConfig?.inputBlocked || shouldIgnoreFlightKey(event) || !FLIGHT_KEYS.has(event.code)) return;
       keys.current[event.code] = true;
       onManualControl?.();
       event.preventDefault();
@@ -522,7 +524,7 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
     const focus = (event) => { if (isInteractiveTarget(event.target)) clearInput(); };
     const visibility = () => { if (document.hidden) clearInput(); };
     const startLook = (event) => {
-      if (!flightConfig?.mouseLook || event.button !== 0 || lookPointer) return;
+      if (flightConfig?.inputBlocked || !flightConfig?.mouseLook || event.button !== 0 || lookPointer) return;
       onManualControl?.();
       lookPointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
       canvas.setPointerCapture(event.pointerId);
@@ -562,7 +564,7 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
       canvas.removeEventListener('pointercancel', endLook);
       canvas.removeEventListener('lostpointercapture', endLook);
     };
-  }, [flightConfig?.mouseLook, gl, onSimulationFrame, onManualControl]);
+  }, [flightConfig?.mouseLook, flightConfig?.inputBlocked, gl, onSimulationFrame, onManualControl]);
 
   useEffect(() => {
     keys.current = {};
@@ -604,6 +606,7 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
       (keys.current.Space || keys.current.KeyR ? 1 : 0) - (keys.current.ShiftLeft || keys.current.ShiftRight || keys.current.KeyF ? 1 : 0) + (touchInput.y || 0),
       (keys.current.KeyW || keys.current.ArrowUp ? 1 : 0) - (keys.current.KeyS || keys.current.ArrowDown ? 1 : 0) + (touchInput.z || 0),
     );
+    if (flightConfig?.inputBlocked) rawMove.set(0, 0, 0);
 
     const boostActive = Boolean(keys.current.ControlLeft || keys.current.ControlRight || (touchInput.boost || 0) > 0.5);
     const fireActive = false;
@@ -616,14 +619,14 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
     const dt = Math.max(1 / 240, Math.min(delta, 1 / 24));
     let controlVector = [orientedMove.x * thrustScale, orientedMove.y * thrustScale, orientedMove.z * thrustScale];
     const position = groupRef.current.position.toArray();
-    if (cruising && cruiseTarget.current) {
+    if (!flightConfig?.inputBlocked && cruising && cruiseTarget.current) {
       controlVector = getCruiseControl({ position, velocity: velocity.current.toArray(), target: cruiseTarget.current, gravity: lastGravity.current });
       const direction = new THREE.Vector3(...navigationCommand.destination.position).sub(groupRef.current.position).normalize();
       yaw.current = Math.atan2(direction.x, direction.z);
       pitch.current = -Math.asin(Math.max(-1, Math.min(1, direction.y)));
       lookQuat.setFromEuler(new THREE.Euler(pitch.current, yaw.current, roll.current, 'YXZ'));
       if (distanceBetween(position, cruiseTarget.current) < .8 && velocity.current.length() < .7) onArrival?.(navigationCommand.destination);
-    } else if (keys.current.KeyX || (flightConfig?.inertialDampers && rawMove.lengthSq() === 0)) {
+    } else if (flightConfig?.inputBlocked || keys.current.KeyX || (flightConfig?.inertialDampers && rawMove.lengthSq() === 0)) {
       controlVector = getCruiseControl({ position, velocity: velocity.current.toArray(), target: position, gravity: lastGravity.current, braking: true });
     }
     const stepped = simRuntimeClient.stepSnapshot({
@@ -884,7 +887,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   });
   useEffect(() => { try { window.localStorage.setItem('tcentral_visual_quality', graphicsQuality); } catch {} }, [graphicsQuality]);
   const graphicsProfile = useMemo(() => getGraphicsProfile(graphicsQuality, deviceTier), [graphicsQuality, deviceTier]);
-  const { googleUser } = useSteamSession();
+  const { googleUser, refresh, universe } = useSteamSession();
   const identity = useMemo(() => resolveMultiplayerIdentity(steamUser, googleUser), [steamUser?.steamid, steamUser?.personaname, googleUser?.sub, googleUser?.name]);
   const [roomName, setRoomName] = useState(() => {
     const requested = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('room') : '';
@@ -896,6 +899,12 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   const [flightResetTick, setFlightResetTick] = useState(0);
   const [hudVisible, setHudVisible] = useState(true);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [prayerOpen, setPrayerOpen] = useState(false);
+  const handlePrayerOpen = useCallback((open) => {
+    setPrayerOpen(open);
+    if (open) { setCruising(false); setTouchInput({ x: 0, y: 0, z: 0, boost: 0 }); }
+  }, []);
+  useEffect(() => { setPrayerOpen(false); }, [identity.id]);
   const [correctionState, setCorrectionState] = useState(null);
   const [navigationCommand, setNavigationCommand] = useState(null);
   const [cruising, setCruising] = useState(false);
@@ -1067,28 +1076,30 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
 
   return (
     <div className="stable-system-page polished-shell cinematic-system-page exploration-world">
-      {hudVisible ? <div className="stable-system-hud">
+      {hudVisible ? <div className="stable-system-hud" inert={prayerOpen ? '' : undefined}>
         <ExplorationHud telemetry={telemetry} destinations={destinations} destination={destination} onSelect={handleSelect}
           onNavigate={() => navigate('cruise')} onFace={() => navigate('face')} cruising={cruising} onCancelCruise={cancelCruise}
           visited={progress.visitedNodes} lobbyMode={lobbyMode} onModeChange={onModeChange} roomName={roomName} onRoomChange={setRoomName}
           pilots={authoritativeState.players || []} selfId={serverSession?.id} serverStatus={serverStatus}
           graphicsQuality={graphicsQuality} onGraphicsChange={setGraphicsQuality} dampers={flightConfig.inertialDampers}
           onDampersChange={() => setFlightConfig((current) => ({ ...current, inertialDampers: !current.inertialDampers }))}
-          onRecenter={() => setFlightResetTick((tick) => tick + 1)} notice={notice} onPanelChange={setPanelOpen} />
+          onRecenter={() => setFlightResetTick((tick) => tick + 1)} notice={notice} onPanelChange={setPanelOpen} seedCount={universe?.prayerSeeds?.total || 0} />
       </div> : <button type="button" className="stable-show-hud-button" onClick={() => gameEngine.setHUDVisible(true)}>Show HUD · H</button>}
 
-      <div className="stable-world-canvas polished-canvas cinematic-polished-canvas sim-zone-center-canvas" aria-label="Explorable universe">
+      <div className="stable-world-canvas polished-canvas cinematic-polished-canvas sim-zone-center-canvas" aria-label="Explorable universe" inert={prayerOpen ? '' : undefined}>
         <Canvas camera={cameraConfig} dpr={graphicsProfile.dpr} gl={SIM_RENDERER_OPTIONS}>
+          <PrayerSeedRelic telemetryRef={telemetryRef} animate={graphicsProfile.animate} />
           <StableSceneContent simRuntimeClient={simRuntimeClient} graph={graph} displayNodes={displayNodes} onSelect={handleSelect}
             selectedKey={destination?.key} onTelemetryChange={handleTelemetry} touchInput={touchInput} deviceTier={deviceTier}
-            graphicsProfile={graphicsProfile} authenticated={Boolean(identity.authenticated)} flightConfig={flightConfig} remotePilots={remotePilots}
+            graphicsProfile={graphicsProfile} authenticated={Boolean(identity.authenticated)} flightConfig={{ ...flightConfig, inputBlocked: prayerOpen }} remotePilots={remotePilots}
             presentationMode multiplayerMode={lobbyMode === 'hub'} simulationSeed={roomName} simulationGravitySources={simulationGravitySources}
             resetTick={flightResetTick} onSimulationFrame={handleSimulationFrame} correctionState={correctionState}
             sessionMode={lobbyMode === 'hub' ? SESSION_MODES.MULTI_PLAYER : SESSION_MODES.SINGLE_PLAYER} ringAdjustments={authoritativeState.ringAdjustments}
             navigationCommand={navigationCommand} cruising={cruising} onManualControl={cancelCruise} onArrival={arrive} destination={destination} />
         </Canvas>
       </div>
-      {hudVisible && deviceTier.isMobile && !panelOpen ? <TouchFlightPad onInputChange={setTouchInput} /> : null}
+      <PrayerSeedEncounter key={identity.id} telemetry={telemetry} authenticated={Boolean(identity.authenticated)} onOpenChange={handlePrayerOpen} onBound={refresh} enabled={hudVisible && !panelOpen} />
+      {hudVisible && deviceTier.isMobile && !panelOpen && !prayerOpen ? <TouchFlightPad onInputChange={setTouchInput} /> : null}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 # Playable universe
 
-Launch `/system` to fly. The default HUD has a toolbar and a compact speed, waypoint distance and bearing readout. Explore, Pilots and Settings open one panel at a time; `H` hides the HUD and `M` opens destinations. Account management remains on the homepage.
+Launch `/system` to fly. The default HUD has a toolbar and a compact speed, waypoint distance and bearing readout. Explore, Pilots and Settings open one panel at a time; `H` hides the HUD and `M` opens destinations. Sign in on the homepage; private discoveries belong to the account collection at `/profile`.
 
 ## Exploration
 
@@ -11,6 +11,8 @@ Launch `/system` to fly. The default HUD has a toolbar and a compact speed, wayp
 - Halcyon, Pelagos and The Drift are defined in `lib/exploration.js`; rendering and navigation share those landmark definitions. Hub anchors and owned solo-world nodes are also selectable. Sealed system controls and unused relay actions are omitted.
 
 ## Shared flight
+
+The hidden account-bound encounter is documented separately in [PRAYER-SEEDS.md](PRAYER-SEEDS.md), including its Unix epoch binding, account privacy and database migration.
 
 Choose **Pilots → Shared universe**, enter the same room name on each device, or copy the invite link. Room names allow 1–64 letters, numbers, dashes and underscores. A room name is a rendezvous address, not an access-control secret. Guests can fly together. Pilots appear as ships, and the roster can set a waypoint to a pilot's last shared location.
 

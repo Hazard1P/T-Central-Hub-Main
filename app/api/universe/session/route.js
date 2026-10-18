@@ -6,7 +6,7 @@ import { computeRegisteredDysonStates } from '@/lib/dysonSphereRegistry';
 import { toPublicDysonAssetCollection } from '@/lib/dysonAssetResponses';
 import { WORLD_LAYOUT } from '@/lib/worldLayout';
 import { createPrivacySummary } from '@/lib/universePrivacyEngine';
-import { summarizePrayerSeeds } from '@/lib/prayerSeedEngine';
+import { getPrayerSeedStore } from '@/lib/server/prayerSeedStore';
 import { readDonationLedger, summarizeDonationLedger } from '@/lib/donationLedger';
 import { resolveGameAuthContext } from '@/lib/auth/resolveGameAuthContext';
 import { trackServerEvent } from '@/lib/server/vercelTelemetry';
@@ -88,6 +88,12 @@ export async function GET(request) {
   const publicDysonAssets = toPublicDysonAssetCollection(WORLD_LAYOUT.filter((node) => node.kind === 'dyson'));
   const dysonRingIntegrity = upsertDysonRingContinuitySnapshot(dysonRings);
   const donations = summarizeDonationLedger(readDonationLedger());
+  // Publish only the owner's count here. Written seeds never enter presence or room snapshots.
+  let prayerSeeds = { total: 0 };
+  if (authContext.authenticated) {
+    try { prayerSeeds = { total: (await getPrayerSeedStore().load(authContext)).total }; }
+    catch { prayerSeeds = { total: 0, unavailable: true }; }
+  }
 
   await trackServerEvent('api_universe_session', {
     lobbyMode,
@@ -115,7 +121,7 @@ export async function GET(request) {
       ...dysonRingIntegrity,
     },
     dysonSpheres: publicDysonAssets,
-    prayerSeeds: summarizePrayerSeeds([], 'solar_system'),
+    prayerSeeds,
     donations,
     continuityHealth: continuityRuntime.snapshot,
     continuityDrill,
@@ -127,5 +133,5 @@ export async function GET(request) {
     launchRecord: launchGenesis.launchRecord,
     launchPersistence: persistence,
     generatedAt: new Date().toISOString(),
-  });
+  }, { headers: { 'Cache-Control': 'private, no-store', Vary: 'Cookie' } });
 }

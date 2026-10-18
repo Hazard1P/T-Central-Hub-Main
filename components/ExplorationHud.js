@@ -6,7 +6,7 @@ import { distanceBetween, isValidRoomName } from '@/lib/exploration';
 import { isInteractiveTarget } from '@/lib/flightInput';
 import { gameEngine } from '@/lib/gameEngine';
 
-export default function ExplorationHud({ telemetry, destinations, destination, onSelect, onNavigate, onFace, cruising, onCancelCruise, visited, lobbyMode, onModeChange, roomName, onRoomChange, pilots, selfId, serverStatus, graphicsQuality, onGraphicsChange, dampers, onDampersChange, onRecenter, notice, onPanelChange }) {
+export default function ExplorationHud({ telemetry, destinations, destination, onSelect, onNavigate, onFace, cruising, onCancelCruise, visited, lobbyMode, onModeChange, roomName, onRoomChange, pilots, selfId, serverStatus, graphicsQuality, onGraphicsChange, dampers, onDampersChange, onRecenter, notice, onPanelChange, seedCount = 0 }) {
   const [panel, setPanel] = useState(null);
   const [filter, setFilter] = useState('');
   const [roomDraft, setRoomDraft] = useState(roomName);
@@ -89,6 +89,7 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
             <button className="button secondary" onClick={onRecenter}>Recenter view</button>
             <div className="exploration-controls"><h3>Flight controls</h3><p>W / S forward and back · A / D strafe<br />Space / R rise · Shift / F descend<br />Ctrl boost · X brake<br />Drag space to look · M destinations · H hide HUD</p><p>On touch screens, use the flight pad and drag the open scene to look around.</p></div>
             <Link className="exploration-account-link" href="/">Account and sign-in on the homepage</Link>
+            {seedCount > 0 ? <Link className="exploration-account-link" href="/profile">Your Prayer Seed collection · {seedCount}</Link> : null}
           </> : null}
         </section>
       ) : null}

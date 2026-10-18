@@ -7232,3 +7232,32 @@ body:has(.touch-flight-pad) .simulation-visual-settings { left: 14px; right: aut
 @media (orientation: landscape) and (max-height: 600px) {
   .exploration-world .touch-look-hint { display: none; }
 }
+
+/* A discovery, rather than another permanent flight panel. */
+.prayer-signal { position: fixed; z-index: 64; left: 50%; top: 24%; transform: translateX(-50%); display: grid; gap: .5rem; padding: .8rem 1.2rem; color: #f3e6c8; background: #0d191dd9; border: 1px solid #e4cd8c66; border-radius: 16px; font-size: .85rem; cursor: pointer; }
+.prayer-signal span { color: #afc8c4; font-size: .7rem; }
+.prayer-veil { position: fixed; z-index: 150; inset: 0; display: grid; place-items: center; padding: 16px; background: #020912b8; backdrop-filter: blur(8px); pointer-events: auto; }
+.prayer-dialog { width: min(500px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; padding: clamp(20px, 5vw, 36px); border: 1px solid #e6cf9660; border-radius: 22px; background: radial-gradient(ellipse at top, #19312f, #07121f 70%); box-shadow: 0 20px 90px #0008; color: #e4efed; }
+.prayer-dialog h2 { font-size: clamp(1.4rem, 5vw, 2rem); font-weight: 500; letter-spacing: -.035em; margin: .7rem 0 1rem; }
+.prayer-dialog p { line-height: 1.7; }
+.prayer-dialog label { display: block; margin: 1.4rem 0 .6rem; font-size: .85rem; }
+.prayer-dialog textarea { display: block; width: 100%; box-sizing: border-box; padding: 12px; resize: vertical; min-height: 100px; max-height: 35dvh; border: 1px solid #afcbbd66; border-radius: 12px; background: #020d18a6; color: #fff3db; font: inherit; }
+.prayer-meta { font-size: .75rem; color: #adc1be; line-height: 1.8; }
+.prayer-close { display: block; margin-top: 1rem; padding: .7rem 0; background: none; border: 0; color: #c2dad5; cursor: pointer; min-height: 44px; }
+.prayer-feedback { color: #f4dba6; font-size: .8rem; }
+.prayer-feedback:empty { display: none; }
+.prayer-dialog blockquote, .seed-collection blockquote { margin: 1.4rem 0; padding-left: 1rem; border-left: 2px solid #ccb887; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.9; font-size: 1.05rem; color: #eee5d2; }
+.seed-profile-card { max-width: 800px; padding: clamp(20px, 4vw, 36px); margin-bottom: 24px; border: 1px solid var(--line); border-radius: 20px; background: #071321b8; }
+.seed-profile-card > p { line-height: 1.8; }
+.seed-intelligence { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: .7rem 1rem; padding: 1.4rem 0; border-block: 1px solid var(--line); font-size: .8rem; }
+.seed-profile-card dt { color: #9eb7bd; }
+.seed-profile-card dd { margin: 0; overflow-wrap: anywhere; }
+.seed-collection { list-style: none; padding: 0; }
+.seed-collection li { padding: 1rem 0 1.5rem; border-bottom: 1px solid var(--line); }
+.seed-collection li > p { font-size: .75rem; color: #adc1be; line-height: 1.9; }
+.seed-collection summary { cursor: pointer; padding: .7rem 0; font-size: .8rem; color: #b3d9d1; }
+.seed-collection details dl { font-size: .75rem; line-height: 1.8; }
+.seed-collection details dd { margin-bottom: .8rem; }
+.prayer-dialog :is(textarea, button, a):focus-visible, .prayer-signal:focus-visible { outline: 2px solid #f0daa2; outline-offset: 4px; }
+.prayer-dialog button:disabled { opacity: .55; cursor: wait; }
+@media (max-width: 500px) { .seed-intelligence { grid-template-columns: 1fr; } .seed-intelligence dd { margin-bottom: .5rem; } }

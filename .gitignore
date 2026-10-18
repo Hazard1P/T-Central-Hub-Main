@@ -4,3 +4,4 @@ out/
 dist/
 .env*.local
 .vercel/
+data/account-prayer-seeds.json*

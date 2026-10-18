@@ -46,10 +46,11 @@ export default function SteamLoginHud() {
         </div>
 
         <div className="steam-login-actions">
-          {universe?.prayerSeeds?.total ? <span className="steam-mini-link">Seeds {universe.prayerSeeds.total}</span> : null}
+          {universe?.prayerSeeds?.total ? <Link href="/profile" className="steam-mini-link">Seeds {universe.prayerSeeds.total}</Link> : null}
           {presence?.length ? <span className="steam-mini-link">Pilots {presence.length}</span> : null}
           {session || googleUser ? (
             <>
+              <Link className="steam-mini-link" href="/profile">Your account</Link>
               {session?.profileurl ? (
                 <a className="steam-mini-link" href={session.profileurl} target="_blank" rel="noreferrer">
                   Profile
