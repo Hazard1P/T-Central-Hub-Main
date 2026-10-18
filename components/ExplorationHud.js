@@ -67,7 +67,7 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
               </button>)}
               {!visibleDestinations.length ? <p className="exploration-help">No destinations match. Try another name.</p> : null}
             </div>
-            {destination ? <div className="exploration-selection"><h3>{destination.label}</h3><p>{destination.description}</p><div className="exploration-actions">{destination.key === 'solar_system' ? <Link className="button primary" href="/system/solar-system">Enter our Solar System</Link> : null}<button className="button primary" onClick={() => { onNavigate(); setPanel(null); }}>Cruise to destination</button><button className="button secondary" onClick={() => { onFace(); setPanel(null); }}>Face destination</button></div></div> : null}
+            {destination ? <div className="exploration-selection"><h3>{destination.label}</h3><p>{destination.description}</p><div className="exploration-actions"><button className="button primary" onClick={() => { onNavigate(); setPanel(null); }}>Cruise to destination</button><button className="button secondary" onClick={() => { onFace(); setPanel(null); }}>Face destination</button></div></div> : null}
           </> : null}
           {panel === 'crew' ? <>
             <p className="exploration-help">Fly solo, or join a shared room to see other pilots and travel together. Anyone with the room name can join.</p>
@@ -87,7 +87,7 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
             <label className="exploration-setting">Visual quality<select value={graphicsQuality} onChange={(event) => onGraphicsChange(event.target.value)}><option value="auto">Auto</option><option value="high">High</option><option value="performance">Performance</option></select></label>
             <label className="exploration-check"><input type="checkbox" checked={dampers} onChange={onDampersChange} />Brake automatically when thrust is released</label>
             <button className="button secondary" onClick={onRecenter}>Recenter view</button>
-            <div className="exploration-controls"><h3>Flight controls</h3><p>W / S forward and back · A / D strafe<br />Space / R rise · Shift / F descend<br />Ctrl boost · X brake<br />Drag space to look · M destinations · H hide HUD</p><p>On touch screens, use the flight pad and drag the open scene to look around.</p></div>
+            <div className="exploration-controls"><h3>Flight controls</h3><p>W / S forward and back · A / D strafe<br />Space / R rise · Shift / F descend<br />Ctrl boost · X brake<br />Move mouse to steer · Click / V fire · Esc release mouse · M destinations · H hide HUD</p><p>On touch screens, use the flight pad and drag the open scene to look around.</p></div>
             <Link className="exploration-account-link" href="/">Account and sign-in on the homepage</Link>
             {seedCount > 0 ? <Link className="exploration-account-link" href="/profile">Your Prayer Seed collection · {seedCount}</Link> : null}
           </> : null}

@@ -33,14 +33,29 @@ export default function useSharedFlight({ lobbyMode, roomName, identity, telemet
     }
     setServerStatus({ connected: false, label: 'Connecting', tick: 0 });
 
+    // AbortController works on mobile browsers that predate AbortSignal.any/timeout.
+    async function post(endpoint, body) {
+      const request = new AbortController();
+      const abort = () => request.abort();
+      controller.signal.addEventListener('abort', abort, { once: true });
+      const timeout = window.setTimeout(abort, 8000);
+      try {
+        const response = await fetch('/api/multiplayer/' + endpoint, {
+          method: 'POST', headers: { 'content-type': 'application/json' }, signal: request.signal,
+          body: JSON.stringify(body),
+        });
+        const data = await response.json();
+        return { response, data };
+      } finally {
+        window.clearTimeout(timeout);
+        controller.signal.removeEventListener('abort', abort);
+      }
+    }
+
     async function tick() {
       try {
         if (!session) {
-          const response = await fetch('/api/multiplayer/connect', {
-            method: 'POST', headers: { 'content-type': 'application/json' }, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(8000)]),
-            body: JSON.stringify({ identity, roomName, mode: 'multi_player' }),
-          });
-          const data = await response.json();
+          const { response, data } = await post('connect', { identity, roomName, mode: 'multi_player' });
           if (!response.ok || !data.ok || !data.token || !data.player?.id) throw new Error('join-failed');
           session = { room: data.room, id: data.player.id, token: data.token, displayName: data.player.displayName };
           if (stopped) { void release(session); return; }
@@ -54,11 +69,7 @@ export default function useSharedFlight({ lobbyMode, roomName, identity, telemet
           ...telemetryRef.current,
           inputs: inputsRef.current.slice(0, 48).map(({ frameIndex, dt, controlVector }) => ({ frameIndex, dt, controlVector })),
         };
-        const response = await fetch('/api/multiplayer/state', {
-          method: 'POST', headers: { 'content-type': 'application/json', Authorization: 'Bearer ' + session.token }, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(8000)]),
-          body: JSON.stringify({ roomName: session.room, id: session.id, token: session.token, mode: 'multi_player', snapshot }),
-        });
-        const data = await response.json();
+        const { response, data } = await post('state', { roomName: session.room, id: session.id, token: session.token, mode: 'multi_player', snapshot });
         if (stopped) return;
         if (response.status === 401) {
           session = null;

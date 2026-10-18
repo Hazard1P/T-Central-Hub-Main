@@ -27,7 +27,7 @@ for (const route of routes) {
   assert.equal(response.status, 200, `${route}: expected HTTP 200`);
   const html = await response.text();
   assert.equal((html.match(/<h1(?:\s|>)/g) || []).length, 1, `${route}: expected one main heading`);
-  if (route !== '/system') assert.match(html, /aria-label="Main navigation"/, `${route}: shared navigation missing`);
+  if (new URL(response.url).pathname !== '/system') assert.match(html, /aria-label="Main navigation"/, `${route}: shared navigation missing`);
   if (route.startsWith('/admin/')) assert.match(html, /Sign in before opening Dyson administration/, `${route}: guest authentication guard missing`);
   console.log(`PASS ${route}`);
 }

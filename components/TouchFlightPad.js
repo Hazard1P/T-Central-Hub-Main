@@ -65,7 +65,7 @@ export default function TouchFlightPad({ onInputChange }) {
 
   const button = (axis, value, label, children, className) => (
     <FlightButton axis={axis} value={value} label={label} hold={hold} release={release}
-      active={axis === 'boost' ? input.boost > 0 : input[axis] === value} className={className}>{children}</FlightButton>
+      active={axis === 'boost' || axis === 'fire' ? input[axis] > 0 : input[axis] === value} className={className}>{children}</FlightButton>
   );
   return (
     <div className="touch-flight-pad" role="group" aria-label="Touch flight controls">
@@ -80,6 +80,7 @@ export default function TouchFlightPad({ onInputChange }) {
       </div>
       <p className="touch-look-hint">Drag space to look</p>
       <div className="touch-flight-cluster vertical">
+        {button('fire', 1, 'Hold to fire', 'Fire', 'touch-flight-fire')}
         {button('y', 1, 'Ascend', 'Ascend')}
         {button('y', -1, 'Descend', 'Descend')}
       </div>

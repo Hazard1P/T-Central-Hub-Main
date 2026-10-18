@@ -8,6 +8,8 @@ import { Analytics } from '@vercel/analytics/next';
 
 const siteUrl = getSiteUrl();
 
+export const viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover' };
+
 export const metadata = {
   metadataBase: new URL(siteUrl),
   title: { default: 'T-Central Hub', template: '%s | T-Central Hub' },

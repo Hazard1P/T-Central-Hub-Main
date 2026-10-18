@@ -16,10 +16,10 @@ export default function SolarSystemMiniature() {
     getSolarSystemState(clock.getTime()).forEach((body) => { refs.current[body.id]?.position.set(...body.position.map((coordinate) => coordinate * SOLAR_HUB_SCALE)); });
   });
   return <group>
-    <mesh><sphereGeometry args={[.065, 20, 12]} /><meshBasicMaterial color="#fff2d4" /></mesh>
+    <mesh><sphereGeometry args={[.14, 20, 12]} /><meshBasicMaterial color="#fff2d4" /></mesh>
     {paths.map(({ body, points }) => <group key={body.id}>
       <Line points={points} color={body.color} opacity={.32} transparent lineWidth={.8} />
-      <mesh ref={(value) => { refs.current[body.id] = value; }}><sphereGeometry args={[.026, 12, 8]} /><meshBasicMaterial color={body.color} /></mesh>
+      <mesh ref={(value) => { refs.current[body.id] = value; }}><sphereGeometry args={[.06, 12, 8]} /><meshBasicMaterial color={body.color} /></mesh>
     </group>)}
   </group>;
 }

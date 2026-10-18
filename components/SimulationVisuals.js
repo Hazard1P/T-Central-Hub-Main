@@ -9,6 +9,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { EXPLORATION_LANDMARKS } from '@/lib/exploration';
+import CelestialDebris from '@/components/CelestialDebris';
 
 const noise = `
 float hash(vec3 p) { p=fract(p*.3183099+vec3(.11,.27,.39)); p*=17.; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }
@@ -180,31 +181,11 @@ function OrbitalPlanet({ node, profile }) {
   </group>;
 }
 
-function AsteroidBelt({ count }) {
-  const mesh = useRef();
-  useEffect(() => {
-    const dummy = new THREE.Object3D();
-    for (let i=0;i<count;i++) {
-      const a=i*2.399963; const r=45+(Math.sin(i*19.3)*.5+.5)*18;
-      dummy.position.set(Math.cos(a)*r, -7+Math.sin(i*7.4)*3, 30+Math.sin(a)*r);
-      dummy.rotation.set(i*1.7,i*.7,i*.3);
-      const scale=.18+(Math.sin(i*13.1)*.5+.5)*.8;
-      dummy.scale.set(scale,scale*.65,scale*1.4);dummy.updateMatrix();mesh.current.setMatrixAt(i,dummy.matrix);
-      mesh.current.setColorAt(i, new THREE.Color(['#8c8172', '#7e929e', '#b2a69a'][i % 3]));
-    }
-    mesh.current.instanceMatrix.needsUpdate=true;
-    mesh.current.instanceColor.needsUpdate=true;
-  },[count]);
-  return <instancedMesh ref={mesh} args={[null,null,count]}>
-    <icosahedronGeometry args={[1,1]} /><meshStandardMaterial color="#5e646b" roughness={1} metalness={.04} flatShading />
-  </instancedMesh>;
-}
-
-export const DeepSpaceScenery = memo(function DeepSpaceScenery({ profile }) {
+export const DeepSpaceScenery = memo(function DeepSpaceScenery({ profile, weaponBus }) {
   return <>
     <NebulaSky animate={profile.animate} detail={profile.bloom ? 5 : 3} />
     {EXPLORATION_LANDMARKS.filter((node) => node.kind === 'planet').map((node) => <OrbitalPlanet key={node.key} node={node} profile={profile} />)}
-    <AsteroidBelt count={profile.asteroids} />
+    <CelestialDebris profile={profile} bus={weaponBus} />
     <hemisphereLight args={['#99c8ec','#10182e',1.1]} />
     <directionalLight position={[-30,25,-15]} color="#ffe3bd" intensity={2.6} />
     <directionalLight position={[20,5,10]} color="#63baff" intensity={2.2} />
@@ -254,6 +235,8 @@ export const InterceptorHull = memo(function InterceptorHull() {
     <mesh position={[0,.2,-.5]}><boxGeometry args={[.08,.055,1.8]} /><meshStandardMaterial color="#24374a" metalness={.8} roughness={.3} /></mesh>
     <mesh position={[0,.12,2]}><boxGeometry args={[.07,.035,1.2]} /><meshBasicMaterial color="#68e7ff" toneMapped={false} /></mesh>
     {[-1,1].map(side=><group key={side}>
+      <mesh position={[side*1.4,.05,.6]} rotation={[Math.PI/2,0,0]}><cylinderGeometry args={[.075,.11,1.55,12]} /><meshStandardMaterial color="#384d60" metalness={.85} roughness={.25} /></mesh>
+      <mesh position={[side*1.4,.05,1.4]}><torusGeometry args={[.08,.025,6,12]} /><meshBasicMaterial color="#87eaff" toneMapped={false} /></mesh>
       <mesh position={[side*.69,.22,-1.1]} rotation={[Math.PI/2,0,0]}>
         <cylinderGeometry args={[.24,.32,1.2,16]} /><meshStandardMaterial color="#28394c" metalness={.8} roughness={.3} />
       </mesh>

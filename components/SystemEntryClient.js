@@ -9,6 +9,7 @@ import StableSystemWorld from '@/components/StableSystemWorld';
 import { MultiplayerSessionProvider } from '@/components/MultiplayerSessionProvider';
 import { useSteamSession } from '@/components/SteamSessionProvider';
 import { gameEngine } from '@/lib/gameEngine';
+import { resolveSolarBody } from '@/lib/flightRegions';
 
 function canUseWebGL() {
   if (typeof window === 'undefined') return false;
@@ -17,7 +18,9 @@ function canUseWebGL() {
     const canvas = window.document?.createElement?.('canvas');
     if (!canvas) return false;
 
-    return Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
+    const context = canvas.getContext('webgl2') || canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    context?.getExtension('WEBGL_lose_context')?.loseContext();
+    return Boolean(context);
   } catch (error) {
     console.warn('System WebGL preflight failed.', error);
     return false;
@@ -33,6 +36,11 @@ export default function SystemEntryClient() {
   }, []);
   const [launchPhase, setLaunchPhase] = useState('idle');
   const [launchError, setLaunchError] = useState('');
+  const [initialSolarBody, setInitialSolarBody] = useState(null);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('region') === 'solar') handleEnter({ solarBody: resolveSolarBody(params.get('body')) || 'earth' });
+  }, []);
   const { steamUser, lobbyMode, setLobbyMode } = useSteamSession();
 
   useEffect(() => {
@@ -69,7 +77,8 @@ export default function SystemEntryClient() {
     return () => gameEngine.destroy();
   }, [launchPhase]);
 
-  const handleEnter = () => {
+  const handleEnter = (options = {}) => {
+    setInitialSolarBody(resolveSolarBody(options.solarBody));
     setLaunchError('');
 
     if (!canUseWebGL()) {
@@ -93,7 +102,7 @@ export default function SystemEntryClient() {
       {launchPhase === 'in_sim' ? (
         <SystemErrorBoundary onReset={resetLauncher}>
           <MultiplayerSessionProvider>
-            <StableSystemWorld lobbyMode={lobbyMode} steamUser={steamUser} onModeChange={setLobbyMode} />
+            <StableSystemWorld lobbyMode={lobbyMode} steamUser={steamUser} onModeChange={setLobbyMode} initialSolarBody={initialSolarBody} />
           </MultiplayerSessionProvider>
         </SystemErrorBoundary>
       ) : (

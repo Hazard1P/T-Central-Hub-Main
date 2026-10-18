@@ -1,11 +1,8 @@
 'use client';
 
-import { Suspense, useMemo, useRef, useState } from 'react';
-import { useFrame, useLoader, useThree } from '@react-three/fiber';
-import { Html, Line, OrbitControls, Stars } from '@react-three/drei';
+import { Suspense, useMemo, useRef } from 'react';
+import { useFrame, useLoader } from '@react-three/fiber';
 import * as THREE from 'three';
-import { AU_KM, GEO_RADIUS_KM, getSolarSystemState, geostationaryState, sampleSolarOrbit, SOLAR_BODIES, SOLAR_PLANETS } from '@/lib/solarSystem';
-import { layoutSolarLabels } from '@/lib/solarLabels';
 
 const surfaceVertex = `varying vec3 nWorld; varying vec3 local; varying vec2 texCoord; varying vec3 toEye;
 void main(){texCoord=uv;local=position;nWorld=normalize(mat3(modelMatrix)*normal);vec4 world=modelMatrix*vec4(position,1.);toEye=cameraPosition-world.xyz;gl_Position=projectionMatrix*viewMatrix*world;}`;
@@ -53,132 +50,43 @@ function SaturnRings({ sunDirection }) {
   </mesh>;
 }
 
-function SolarBody({ body, stateRef, originRef, enhanced, onSelect, segments }) {
+export function SolarBody({ body, stateRef, originRef, enhanced, onSelect, segments, flightFrame }) {
   const position = useRef(null), axes = useRef(null);
   const uniforms = useMemo(() => ({ sunDirection: { value: new THREE.Vector3(1, 0, 0) } }), []);
   const matrix = useMemo(() => new THREE.Matrix4(), []);
   const x = useMemo(() => new THREE.Vector3(), []), y = useMemo(() => new THREE.Vector3(), []), z = useMemo(() => new THREE.Vector3(), []);
-  useFrame(() => {
+  useFrame(({ camera }) => {
     const state = stateRef.current.find((entry) => entry.id === body.id);
     if (!state || !position.current || !axes.current) return;
-    position.current.position.set(...state.position.map((value, axis) => value - originRef.current[axis]));
-    const radius = state.radiusAu * (enhanced && body.id !== 'sun' ? 100 : 1);
+    const relative = new THREE.Vector3(...state.position.map((value, axis) => value - originRef.current[axis]));
+    let multiplier = 1;
+    if (flightFrame?.current) {
+      const frame = flightFrame.current;
+      relative.applyQuaternion(frame.rotation).multiplyScalar(frame.unitsPerAu).add(frame.center);
+      const offset = relative.clone().sub(camera.position), distance = offset.length();
+      multiplier = frame.unitsPerAu;
+      // Distant bodies are projected onto the sky at their correct angular size.
+      if (distance > 550) { relative.copy(camera.position).add(offset.multiplyScalar(550 / distance)); multiplier *= 550 / distance; }
+    }
+    position.current.position.copy(relative);
+    const radius = state.radiusAu * multiplier * (enhanced && body.id !== 'sun' ? 100 : 1);
     position.current.scale.setScalar(radius);
     const f = body.flattening || 0, equator = 1 / Math.cbrt(1 - f);
     axes.current.scale.set(equator, equator * (1 - f), equator);
     x.set(...state.orientation.x); y.set(...state.orientation.y); z.set(...state.orientation.z);
+    if (flightFrame?.current) { x.applyQuaternion(flightFrame.current.rotation); y.applyQuaternion(flightFrame.current.rotation); z.applyQuaternion(flightFrame.current.rotation); }
     matrix.makeBasis(x, y, z); axes.current.quaternion.setFromRotationMatrix(matrix);
     uniforms.sunDirection.value.set(...state.position).negate().normalize();
+    if (flightFrame?.current) uniforms.sunDirection.value.applyQuaternion(flightFrame.current.rotation);
   });
-  return <group ref={position} onClick={(event) => { event.stopPropagation(); onSelect(body.id); }}>
+  return <group ref={position} onClick={onSelect ? (event) => { event.stopPropagation(); onSelect(body.id); } : undefined}>
     <group ref={axes}>
-      {body.id === 'sun' ? <mesh><sphereGeometry args={[1, segments, segments / 2]} /><meshBasicMaterial color="#fff5df" /></mesh> : <Suspense fallback={<mesh><sphereGeometry args={[1, 24, 16]} /><meshBasicMaterial color={body.color} /></mesh>}>
+      {body.id === 'sun' ? <mesh><sphereGeometry args={[1, segments, segments / 2]} /><shaderMaterial vertexShader={surfaceVertex} fragmentShader={`varying vec3 local;varying vec3 nWorld;varying vec3 toEye;${noise}
+        void main(){vec3 p=normalize(local);float cells=fbm(p*65.);float zones=fbm(p*12.);float limb=.45+.55*pow(max(dot(normalize(nWorld),normalize(toEye)),0.),.35);
+        vec3 color=mix(vec3(1.,.36,.07),vec3(1.8,1.35,.65),cells);float spots=1.-smoothstep(.16,.24,zones);color*=1.-spots*.65;gl_FragColor=vec4(color*limb,1.);${finish}}`} /></mesh> : <Suspense fallback={<mesh><sphereGeometry args={[1, 24, 16]} /><meshBasicMaterial color={body.color} /></mesh>}>
         {['earth', 'moon'].includes(body.id) ? <MappedSurface body={body} uniforms={uniforms} segments={segments} /> : <ProceduralSurface body={body} uniforms={uniforms} segments={segments} />}
       </Suspense>}
       {body.rings ? <SaturnRings sunDirection={uniforms.sunDirection} /> : null}
     </group>
   </group>;
-}
-
-function OverviewLabels({ stateRef, originRef, onSelect }) {
-  const [labels, setLabels] = useState([]);
-  const sampled = useRef(0), projection = useRef(new THREE.Vector3());
-  useFrame(({ camera, size, clock }) => {
-    if (clock.elapsedTime - sampled.current < .1) return;
-    sampled.current = clock.elapsedTime;
-    const points = stateRef.current.filter((body) => body.id !== 'moon').map((body) => {
-      projection.current.set(...body.position.map((value, axis) => value - originRef.current[axis])).project(camera);
-      return { id: body.id, name: body.name, color: body.color, px: (projection.current.x + 1) * size.width / 2, py: (1 - projection.current.y) * size.height / 2 };
-    });
-    setLabels(layoutSolarLabels(points, size.width, size.height));
-  });
-  return <Html fullscreen calculatePosition={(_, __, size) => [size.width / 2, size.height / 2]} style={{ pointerEvents: 'none' }} zIndexRange={[25, 0]}>
-    <svg className="solar-marker-lines" aria-hidden="true">{labels.map((label) => <g key={label.id}><line x1={label.px} y1={label.py} x2={label.lineX} y2={label.lineY} stroke={label.color} strokeOpacity={.4} strokeWidth={.6} /><circle cx={label.px} cy={label.py} r={1.5} fill={label.color} /></g>)}</svg>
-    {labels.map((label) => <button key={label.id} className="solar-body-marker" style={{ left: label.x, top: label.y }} onClick={() => onSelect(label.id)}>{label.name}</button>)}
-  </Html>;
-}
-
-function OrbitPaths({ epoch, stateRef, originRef, selection }) {
-  const root = useRef(null), moon = useRef(null);
-  const points = useMemo(() => SOLAR_PLANETS.map((body) => ({ body, points: sampleSolarOrbit(body, epoch, 96) })), [epoch]);
-  const moonPoints = useMemo(() => sampleSolarOrbit(SOLAR_BODIES.find((body) => body.id === 'moon'), epoch, 64), [epoch]);
-  useFrame(() => {
-    root.current?.position.set(...originRef.current.map((value) => -value));
-    const earth = stateRef.current.find((body) => body.id === 'earth');
-    if (moon.current && earth) moon.current.position.set(...earth.position);
-  });
-  return <group ref={root}>
-    {points.map(({ body, points }) => <Line key={body.id} points={points} color={body.color} opacity={selection === 'overview' ? .22 : .08} transparent lineWidth={.65} depthWrite={false} />)}
-    {['earth', 'moon', 'geo'].includes(selection) ? <group ref={moon}><Line points={moonPoints} color="#8594a3" transparent opacity={.3} lineWidth={.7} depthWrite={false} /></group> : null}
-  </group>;
-}
-
-function GeostationaryDemo({ getTime, stateRef, originRef, longitude }) {
-  const marker = useRef(null), ring = useRef(null);
-  const radius = GEO_RADIUS_KM / AU_KM;
-  const points = useMemo(() => Array.from({ length: 129 }, (_, index) => [Math.cos(index * Math.PI / 64) * radius, 0, Math.sin(index * Math.PI / 64) * radius]), [radius]);
-  useFrame(() => {
-    const earth = stateRef.current.find((body) => body.id === 'earth');
-    const geo = geostationaryState(getTime(), longitude);
-    marker.current?.position.set(...geo.position.map((value, axis) => value - originRef.current[axis]));
-    if (ring.current && earth) {
-      ring.current.position.set(...earth.position.map((value, axis) => value - originRef.current[axis]));
-      ring.current.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(...earth.orientation.y));
-    }
-  });
-  return <>
-    <group ref={ring}><Line points={points} color="#9be5c9" opacity={.65} transparent lineWidth={1} /></group>
-    <group ref={marker}><mesh><octahedronGeometry args={[.000003, 0]} /><meshBasicMaterial color="#bdffe3" /></mesh><Html center zIndexRange={[25, 0]}><span className="solar-geo-label">GEO · {longitude}°</span></Html></group>
-  </>;
-}
-
-function SceneController({ getTime, stateRef, originRef, controls, selection, enhanced, cameraTick }) {
-  const { camera } = useThree();
-  const lastSample = useRef(0), lastCommand = useRef('');
-  useFrame(({ clock }) => {
-    if (clock.elapsedTime - lastSample.current > .08) { stateRef.current = getSolarSystemState(getTime()); lastSample.current = clock.elapsedTime; }
-    const target = stateRef.current.find((body) => body.id === (selection === 'geo' ? 'earth' : selection));
-    originRef.current = target ? target.position : [0, 0, 0];
-    const command = selection + ':' + enhanced + ':' + cameraTick + ':' + camera.aspect.toFixed(3);
-    if (lastCommand.current !== command && controls.current) {
-      lastCommand.current = command;
-      const fit = Math.min(1, camera.aspect);
-      const systemRadius = Math.max(32, ...stateRef.current.map((body) => body.distanceAu));
-      let distance = systemRadius * 1.08 / (Math.tan(camera.fov * Math.PI / 360) * fit);
-      if (target) {
-        const radius = selection === 'geo' ? GEO_RADIUS_KM / AU_KM : target.radiusAu * (enhanced && target.id !== 'sun' ? 100 : 1);
-        distance = radius * (target.rings ? 9 : 4) / fit;
-      }
-      camera.near = Math.max(1e-10, distance / 1000); camera.far = 1000; camera.updateProjectionMatrix();
-      // Start on the day side; users can orbit freely around the terminator.
-      const daySide = target && target.id !== 'sun' ? new THREE.Vector3(...target.position).negate().normalize() : new THREE.Vector3(.3, .7, 1).normalize();
-      const offset = new THREE.Vector3().crossVectors(daySide, new THREE.Vector3(0, 1, 0)).normalize().multiplyScalar(.35).add(new THREE.Vector3(0, .22, 0));
-      camera.position.copy(daySide.add(offset).normalize().multiplyScalar(distance));
-      controls.current.target.set(0, 0, 0); controls.current.minDistance = target ? target.radiusAu * (enhanced && target.id !== 'sun' ? 100 : 1) * (target.rings ? 2.5 : 1.15) : .00001;
-      controls.current.maxDistance = 600; controls.current.update();
-    }
-  }, -2);
-  return null;
-}
-
-function SolarStarField() {
-  const sky = useRef(null);
-  useFrame(({ camera }) => { sky.current?.position.copy(camera.position); });
-  return <group ref={sky}><Stars radius={150} depth={120} count={2400} factor={1.7} fade speed={0} /></group>;
-}
-
-export default function SolarSystemScene({ clock, selection, onSelect, enhanced, showOrbits, showMarkers, geoLongitude, cameraTick, segments = 64 }) {
-  const [initial] = useState(() => getSolarSystemState(clock.getTime()));
-  const stateRef = useRef(initial), originRef = useRef([0, 0, 0]), controls = useRef(null);
-  const orbitEpoch = Date.UTC(new Date(clock.utcMs || Date.now()).getUTCFullYear(), 0, 1);
-  return <>
-    <color attach="background" args={['#02050a']} />
-    <SolarStarField />
-    <SceneController getTime={clock.getTime} stateRef={stateRef} originRef={originRef} controls={controls} selection={selection} enhanced={enhanced} cameraTick={cameraTick} />
-    <OrbitControls ref={controls} makeDefault enableDamping dampingFactor={.12} enablePan={false} zoomSpeed={.7} rotateSpeed={.6} />
-    {showOrbits ? <OrbitPaths epoch={orbitEpoch} stateRef={stateRef} originRef={originRef} selection={selection} /> : null}
-    {SOLAR_BODIES.map((body) => <SolarBody key={body.id} body={body} stateRef={stateRef} originRef={originRef} enhanced={enhanced} onSelect={onSelect} segments={segments} />)}
-    {showMarkers && selection === 'overview' ? <OverviewLabels stateRef={stateRef} originRef={originRef} onSelect={onSelect} /> : null}
-    {selection === 'geo' ? <GeostationaryDemo getTime={clock.getTime} stateRef={stateRef} originRef={originRef} longitude={geoLongitude} /> : null}
-  </>;
 }

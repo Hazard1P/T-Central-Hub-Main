@@ -5,7 +5,6 @@ import { applyDurableAction, hasDurableMultiplayer } from '@/lib/durableMultipla
 import { SESSION_MODES, buildRingAdjustmentOutputs, getSessionModeSnapshot, normalizeSessionMode, transitionSessionMode } from '@/lib/sessionModeEngine';
 import { createModeBridgeTransfer, rehydrateModeBridgeState, validateModeBridgeTransfer } from '@/lib/persistence/modeBridgeState';
 import { trackServerEvent } from '@/lib/server/vercelTelemetry';
-import { awardMultiplayerProgressionEvent } from '@/lib/multiplayerProgression';
 import { attachRing1Continuity } from '@/lib/ring1Continuity';
 import { runRing1Reconciliation } from '@/lib/integrations/synapticsSecondsMeterAdapter';
 
@@ -84,15 +83,6 @@ function validateActionPayload(body) {
   };
 }
 
-function resolveProgressionTrigger(action = {}) {
-  if (action?.type === 'fire') return 'combat_contribution';
-  if (['objective', 'objective_capture', 'objective_tick', 'objective_assist'].includes(action?.type)) return 'objective_participation';
-  if (['session_complete', 'match_complete', 'extract'].includes(action?.type)) return 'session_completion';
-  return null;
-}
-
-
-
 function withModeBridgeTransfer(payload = {}, { roomName, sessionAnchor, accountAnchor, incomingTransfer, incomingState } = {}) {
   const validation = validateModeBridgeTransfer({ transfer: incomingTransfer, roomName, sessionAnchor, accountAnchor });
   if (!validation.ok) return { ok: false, status: validation.status, error: validation.error, details: validation.details };
@@ -160,23 +150,8 @@ export async function POST(request) {
 
   const { roomName, id, token, action, requestedMode, captureSimulationEvent, accountAnchor, incomingTransfer, incomingState } = validation.value;
 
-  const progressionTrigger = resolveProgressionTrigger(body?.action);
-  const progressionEventId = String(
-    body?.action?.progressionEventId
-    || body?.action?.eventId
-    || body?.action?.id
-    || `${body?.action?.type || 'action'}-${body?.action?.frameIndex || body?.action?.tick || Date.now()}`
-  );
-  const progressionPromise = progressionTrigger
-    ? awardMultiplayerProgressionEvent({
-      playerId: body?.id,
-      roomName,
-      eventId: progressionEventId,
-      trigger: progressionTrigger,
-      sessionId: body?.token,
-      displayName: body?.displayName,
-    })
-    : Promise.resolve(null);
+  // Cosmetic pulse fire does not award progression or accept client-claimed hits.
+  const progression = null;
 
   if (hasDurableMultiplayer()) {
     const result = await applyDurableAction({
@@ -186,7 +161,6 @@ export async function POST(request) {
       action,
       captureSimulationEvent,
     });
-    const progression = await progressionPromise;
     const payload = withModeState({ ...result, progressionDelta: progression?.delta || null }, { roomName, mode: requestedMode, source: 'action' });
     const payloadWithContinuity = await attachRing1Continuity(payload, {
       roomName,
@@ -218,7 +192,6 @@ export async function POST(request) {
     token,
     action,
   });
-  const progression = await progressionPromise;
   const payload = withModeState({ ...result, durable: false, progressionDelta: progression?.delta || null }, { roomName, mode: requestedMode, source: 'action' });
   const payloadWithContinuity = await attachRing1Continuity(payload, {
     roomName,

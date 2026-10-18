@@ -9,15 +9,18 @@ test('simultaneous flight pointers release independently and opposite directions
     [2, { axis: 'boost', value: 1 }],
     [3, { axis: 'y', value: -1 }],
   ]);
-  assert.deepEqual(resolveHeldFlightAxes(held), { x: 0, y: -1, z: 1, boost: 1 });
+  assert.deepEqual(resolveHeldFlightAxes(held), { x: 0, y: -1, z: 1, boost: 1, fire: 0 });
+  held.set(5, { axis: 'fire', value: 1 });
+  assert.equal(resolveHeldFlightAxes(held).fire, 1);
+  held.delete(5);
   held.delete(2);
-  assert.deepEqual(resolveHeldFlightAxes(held), { x: 0, y: -1, z: 1, boost: 0 });
+  assert.deepEqual(resolveHeldFlightAxes(held), { x: 0, y: -1, z: 1, boost: 0, fire: 0 });
   held.set(4, { axis: 'z', value: -1 });
   assert.equal(resolveHeldFlightAxes(held).z, 0);
   held.delete(1);
   assert.equal(resolveHeldFlightAxes(held).z, -1);
   held.clear();
-  assert.deepEqual(resolveHeldFlightAxes(held), { x: 0, y: 0, z: 0, boost: 0 });
+  assert.deepEqual(resolveHeldFlightAxes(held), { x: 0, y: 0, z: 0, boost: 0, fire: 0 });
 });
 
 test('flight input leaves text editing, controls, and browser shortcuts alone', () => {

@@ -2,10 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-async function loadStepFrameModule() {
-  const source = readFileSync(new URL('../lib/simCore/stepFrame.js', import.meta.url), 'utf8');
-  return import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
-}
+const loadStepFrameModule = () => import('../lib/simCore/stepFrame.js');
 
 test('ship controls document the nose-forward positive Z flight convention', () => {
   const stableWorld = readFileSync(new URL('../components/StableSystemWorld.js', import.meta.url), 'utf8');
