@@ -49,10 +49,10 @@ test('shared room names fit the API contract without accepting URL or header cha
   for (const name of ['', 'a'.repeat(65), '../room', 'room?token=x', 'room\nnext']) assert.equal(isValidRoomName(name), false);
 });
 
-test('outer-planet cruise endpoints stay inside the playable bounds and outside the planet', () => {
+test('planet cruise endpoints extend past the former local bounds and remain outside the planet', () => {
   const planet = EXPLORATION_LANDMARKS.find((node) => node.key === 'pelagos');
   const point = getApproachPoint([-44, -12, 159], planet);
-  assert.ok(Math.abs(point[0]) < 160 && Math.abs(point[1]) < 120 && Math.abs(point[2]) < 160);
+  assert.ok(point[2] > 160, 'the old 160-unit boundary must not compress the world');
   assert.ok(distanceBetween(point, planet.position) > planet.radius);
 });
 

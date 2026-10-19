@@ -9,7 +9,7 @@ import StableSystemWorld from '@/components/StableSystemWorld';
 import { MultiplayerSessionProvider } from '@/components/MultiplayerSessionProvider';
 import { useSteamSession } from '@/components/SteamSessionProvider';
 import { gameEngine } from '@/lib/gameEngine';
-import { resolveSolarBody } from '@/lib/flightRegions';
+import { resolveSolarBody } from '@/lib/solarSystem';
 
 function canUseWebGL() {
   if (typeof window === 'undefined') return false;
@@ -39,7 +39,8 @@ export default function SystemEntryClient() {
   const [initialSolarBody, setInitialSolarBody] = useState(null);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('region') === 'solar') handleEnter({ solarBody: resolveSolarBody(params.get('body')) || 'earth' });
+    const destination = params.get('destination');
+    if (destination?.startsWith('solar-') || params.get('region') === 'solar') handleEnter({ solarBody: resolveSolarBody(destination?.slice(6) || params.get('body')) || 'earth' });
   }, []);
   const { steamUser, lobbyMode, setLobbyMode } = useSteamSession();
 

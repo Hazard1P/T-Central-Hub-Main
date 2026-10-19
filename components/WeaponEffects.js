@@ -3,9 +3,11 @@
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { useUniverseFrame } from '@/components/UniverseFrame';
 import { pulsePosition, segmentSphereHit } from '@/lib/shipWeapons';
 
 export default function WeaponEffects({ bus, remote = [], selfId, reducedMotion = false }) {
+  const { origin } = useUniverseFrame();
   const beams = useRef(null), sparks = useRef(null), remoteSamples = useRef(new Map());
   const dummy = useMemo(() => new THREE.Object3D(), []), forward = useMemo(() => new THREE.Vector3(0, 0, 1), []);
   useFrame(() => {
@@ -31,14 +33,15 @@ export default function WeaponEffects({ bus, remote = [], selfId, reducedMotion 
       const sample = previous?.shot === shot ? previous : { shot, receivedAt: now };
       nextSamples.set(shot.id, sample);
       const velocity = shot.velocity || [0, 0, 64];
-      const direction = new THREE.Vector3(...velocity).normalize().toArray();
+      const direction = shot.direction || new THREE.Vector3(...velocity).normalize().toArray();
       const elapsed = Math.min(.35, (now - sample.receivedAt) / 1000);
       visible.push({ position: shot.position.map((value, axis) => value + velocity[axis] * elapsed), direction });
     });
     remoteSamples.current = nextSamples;
     visible.slice(-72).forEach((shot, index) => {
-      dummy.position.set(...shot.position); dummy.quaternion.setFromUnitVectors(forward, new THREE.Vector3(...shot.direction)); dummy.scale.set(.045, .045, 2.2); dummy.updateMatrix(); beams.current?.setMatrixAt(index, dummy.matrix);
+      dummy.position.set(...shot.position).sub(origin.current); dummy.quaternion.setFromUnitVectors(forward, new THREE.Vector3(...shot.direction)); dummy.scale.set(.045, .045, 2.2); dummy.updateMatrix(); beams.current?.setMatrixAt(index, dummy.matrix);
     });
+    beams.current?.position.copy(origin.current); sparks.current?.position.copy(origin.current);
     if (beams.current) { beams.current.count = Math.min(72, visible.length); beams.current.instanceMatrix.needsUpdate = true; }
     let count = 0;
     bus.current.impacts.forEach((impact) => {
@@ -46,6 +49,7 @@ export default function WeaponEffects({ bus, remote = [], selfId, reducedMotion 
       for (let index = 0; index < (reducedMotion ? 4 : 12); index += 1) {
         const phase = index * 2.399963;
         dummy.position.set(impact.position[0] + Math.cos(phase) * age * 2, impact.position[1] + Math.sin(phase) * age * 2, impact.position[2] - age * (index % 3));
+        dummy.position.sub(origin.current);
         dummy.scale.setScalar((1 - age) * .11); dummy.updateMatrix(); sparks.current?.setMatrixAt(count++, dummy.matrix);
       }
     });

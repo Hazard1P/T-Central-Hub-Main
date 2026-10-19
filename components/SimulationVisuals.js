@@ -10,6 +10,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { EXPLORATION_LANDMARKS } from '@/lib/exploration';
 import CelestialDebris from '@/components/CelestialDebris';
+import { useUniverseFrame } from '@/components/UniverseFrame';
 
 const noise = `
 float hash(vec3 p) { p=fract(p*.3183099+vec3(.11,.27,.39)); p*=17.; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }
@@ -26,9 +27,10 @@ const finish = `
 
 export const NebulaSky = memo(function NebulaSky({ animate = true, detail = 5 }) {
   const mesh = useRef();
+  const { origin } = useUniverseFrame();
   const uniforms = useMemo(() => ({ uTime: { value: 0 } }), []);
   useFrame(({ camera, clock }) => {
-    mesh.current?.position.copy(camera.position);
+    mesh.current?.position.copy(camera.position).add(origin.current);
     uniforms.uTime.value = animate ? clock.elapsedTime * .004 : 0;
   });
   return (

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { distanceBetween, isValidRoomName } from '@/lib/exploration';
 import { isInteractiveTarget } from '@/lib/flightInput';
+import { formatSpaceDistance } from '@/lib/universeSpace';
 import { gameEngine } from '@/lib/gameEngine';
 
 export default function ExplorationHud({ telemetry, destinations, destination, onSelect, onNavigate, onFace, cruising, onCancelCruise, visited, lobbyMode, onModeChange, roomName, onRoomChange, pilots, selfId, serverStatus, graphicsQuality, onGraphicsChange, dampers, onDampersChange, onRecenter, notice, onPanelChange, seedCount = 0 }) {
@@ -57,13 +58,13 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
         <section className="exploration-panel" id="exploration-panel" aria-labelledby="exploration-panel-title" ref={panelRef} tabIndex={-1}>
           <div className="exploration-panel-heading"><div><p className="eyebrow">Flight tools</p><h2 id="exploration-panel-title">{panel === 'explore' ? 'Find your next horizon.' : panel === 'crew' ? 'Explore together.' : 'Your flight setup.'}</h2></div><button type="button" aria-label="Close flight panel" onClick={() => setPanel(null)}>×</button></div>
           {panel === 'explore' ? <>
-            <p className="exploration-help">Choose a landmark. Cruise flies there using your ship’s thrusters; steering or dragging space returns control to you.</p>
+            <p className="exploration-help">Every destination is in this universe. Cruise flies continuously, using faster deep-space thrust far from objects; steering returns control to you.</p>
             <label className="exploration-search">Find a destination<input type="search" value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Planet, station, blackhole…" /></label>
             <div className="exploration-destinations">
               {visibleDestinations.map((node) => <button key={node.key} className={node.key === destination?.key ? 'selected' : ''} onClick={() => onSelect(node)} aria-pressed={node.key === destination?.key}>
                 <span className="exploration-dot" style={{ background: node.color || '#83ebff' }} />
                 <span><strong>{node.label}</strong><small>{node.kind} {visited.includes(node.key) ? '· discovered' : ''}</small></span>
-                <small>{distanceBetween(telemetry.position, node.position).toFixed(0)} u</small>
+                <small>{formatSpaceDistance(distanceBetween(telemetry.position, node.position))}</small>
               </button>)}
               {!visibleDestinations.length ? <p className="exploration-help">No destinations match. Try another name.</p> : null}
             </div>
@@ -81,13 +82,13 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
               <h3>{serverStatus.connected ? pilots.length + ' pilot' + (pilots.length === 1 ? '' : 's') + ' in this room' : serverStatus.label + '…'}</h3>
               <ul className="exploration-pilots">{pilots.map((pilot) => <li key={pilot.id}><span>{pilot.displayName}{pilot.id === selfId ? ' (you)' : ''}</span>{pilot.id !== selfId ? <button onClick={() => { onSelect({ key: 'pilot:' + pilot.id, label: pilot.displayName, kind: 'pilot waypoint', position: [...pilot.position], approachRadius: 4, description: 'Last shared location of this pilot. Select them again to update the waypoint.' }); setPanel(null); }}>Set waypoint · {distanceBetween(telemetry.position, pilot.position).toFixed(0)} u</button> : <small>Flying</small>}</li>)}</ul>
               {!nearby.length ? <p className="exploration-help">The universe is open. Invite a friend to fly alongside you.</p> : null}
-            </> : <p className="exploration-help">Your solo flight is isolated from shared room traffic. Switch back to rejoin other pilots.</p>}
+            </> : <p className="exploration-help">Your solo session is isolated from shared room traffic. Switch back to rejoin other pilots.</p>}
           </> : null}
           {panel === 'settings' ? <>
             <label className="exploration-setting">Visual quality<select value={graphicsQuality} onChange={(event) => onGraphicsChange(event.target.value)}><option value="auto">Auto</option><option value="high">High</option><option value="performance">Performance</option></select></label>
             <label className="exploration-check"><input type="checkbox" checked={dampers} onChange={onDampersChange} />Brake automatically when thrust is released</label>
             <button className="button secondary" onClick={onRecenter}>Recenter view</button>
-            <div className="exploration-controls"><h3>Flight controls</h3><p>W / S forward and back · A / D strafe<br />Space / R rise · Shift / F descend<br />Ctrl boost · X brake<br />Move mouse to steer · Click / V fire · Esc release mouse · M destinations · H hide HUD</p><p>On touch screens, use the flight pad and drag the open scene to look around.</p></div>
+            <div className="exploration-controls"><h3>Flight controls</h3><p>W / S forward and back · A / D strafe<br />Space / R rise · Shift / F descend<br />Ctrl boost · X brake<br />Move mouse to steer · Click / V fire · Esc release mouse · M destinations · H hide HUD</p><p>Deep-space assist increases thrust in open space and slows near objects. No region changes or ship resets occur during travel.</p><p>On touch screens, use the flight pad and drag the open scene to look around.</p></div>
             <Link className="exploration-account-link" href="/">Account and sign-in on the homepage</Link>
             {seedCount > 0 ? <Link className="exploration-account-link" href="/profile">Your Prayer Seed collection · {seedCount}</Link> : null}
           </> : null}
@@ -96,7 +97,7 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
 
       <div className="exploration-flight-strip" aria-label="Flight telemetry">
         <span><small>Speed</small><strong>{telemetry.speed.toFixed(1)} <small>u/s</small></strong></span>
-        {destination ? <span className="exploration-target"><small>{cruising ? 'Cruising to' : 'Waypoint'}</small><strong>{destination.label}</strong><small>{distance.toFixed(1)} u {bearing !== null ? '· ' + bearing + '° off nose' : ''}</small></span> : <span className="exploration-target"><small>Free flight</small><strong>Choose a destination to begin</strong></span>}
+        {destination ? <span className="exploration-target"><small>{cruising ? 'Cruising to' : 'Waypoint'}</small><strong>{destination.label}</strong><small>{formatSpaceDistance(distance)} {bearing !== null ? '· ' + bearing + '° off nose' : ''}</small></span> : <span className="exploration-target"><small>Free flight</small><strong>Choose a destination to begin</strong></span>}
         {cruising ? <button type="button" onClick={onCancelCruise}>Cancel cruise</button> : <button type="button" onClick={() => toggle('explore')}>Destinations</button>}
       </div>
       <p className="exploration-notice" role="status">{notice}</p>

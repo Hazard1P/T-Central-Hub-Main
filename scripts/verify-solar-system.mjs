@@ -13,8 +13,8 @@ const second = await (await fetch(new URL('/api/astronomy/time', base))).json();
 assert.ok(second.unixMs >= result.unixMs);
 const legacy = await fetch(new URL('/system/solar-system', base), { redirect: 'manual' });
 assert.equal(legacy.status, 307);
-assert.equal(legacy.headers.get('location'), '/system?region=solar&body=earth');
-for (const [route, expected] of [['/system', 'Launch simulation'], ['/system?region=solar&body=earth', 'Launch simulation']]) {
+assert.equal(legacy.headers.get('location'), '/system?destination=solar-earth');
+for (const [route, expected] of [['/system', 'Launch simulation'], ['/system?destination=solar-earth', 'Launch simulation']]) {
   const page = await fetch(new URL(route, base));
   assert.equal(page.status, 200);
   assert.ok((await page.text()).includes(expected));

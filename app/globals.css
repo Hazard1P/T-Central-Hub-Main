@@ -7262,39 +7262,24 @@ body:has(.touch-flight-pad) .simulation-visual-settings { left: 14px; right: aut
 .prayer-dialog button:disabled { opacity: .55; cursor: wait; }
 @media (max-width: 500px) { .seed-intelligence { grid-template-columns: 1fr; } .seed-intelligence dd { margin-bottom: .5rem; } }
 
-/* Solar System: physical AU geometry with a quiet, separate navigation layer. */
-/* Ship flight uses the same canvas and input layer in hub and Solar regions. */
+/* All destinations share one flight HUD and one input layer. */
 .ship-reticle { position: fixed; z-index: 54; left: 50%; top: 50%; transform: translate(-50%, -50%); pointer-events: none; width: 24px; height: 24px; border: 1px solid #c2e9ed66; border-radius: 50%; display: grid; place-items: center; }
 .ship-reticle i { width: 2px; height: 2px; border-radius: 50%; background: #d1f8ff; }
 .ship-reticle span { position: absolute; top: 32px; left: 50%; transform: translateX(-50%); font-size: 9px; white-space: nowrap; color: #bad3dd80; letter-spacing: .08em; }
-.solar-flight-hud { pointer-events: none; }
-.solar-flight-hud :is(button, input, select, a), .solar-flight-panel { pointer-events: auto; }
-.solar-flight-back { white-space: nowrap; }
-.solar-flight-worlds { display: grid; gap: 7px; margin: 20px 0; }
-.solar-flight-worlds button { display: flex; align-items: center; gap: 12px; text-align: left; width: 100%; padding: 12px; border: 1px solid #abcfd42b; border-radius: 12px; background: #0b1a2899; color: #c8dce4; font: inherit; cursor: pointer; min-height: 56px; }
-.solar-flight-worlds button[aria-pressed="true"] { border-color: #b0e5d56b; background: #122c35; }
-.solar-flight-worlds i { width: 14px; height: 14px; border-radius: 50%; box-shadow: inset -3px -2px 5px #0007; flex-shrink: 0; }
-.solar-flight-worlds button > span:nth-child(2) { flex: 1; }
-.solar-flight-worlds small { display: block; color: #8ea7b8; font-size: .7rem; margin-top: .3rem; }
-.solar-flight-worlds button > span:last-child { color: #a8cfc8; font-size: .7rem; }
 .solar-flight-geo-tag { display: block; margin-top: 32px; padding: 5px; color: #abebd7; font-size: 10px; background: #061a2266; border-radius: 6px; }
 .hud-hidden .solar-flight-geo-tag { display: none; }
 .touch-flight-pad .touch-flight-fire { color: #ffdcaa; background: #4b2c1dd9; border-color: #e5aa666b; min-height: 44px; }
 .touch-flight-pad .touch-flight-fire.is-held { background: #a05e2f; color: #fff1d3; }
 @media (max-width: 820px), (pointer: coarse) {
-  .solar-flight-toolbar { flex-wrap: wrap; gap: 4px 12px; }
-  .solar-flight-toolbar .exploration-connection { flex: 1; }
-  .solar-flight-toolbar nav { width: 100%; justify-content: flex-end; }
-  .solar-flight-toolbar .solar-flight-back { padding: 8px; }
-  .solar-flight-panel { top: 110px; max-height: calc(100dvh - 130px); }
-  .solar-flight-hud:has(.exploration-panel) .solar-flight-strip { display: none; }
+  .exploration-toolbar { flex-wrap: wrap; gap: 4px 12px; }
+  .exploration-toolbar .exploration-connection { flex: 1; }
+  .exploration-toolbar nav { width: 100%; justify-content: flex-end; }
   .ship-reticle { width: 20px; height: 20px; }
   .ship-reticle span { display: none; }
 }
 @media (orientation: landscape) and (max-height: 600px) {
-  .solar-flight-toolbar { flex-wrap: nowrap; }
-  .solar-flight-toolbar nav { width: auto; }
-  .solar-flight-panel { top: 76px; max-height: calc(100dvh - 90px); }
+  .exploration-toolbar { flex-wrap: nowrap; }
+  .exploration-toolbar nav { width: auto; }
 }
 
 /* Keep browser controls clear of phone notches and avoid input-focus zoom on iOS. */
@@ -7304,14 +7289,17 @@ body:has(.touch-flight-pad) .simulation-visual-settings { left: 14px; right: aut
   .exploration-panel-heading > button { min-width: 44px; }
   .exploration-panel :is(input, select) { font-size: 16px; }
   .touch-flight-pad { left: max(14px, env(safe-area-inset-left)); right: max(14px, env(safe-area-inset-right)); }
-  .solar-flight-hud .exploration-notice { top: calc(112px + env(safe-area-inset-top)); font-size: .7rem; }
+  .exploration-notice { top: calc(112px + env(safe-area-inset-top)); font-size: .7rem; }
+  .exploration-panel { top: calc(118px + env(safe-area-inset-top)); max-height: calc(100dvh - 138px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
   .exploration-hud:has(.exploration-panel) .exploration-notice { display: none; }
-  .solar-flight-panel { top: calc(118px + env(safe-area-inset-top)); max-height: calc(100dvh - 138px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
 }
 @media (orientation: landscape) and (max-height: 600px) and (pointer: coarse) {
   .exploration-flight-strip { left: 50%; right: auto; transform: translateX(-50%); bottom: max(12px, env(safe-area-inset-bottom)); width: max-content; max-width: calc(100vw - 410px); gap: .6rem; padding: .5rem .7rem; }
   .exploration-flight-strip > button { display: none; }
   .exploration-target strong { max-width: 20vw; }
   .exploration-notice, .touch-look-hint { display: none; }
-  .solar-flight-panel { top: calc(76px + env(safe-area-inset-top)); max-height: calc(100dvh - 90px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
+  .exploration-panel { top: calc(76px + env(safe-area-inset-top)); max-height: calc(100dvh - 90px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
 }
+
+body:has(.system-entry-screen.phase-in_sim) { overflow: hidden; }
+body:has(.system-entry-screen.phase-in_sim) .global-footer { display: none; }

@@ -100,3 +100,7 @@ Use **Hide HUD** (or H) for an unobstructed scene and **Show HUD** to restore co
 Keyboard flight is active when focus is on the scene. Text fields, selectors, buttons, and links keep their normal keyboard behavior. Releasing a key, switching away from the window, or hiding the tab clears held inputs. The H shortcut is attached only while the simulation is running.
 
 On touch devices, hold a direction, Boost or Fire with separate fingers, and drag open space to steer at the same time. Each finger releases independently; cancelled touches also stop their input. **Recenter view** in Settings restores the forward camera heading without teleporting the ship or resetting progression.
+
+### One continuous universe
+
+All active simulation destinations share one coordinate system and the selected multiplayer room. Solar System bodies are farther out in the same space; destination selection and arrival never change rooms or reset the ship. Cruise uses automatic deep-space thrust and slows near objects. The camera rebases its render origin for precision without changing authoritative positions. See [Solar System flight](docs/SOLAR-SYSTEM.md) for scale and astronomical fidelity.

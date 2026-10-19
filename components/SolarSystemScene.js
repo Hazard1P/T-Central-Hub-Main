@@ -3,6 +3,8 @@
 import { Suspense, useMemo, useRef } from 'react';
 import { useFrame, useLoader } from '@react-three/fiber';
 import * as THREE from 'three';
+import { SOLAR_UNITS_PER_AU, SOLAR_WORLD_CENTER } from '@/lib/universeSpace';
+import { useUniverseFrame } from '@/components/UniverseFrame';
 
 const surfaceVertex = `varying vec3 nWorld; varying vec3 local; varying vec2 texCoord; varying vec3 toEye;
 void main(){texCoord=uv;local=position;nWorld=normalize(mat3(modelMatrix)*normal);vec4 world=modelMatrix*vec4(position,1.);toEye=cameraPosition-world.xyz;gl_Position=projectionMatrix*viewMatrix*world;}`;
@@ -50,34 +52,29 @@ function SaturnRings({ sunDirection }) {
   </mesh>;
 }
 
-export function SolarBody({ body, stateRef, originRef, enhanced, onSelect, segments, flightFrame }) {
+export function SolarBody({ body, stateRef, onSelect, segments }) {
   const position = useRef(null), axes = useRef(null);
+  const { origin } = useUniverseFrame();
   const uniforms = useMemo(() => ({ sunDirection: { value: new THREE.Vector3(1, 0, 0) } }), []);
   const matrix = useMemo(() => new THREE.Matrix4(), []);
   const x = useMemo(() => new THREE.Vector3(), []), y = useMemo(() => new THREE.Vector3(), []), z = useMemo(() => new THREE.Vector3(), []);
   useFrame(({ camera }) => {
     const state = stateRef.current.find((entry) => entry.id === body.id);
     if (!state || !position.current || !axes.current) return;
-    const relative = new THREE.Vector3(...state.position.map((value, axis) => value - originRef.current[axis]));
-    let multiplier = 1;
-    if (flightFrame?.current) {
-      const frame = flightFrame.current;
-      relative.applyQuaternion(frame.rotation).multiplyScalar(frame.unitsPerAu).add(frame.center);
-      const offset = relative.clone().sub(camera.position), distance = offset.length();
-      multiplier = frame.unitsPerAu;
-      // Distant bodies are projected onto the sky at their correct angular size.
-      if (distance > 550) { relative.copy(camera.position).add(offset.multiplyScalar(550 / distance)); multiplier *= 550 / distance; }
-    }
+    const relative = new THREE.Vector3(...state.position.map((v,i)=>SOLAR_WORLD_CENTER[i]+v*SOLAR_UNITS_PER_AU));
+    const worldCamera = camera.position.clone().add(origin.current);
+    const offset = relative.clone().sub(worldCamera), distance=offset.length();
+    let multiplier = SOLAR_UNITS_PER_AU;
+    // Far geometry is an angular-size LOD only; physics and navigation retain true coordinates.
+    if(distance>20000){const projected=20000+Math.min(40000,Math.log2(distance/20000)*1000);relative.copy(worldCamera).add(offset.multiplyScalar(projected/distance));multiplier*=projected/distance;}
     position.current.position.copy(relative);
-    const radius = state.radiusAu * multiplier * (enhanced && body.id !== 'sun' ? 100 : 1);
+    const radius = state.radiusAu * multiplier;
     position.current.scale.setScalar(radius);
     const f = body.flattening || 0, equator = 1 / Math.cbrt(1 - f);
     axes.current.scale.set(equator, equator * (1 - f), equator);
     x.set(...state.orientation.x); y.set(...state.orientation.y); z.set(...state.orientation.z);
-    if (flightFrame?.current) { x.applyQuaternion(flightFrame.current.rotation); y.applyQuaternion(flightFrame.current.rotation); z.applyQuaternion(flightFrame.current.rotation); }
     matrix.makeBasis(x, y, z); axes.current.quaternion.setFromRotationMatrix(matrix);
     uniforms.sunDirection.value.set(...state.position).negate().normalize();
-    if (flightFrame?.current) uniforms.sunDirection.value.applyQuaternion(flightFrame.current.rotation);
   });
   return <group ref={position} onClick={onSelect ? (event) => { event.stopPropagation(); onSelect(body.id); } : undefined}>
     <group ref={axes}>
