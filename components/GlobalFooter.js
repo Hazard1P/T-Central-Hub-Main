@@ -1,10 +1,12 @@
 import Link from 'next/link';
 
 const footerLinks = [
+  { href: '/legal', label: 'Legal documents' },
   { href: '/privacy-policy', label: 'Privacy Policy' },
   { href: '/terms-and-conditions', label: 'Terms & Conditions' },
   { href: '/eula', label: 'EULA' },
   { href: '/multiplayer-policy', label: 'Multiplayer Policy' },
+  { href: '/support-policy', label: 'Support & payments' },
   { href: '/contact', label: 'Contact' },
   { href: '/hub-form', label: 'Community board' },
   { href: '/information', label: 'Player guide' },
@@ -30,8 +32,9 @@ export default function GlobalFooter() {
         </nav>
         <div>
           <p className="global-footer__text">Michael Rybaltowicz</p>
+          <p className="global-footer__text">Central Synaptic Intelligence Systems · British Columbia, Canada</p>
           <p className="global-footer__text">BrainandBodyai@gmail.com</p>
-          <p className="global-footer__caption">E_s Credits are in-game units with no guaranteed real-world monetary value.</p>
+          <p className="global-footer__caption">E_s Credits are gameplay units with no T-Central cash-redemption right.</p>
         </div>
       </div>
     </footer>

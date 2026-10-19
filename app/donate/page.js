@@ -5,6 +5,7 @@ import Link from 'next/link';
 export const metadata = { title: 'Support the hub' };
 
 const legalDisclosureLinks = [
+  { href: '/support-policy', label: 'Support & payments' },
   { href: '/terms-and-conditions', label: 'Terms' },
   { href: '/privacy-policy', label: 'Privacy' },
   { href: '/eula', label: 'EULA' },

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildHubPostRecord, normalizeHubPostPayload } from '../lib/hubPosts.js';
+import { buildHubPostRecord, normalizeHubPostPayload, publicHubPost } from '../lib/hubPosts.js';
 
 test('hub post payload trims required fields and rejects unsupported categories', () => {
   const payload = normalizeHubPostPayload({
@@ -55,4 +55,30 @@ test('hub post records require an authenticated Steam or Google identity', () =>
 
   assert.equal(result.ok, false);
   assert.equal(result.error, 'AUTH_REQUIRED');
+});
+
+test('public posts omit authentication identifiers, email and unrecognized stored fields', () => {
+  const { record } = buildHubPostRecord({
+    body: { topic: 'Public topic', message: 'Public message' },
+    auth: { googleUser: { sub: 'private-sub', name: 'Pilot', email: 'private@example.test', email_verified: true } },
+  });
+  record.author.futurePrivateField = 'private-token';
+  record.privateModeratorNotes = 'private-notes';
+  const publicRecord = publicHubPost(record);
+  assert.equal(publicRecord.message, 'Public message');
+  assert.equal(publicRecord.author.displayName, 'Pilot');
+  assert.deepEqual(Object.keys(publicRecord.author).sort(), ['avatar', 'displayName', 'profileurl', 'provider']);
+  assert.doesNotMatch(JSON.stringify(publicRecord), /private-/);
+  assert.doesNotMatch(JSON.stringify(publicRecord), /private@example/);
+  assert.equal(record.author.email, 'private@example.test');
+});
+
+test('missing names and legacy email fallback names do not expose Google email', () => {
+  const { record } = buildHubPostRecord({
+    body: { topic: 'Topic', message: 'Message' },
+    auth: { googleUser: { sub: '123', email: 'private@example.test' } },
+  });
+  assert.equal(record.author.displayName, 'Google Pilot');
+  record.author.displayName = record.author.email;
+  assert.equal(publicHubPost(record).author.displayName, 'Community Pilot');
 });

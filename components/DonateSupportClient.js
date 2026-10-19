@@ -48,6 +48,7 @@ function loadPayPalSdk({ clientId, currency, mode }) {
 }
 
 const legalLinks = [
+  { href: '/support-policy', label: 'Support & payments' },
   { href: '/terms-and-conditions', label: 'Terms' },
   { href: '/privacy-policy', label: 'Privacy' },
   { href: '/eula', label: 'EULA' },

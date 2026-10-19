@@ -7303,3 +7303,34 @@ body:has(.touch-flight-pad) .simulation-visual-settings { left: 14px; right: aut
 
 body:has(.system-entry-screen.phase-in_sim) { overflow: hidden; }
 body:has(.system-entry-screen.phase-in_sim) .global-footer { display: none; }
+
+/* Legal documents share one readable layout on phones and desktop. */
+.legal-document { width: 100%; max-width: 78ch; margin-inline: auto; }
+.legal-document > * + * { margin-top: 1.25rem; }
+.legal-document p, .legal-document li { line-height: 1.8; overflow-wrap: anywhere; }
+.legal-section { scroll-margin-top: 6rem; }
+.legal-section h2, .legal-contents h2, .legal-draft h2, .legal-document-list h2 { font-size: clamp(1.15rem, 2vw, 1.45rem); line-height: 1.4; }
+.legal-section p + p { margin-top: 1rem; }
+.legal-draft { border-color: rgba(235, 188, 99, .55); }
+.legal-draft-note { padding: .75rem; border-left: 3px solid #ebbc63; line-height: 1.6; }
+.legal-metadata { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 1.25rem; }
+.legal-metadata dt { font-weight: 700; font-size: .85rem; }
+.legal-metadata dd { margin: .3rem 0 0; overflow-wrap: anywhere; }
+.legal-contents ol { padding-left: 1.5rem; }
+.legal-contents a { display: inline-block; padding-block: .35rem; }
+.legal-related { display: flex; flex-wrap: wrap; gap: .5rem 1rem; }
+.legal-related a { display: inline-block; padding-block: .65rem; overflow-wrap: anywhere; }
+.legal-document a { text-decoration: underline; text-underline-offset: .2em; }
+.legal-document-list { display: grid; gap: 1rem; }
+.legal-document-list > a { display: block; text-decoration: none; }
+.legal-document-list > a span { display: inline-block; padding-top: .5rem; text-decoration: underline; text-underline-offset: .2em; }
+.legal-document-list > a:hover, .legal-document-list > a:focus-visible { border-color: var(--accent); }
+@media (max-width: 540px) { .legal-metadata { grid-template-columns: minmax(0, 1fr); } }
+@media print {
+  body:has(.legal-document) { background: white; color: black; }
+  body:has(.legal-document) :is(.site-navigation, .global-footer, .content-bubbles, .content-backdrop, .content-noise, .consent-gate) { display: none !important; }
+  .legal-document { max-width: none; }
+  .legal-document .content-card { background: white; color: black; border: 1px solid #999; box-shadow: none; }
+  .legal-document a { color: black; }
+  .legal-document h2 { break-after: avoid; }
+}
