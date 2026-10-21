@@ -1,5 +1,7 @@
+import { accountPayments } from '@/lib/server/accountPaymentStore';
+import { reconcileAccountPaymentEvent } from '@/lib/server/paymentWebhook';
 import { NextResponse } from 'next/server';
-import { getPayPalSubscriptionDetails, isPayPalConfigured, verifyPayPalWebhook } from '@/lib/paypal';
+import { getPayPalSubscriptionDetails, getPayPalOrderDetails, getPayPalCaptureDetails, isPayPalConfigured, verifyPayPalWebhook } from '@/lib/paypal';
 import {
   hasProcessedPayPalWebhookEvent,
   markPayPalWebhookEventProcessed,
@@ -138,6 +140,16 @@ export async function POST(request) {
 
   if (!signatureValid) {
     return NextResponse.json({ ok: false, error: 'PayPal signature verification failed' }, { status: 401 });
+  }
+
+  // Durable transaction/refund keys protect analytics across restarts and workers.
+  // Reconcile before the legacy in-memory compatibility cache is consulted.
+  try {
+    const financial = await reconcileAccountPaymentEvent(event, { store: accountPayments(), getOrder: getPayPalOrderDetails, getCapture: getPayPalCaptureDetails, getSubscription: getPayPalSubscriptionDetails });
+    if (financial.handled) return NextResponse.json({ ok: true, eventId, recorded: true });
+  } catch {
+    await accountPayments().event(eventId, String(event.event_type || ''), String(event.resource?.id || ''), 'unmatched').catch(() => {});
+    return NextResponse.json({ ok: false, error: 'Payment reconciliation is pending; retry this event.' }, { status: 503 });
   }
 
   if (hasProcessedPayPalWebhookEvent(eventId)) {

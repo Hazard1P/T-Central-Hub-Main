@@ -1,69 +1,28 @@
+import { isSameOriginPaymentRequest } from '@/lib/paymentRequest';
 import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
-import { decryptJson } from '@/lib/security';
-import {
-  createPayPalSubscription,
-  getPayPalSubscriptionPlanId,
-  isPayPalSubscriptionConfigured,
-} from '@/lib/paypal';
-
-function readSteamSession() {
-  const rawSteam = cookies().get('steam_session')?.value;
-  try {
-    return rawSteam ? decryptJson(rawSteam) : null;
-  } catch {
-    return null;
-  }
-}
-
-function normalizeIdempotencyKey(value) {
-  const key = String(value || '').trim();
-  if (!key) return '';
-  if (!/^[a-zA-Z0-9:_-]{8,128}$/.test(key)) {
-    throw new Error('Invalid idempotency key format');
-  }
-  return key;
-}
+import { resolveGameAuthContext } from '@/lib/auth/resolveGameAuthContext';
+import { accountPayments } from '@/lib/server/accountPaymentStore';
+import { monthlySupportPlan } from '@/lib/server/monthlySupportPlan';
+import { moneyToMinor } from '@/lib/accountPayments';
+import { createPayPalSubscription, getPayPalSubscriptionPlanId } from '@/lib/paypal';
 
 export async function POST(request) {
-  if (!isPayPalSubscriptionConfigured()) {
-    return NextResponse.json({ ok: false, error: 'PayPal subscriptions are not configured' }, { status: 503 });
-  }
-
-  const steamUser = readSteamSession();
-  if (!steamUser?.steamid) {
-    return NextResponse.json({ ok: false, error: 'Steam session required before creating subscriptions' }, { status: 401 });
-  }
-
-  const body = await request.json().catch(() => ({}));
-
+  if (!isSameOriginPaymentRequest(request)) return Response.json({ ok: false, error: 'Open checkout from T-Central to continue.' }, { status: 403 });
+  const auth = resolveGameAuthContext(cookies());
+  // Existing subscription-management and cancellation tools are Steam-bound.
+  if (!auth.authenticated || auth.provider !== 'steam') return Response.json({ ok: false, error: 'Monthly support currently requires a Steam account. Google accounts can make one-time contributions.' }, { status: 401 });
+  const body = await request.json().catch(() => null);
+  if (!/^[a-zA-Z0-9_-]{16,80}$/.test(body?.requestId || '')) return Response.json({ ok: false, error: 'A valid checkout request is required.' }, { status: 400 });
+  if (body?.planId && body.planId !== getPayPalSubscriptionPlanId()) return Response.json({ ok: false, error: 'Unsupported plan.' }, { status: 400 });
   try {
-    const configuredPlanId = getPayPalSubscriptionPlanId();
-    const requestedPlanId = String(body?.planId || configuredPlanId).trim();
-    if (requestedPlanId !== configuredPlanId) {
-      return NextResponse.json({ ok: false, error: 'Unsupported PayPal subscription plan' }, { status: 400 });
-    }
-
-    const subscription = await createPayPalSubscription({
-      request,
-      steamUser,
-      planId: configuredPlanId,
-      idempotencyKey: normalizeIdempotencyKey(body?.idempotencyKey || request.headers.get('x-idempotency-key')),
-    });
-
-    if (!subscription?.id) {
-      throw new Error('PayPal subscription ID missing from response');
-    }
-
-    return NextResponse.json({
-      ok: true,
-      subscriptionId: subscription.id,
-      status: subscription.status || 'CREATED',
-    });
-  } catch (error) {
-    return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error.message : 'Unable to create subscription' },
-      { status: 400 }
-    );
-  }
+    const plan = await monthlySupportPlan();
+    if (!plan) return Response.json({ ok: false, error: 'Monthly support is currently unavailable.' }, { status: 503 });
+    const store = accountPayments();
+    const intent = await store.begin(auth, { kind: 'support_subscription', focus: 'general', amountMinor: moneyToMinor(plan.amount, plan.currency), currency: plan.currency, product: { name: 'Voluntary monthly support', version: 1, planId: getPayPalSubscriptionPlanId(), benefits: [] } }, body.requestId, 'subscription');
+    if (intent.provider_id) return Response.json({ ok: true, subscriptionId: intent.provider_id });
+    const subscription = await createPayPalSubscription({ request, steamUser: auth.steamUser, planId: getPayPalSubscriptionPlanId(), idempotencyKey: intent.id });
+    if (!subscription?.id) throw new Error('Missing subscription ID');
+    await store.bind(intent, subscription.id);
+    return Response.json({ ok: true, subscriptionId: subscription.id, status: subscription.status });
+  } catch { return Response.json({ ok: false, error: 'Monthly checkout could not be prepared. Retry the same request.' }, { status: 503 }); }
 }

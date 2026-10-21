@@ -6,6 +6,8 @@ Production-oriented Next.js base for the T-Central Hub web game and server porta
 
 T-Central currently has no active Rust or Arma 3 servers of its own. The server pages now provide selectable third-party discovery, with source timestamps and direct ranking links when the feed is unavailable. Community posts support Steam/Google identities, headings, optional subheadings and background synchronization. Voluntary contributions fund ongoing development, marketing, hardware and project infrastructure.
 
+Account-bound contribution records, private financial analytics and the future VIP record structure are described in [account payments](docs/ACCOUNT-PAYMENTS.md). VIP sales remain unavailable until actual offers are defined.
+
 See [community deployment and verification notes](docs/COMMUNITY-EXPERIENCE.md) for the required database migration, provider configuration and remaining live-service checks.
 
 ## Stack

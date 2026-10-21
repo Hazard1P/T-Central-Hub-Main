@@ -1,129 +1,29 @@
+import { isSameOriginPaymentRequest } from '@/lib/paymentRequest';
 import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
-import { decryptJson, encryptJson, signValue } from '@/lib/security';
-import { shouldUseSecureCookies } from '@/lib/runtimeConfig';
-import { SUPPORT_RECEIPT_MAX_AGE_SECONDS } from '@/lib/supportSessionConfig';
-import { persistDonationLedger, readDonationLedger, summarizeDonationLedger, upsertDonationRecord } from '@/lib/donationLedger';
-import { confirmDonationCapture, getDonationsBySteamId } from '@/lib/server/donationStore';
-import { capturePayPalOrder, isPayPalConfigured } from '@/lib/paypal';
-
-function readSteamSession() {
-  const cookieStore = cookies();
-  const rawSteam = cookieStore.get('steam_session')?.value;
-  try {
-    return rawSteam ? decryptJson(rawSteam) : null;
-  } catch {
-    return null;
-  }
-}
-
-function normalizeOrderId(value) {
-  const orderId = String(value || '').trim();
-  if (!/^[A-Z0-9-]{8,64}$/i.test(orderId)) {
-    throw new Error('Invalid PayPal orderId');
-  }
-  return orderId;
-}
-
-function normalizeIdempotencyKey(value) {
-  const key = String(value || '').trim();
-  if (!key) return '';
-  if (!/^[a-zA-Z0-9:_-]{8,128}$/.test(key)) {
-    throw new Error('Invalid idempotency key format');
-  }
-  return key;
-}
+import { resolveGameAuthContext } from '@/lib/auth/resolveGameAuthContext';
+import { accountPayments } from '@/lib/server/accountPaymentStore';
+import { minorToMoney, verifiedCapture, verifyOrderPayment } from '@/lib/accountPayments';
+import { capturePayPalOrder, getPayPalOrderDetails, isPayPalConfigured } from '@/lib/paypal';
 
 export async function POST(request) {
-  if (!isPayPalConfigured()) {
-    return NextResponse.json({ ok: false, error: 'PayPal is not configured' }, { status: 503 });
-  }
-
-  const steamUser = readSteamSession();
-  if (!steamUser?.steamid) {
-    return NextResponse.json({ ok: false, error: 'Steam session required before capturing orders' }, { status: 401 });
-  }
-
+  if (!isSameOriginPaymentRequest(request)) return Response.json({ ok: false, error: 'Open checkout from T-Central to continue.' }, { status: 403 });
+  const auth = resolveGameAuthContext(cookies());
+  if (!auth.authenticated) return Response.json({ ok: false, error: 'Sign in to verify your contribution.' }, { status: 401 });
+  if (!isPayPalConfigured()) return Response.json({ ok: false, error: 'Payment verification is unavailable.' }, { status: 503 });
   const body = await request.json().catch(() => null);
-  if (!body) {
-    return NextResponse.json({ ok: false, error: 'Invalid JSON payload' }, { status: 400 });
-  }
-
+  if (!/^[A-Z0-9-]{8,64}$/i.test(body?.orderId || '')) return Response.json({ ok: false, error: 'Invalid order reference.' }, { status: 400 });
   try {
-    const orderId = normalizeOrderId(body.orderId);
-    const idempotencyKey = normalizeIdempotencyKey(body.idempotencyKey || request.headers.get('x-idempotency-key'));
-
-    const captureOrder = await capturePayPalOrder(orderId);
-    const unit = captureOrder?.purchase_units?.[0];
-    const capture = unit?.payments?.captures?.[0];
-
-    const { record, idempotentReplay } = await confirmDonationCapture({
-      orderId,
-      steamUser,
-      capture,
-      captureOrder,
-      idempotencyKey: idempotencyKey || `capture:${orderId}`,
-    });
-
-    const { summary } = await getDonationsBySteamId(steamUser.steamid);
-
-    const nextLedger = upsertDonationRecord(readDonationLedger(), record);
-    const cacheSummary = summarizeDonationLedger(nextLedger.filter((entry) => entry?.steamid === steamUser.steamid));
-
-    const response = NextResponse.json({
-      ok: true,
-      orderId,
-      capture: {
-        id: record.captureId,
-        status: record.captureStatus || record.paypalStatus || record.status,
-        amount: record.captureAmount || record.amount,
-        currency: record.captureCurrency || record.currency,
-      },
-      summary,
-      cacheSummary,
-      supportLinked: record.status === 'CONFIRMED',
-      idempotentReplay,
-    });
-
-    if (record.status === 'CONFIRMED') {
-      const supportPayload = {
-        provider: 'paypal',
-        planId: null,
-        identifier: record.captureId || orderId,
-        identifierType: record.captureId ? 'capture' : 'order',
-        steamid: steamUser.steamid,
-        personaname: steamUser.personaname || null,
-        linkedAt: new Date().toISOString(),
-        verification: {
-          provider: 'paypal',
-          identifierType: record.captureId ? 'capture' : 'order',
-          identifier: record.captureId || orderId,
-          state: 'COMPLETED',
-          verifiedAt: record.capturedAt || new Date().toISOString(),
-          source: 'capture_order',
-        },
-        reference: signValue(`paypal:${record.captureId || orderId}:${steamUser.steamid}`),
-      };
-
-      response.cookies.set({
-        name: 'support_receipt',
-        value: encryptJson(supportPayload),
-        httpOnly: true,
-        secure: shouldUseSecureCookies(request),
-        sameSite: 'lax',
-        path: '/',
-        maxAge: SUPPORT_RECEIPT_MAX_AGE_SECONDS,
-      });
-    }
-
-    return persistDonationLedger(response, request, nextLedger);
-  } catch (error) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: error instanceof Error ? error.message : 'Unable to capture order',
-      },
-      { status: 400 }
-    );
-  }
+    const store = accountPayments();
+    const intent = await store.find(body.orderId, auth);
+    if (!intent || intent.mode !== 'order') return Response.json({ ok: false, error: 'This order is not linked to your current account.' }, { status: 404 });
+    // Check verified ownership, amount and opaque binding BEFORE any capture.
+    let order = await getPayPalOrderDetails(body.orderId);
+    verifyOrderPayment(order, intent);
+    if (order.status === 'APPROVED') order = await capturePayPalOrder(body.orderId, `capture-${intent.id}`);
+    const capture = verifiedCapture(order, intent);
+    if (!capture) return Response.json({ ok: true, pending: true, capture: { status: 'PENDING' } }, { status: 202 });
+    const saved = await store.record(intent, capture);
+    const analytics = await store.summary(auth);
+    return Response.json({ ok: true, capture: { id: capture.id, status: 'COMPLETED', amount: minorToMoney(capture.amountMinor, capture.currency), currency: capture.currency }, analytics, idempotentReplay: saved.replay }, { headers: { 'Cache-Control': 'private, no-store' } });
+  } catch { return Response.json({ ok: false, pending: true, error: 'Payment verification is pending. Check your account history or retry this order; do not submit another payment.' }, { status: 503 }); }
 }

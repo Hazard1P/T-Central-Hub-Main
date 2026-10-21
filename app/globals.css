@@ -7370,3 +7370,11 @@ body:has(.system-entry-screen.phase-in_sim) .global-footer { display: none; }
   .directory-detail { position: static; }
   .support-purpose-grid { grid-template-columns: minmax(0, 1fr); }
 }
+
+.contribution-totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 1rem; margin-block: 1.5rem; }
+.contribution-totals article, .contribution-records article { padding: 1rem; border: 1px solid var(--line); border-radius: 14px; background: #081321; }
+.contribution-records { display: grid; gap: 1rem; margin-block: 1.5rem; }
+.contribution-history p { line-height: 1.75; }
+.contribution-history dd { margin: .25rem 0 .8rem; overflow-wrap: anywhere; }
+.contribution-history dt { color: #bdd3df; }
+.contribution-history h3 { overflow-wrap: anywhere; }

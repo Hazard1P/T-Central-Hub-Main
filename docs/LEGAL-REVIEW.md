@@ -1,6 +1,6 @@
 # Community legal documents — review record
 
-Draft revision: `2026-10-19-draft.2`, October 19, 2026. Not an effective date.
+Draft revision: `2026-10-20-draft.3`, October 20, 2026. Not an effective date.
 
 The user confirmed Michael Rybaltowicz, operator name Central Synaptic Intelligence Systems, and B.C. They also confirmed a 19+ minimum age and voluntary support only, with no cash redemption of credits or seeds. The draft identifies an individual operating under that name in British Columbia, Canada; it does not invent a corporation, registration number, charitable status or street address. The contact email comes from the existing site: BrainandBodyai@gmail.com.
 
@@ -46,3 +46,7 @@ No blanket no-refund rule, compulsory arbitration, class-action waiver, claim of
 Edit `lib/legalContent.js`, then verify the full-page documents and the access review panel. Keep page routes, document links and checkout disclosures consistent. Update `LEGAL_REVISION` when material text changes and preserve the adopted versions in version control. The access panel treats older or unversioned local acknowledgements as requiring review. The privacy checkbox says “I have read” rather than purporting to collect blanket processing consent.
 
 Contact, reporting and legal pages must remain available without agreement. Verify mobile readability, section anchors, keyboard navigation, current-revision acknowledgement and stale-revision re-review. Verify the public board response contains no private author authentication fields using a fixture with a Google email and account ID.
+
+## Account payment records
+
+See [ACCOUNT-PAYMENTS.md](ACCOUNT-PAYMENTS.md) for the private payment tables, provider/account binding, signed financial event reconciliation, refund/reversal handling and exact-provider administrator guard. One-time Google checkout is supported; monthly management remains Steam-bound. The operator requested that VIP plans remain undefined. Public checkout rejects VIP purchase claims, and past support does not automatically buy future entitlements. Legal review must cover any later actual VIP offer and its delivery/refund terms before sale.

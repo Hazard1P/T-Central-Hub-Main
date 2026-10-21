@@ -1,46 +1,13 @@
+import { getPayPalEnv } from '@/lib/paypal';
 import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
-import { decryptJson } from '@/lib/security';
-import { readDonationLedger, summarizeDonationLedger } from '@/lib/donationLedger';
-import { getDonationsBySteamId } from '@/lib/server/donationStore';
+import { resolveGameAuthContext } from '@/lib/auth/resolveGameAuthContext';
+import { accountPayments } from '@/lib/server/accountPaymentStore';
 
-function readSteamSession() {
-  const cookieStore = cookies();
-  const rawSteam = cookieStore.get('steam_session')?.value;
-  try {
-    return rawSteam ? decryptJson(rawSteam) : null;
-  } catch {
-    return null;
-  }
-}
-
+export const dynamic = 'force-dynamic';
 export async function GET() {
-  const steamUser = readSteamSession();
-
-  if (!steamUser?.steamid) {
-    return NextResponse.json({ ok: true, summary: summarizeDonationLedger([]), cacheSummary: summarizeDonationLedger([]) });
-  }
-
-  try {
-    const { summary, ledger } = await getDonationsBySteamId(steamUser.steamid);
-    const cacheLedger = readDonationLedger().filter((entry) => entry?.steamid === steamUser.steamid);
-
-    return NextResponse.json({
-      ok: true,
-      summary,
-      cacheSummary: summarizeDonationLedger(cacheLedger),
-      donations: ledger,
-    });
-  } catch (error) {
-    const cacheLedger = readDonationLedger().filter((entry) => entry?.steamid === steamUser.steamid);
-    return NextResponse.json(
-      {
-        ok: false,
-        error: error instanceof Error ? error.message : 'Unable to load donations',
-        summary: summarizeDonationLedger([]),
-        cacheSummary: summarizeDonationLedger(cacheLedger),
-      },
-      { status: 503 }
-    );
-  }
+  const auth = resolveGameAuthContext(cookies());
+  const headers = { 'Cache-Control': 'private, no-store' };
+  if (!auth.authenticated) return Response.json({ ok: false, error: 'Sign in to see your private contribution history.' }, { status: 401, headers });
+  try { return Response.json({ ok: true, environment: getPayPalEnv(), owner: { provider: auth.provider, accountId: auth.accountId }, analytics: await accountPayments().summary(auth), vipSalesAvailable: false }, { headers }); }
+  catch { return Response.json({ ok: false, unavailable: true, error: 'Your payment history is temporarily unavailable. This does not mean your contributions were erased.' }, { status: 503, headers }); }
 }

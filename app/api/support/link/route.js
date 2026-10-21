@@ -1,3 +1,4 @@
+import { accountPayments } from '@/lib/server/accountPaymentStore';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { decryptJson, encryptJson, signValue } from '@/lib/security';
@@ -132,60 +133,24 @@ async function verifyPayPalIdentifier({ identifier, identifierType, steamid }) {
     };
   }
 
-  if (identifierType === 'order') {
-    const order = await getPayPalOrderDetails(identifier);
-    const state = String(order?.status || '').toUpperCase();
-
-    if (!['COMPLETED', 'APPROVED'].includes(state)) {
-      return { ok: false, error: `Order is not approved/completed (${state || 'UNKNOWN'})` };
+  if (identifierType === 'order' || identifierType === 'capture') {
+    const store = accountPayments();
+    const auth = { authenticated: true, provider: 'steam', accountId: String(steamid) };
+    let charge, intent;
+    if (identifierType === 'capture') {
+      charge = await store.charge(identifier);
+      intent = charge ? await store.ownedIntent(charge.intent_id, auth) : null;
+    } else {
+      intent = await store.find(identifier, auth);
+      // A provider approval alone is not proof of a recorded payment.
+      const order = intent ? await getPayPalOrderDetails(identifier) : null;
+      const captureId = order?.purchase_units?.[0]?.payments?.captures?.[0]?.id;
+      charge = captureId ? await store.charge(captureId) : null;
     }
-
-    const linkedSteamIds = (order?.purchase_units || [])
-      .map((unit) => unit?.custom_id)
-      .filter(Boolean)
-      .map(String);
-
-    if (linkedSteamIds.length > 0 && !linkedSteamIds.includes(String(steamid))) {
-      return { ok: false, error: 'Order does not belong to this Steam account' };
-    }
-
-    return {
-      ok: true,
-      verification: {
-        provider: ALLOWED_PROVIDER,
-        identifierType,
-        identifier,
-        state,
-        verifiedAt: new Date().toISOString(),
-        source: 'paypal_api',
-      },
-    };
-  }
-
-  if (identifierType === 'capture') {
-    const capture = await getPayPalCaptureDetails(identifier);
-    const state = String(capture?.status || '').toUpperCase();
-
-    if (state !== 'COMPLETED') {
-      return { ok: false, error: `Capture is not completed (${state || 'UNKNOWN'})` };
-    }
-
-    const customId = capture?.custom_id || null;
-    if (customId && String(customId) !== String(steamid)) {
-      return { ok: false, error: 'Capture does not belong to this Steam account' };
-    }
-
-    return {
-      ok: true,
-      verification: {
-        provider: ALLOWED_PROVIDER,
-        identifierType,
-        identifier,
-        state,
-        verifiedAt: new Date().toISOString(),
-        source: 'paypal_api',
-      },
-    };
+    if (!intent || !charge || charge.intent_id !== intent.id) return { ok: false, error: 'No verified payment is linked to this account and reference.' };
+    const capture = await getPayPalCaptureDetails(charge.transaction_id);
+    if (capture.status !== 'COMPLETED') return { ok: false, error: 'This payment is not currently completed.' };
+    return { ok: true, verification: { provider: ALLOWED_PROVIDER, identifierType, identifier, state: 'COMPLETED', verifiedAt: new Date().toISOString(), source: 'account_payment_record' } };
   }
 
   return { ok: false, error: 'Unsupported identifier type' };
@@ -242,7 +207,7 @@ export async function POST(request) {
 
   let verification = null;
 
-  if (priorVerification) {
+  if (priorVerification && identifierType === 'subscription') {
     verification = {
       provider: ALLOWED_PROVIDER,
       identifierType,

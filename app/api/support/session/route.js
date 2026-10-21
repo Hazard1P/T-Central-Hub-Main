@@ -41,8 +41,9 @@ function serializeSupport(support) {
 }
 
 export async function GET() {
-  const cookieSupport = readEncryptedCookie('support_receipt');
   const steamUser = readEncryptedCookie('steam_session');
+  const receipt = readEncryptedCookie('support_receipt');
+  const cookieSupport = steamUser?.steamid && String(receipt?.steamid) === String(steamUser.steamid) ? receipt : null;
 
   let durableSupport = null;
   let subscriptionSupport = null;

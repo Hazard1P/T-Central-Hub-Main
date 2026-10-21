@@ -2,7 +2,7 @@
 
 Michael Rybaltowicz, operating as Central Synaptic Intelligence Systems, British Columbia, Canada.
 
-Draft revision: 2026-10-19-draft.2. Updated October 19, 2026.
+Draft revision: 2026-10-20-draft.3. Updated October 20, 2026.
 
 Review draft — not yet adopted. The operator has confirmed a 19+ community and voluntary support with no cash redemption. The service address and deployment-specific privacy details still need confirmation. These documents need qualified legal review before final adoption. The date below is a draft revision date, not an effective date.
 
@@ -198,7 +198,7 @@ Use private contact or reporting channels for personal disputes, privacy complai
 
 ### 6. Contributions and payment records
 
-PayPal processes payments and handles payment credentials. T-Central does not ask you to provide full card numbers, card security codes, bank login credentials or your PayPal password. We may retain linked Steam identity, selected support option or route, amount, currency, payment status, transaction/capture/subscription references, timestamps and reconciliation or support notes.
+PayPal processes payments and handles payment credentials. T-Central does not ask you to provide full card numbers, card security codes, bank login credentials or your PayPal password. We may retain the verified Steam or Google account association, checkout request and payment references, purchase type, payment environment, support-focus preference, price or offer snapshot, amount, currency, payment status, refunds or reversals, timestamps and reconciliation or support notes. Private account-level analytics and restricted operator reporting use those records; currencies are reported separately. They are not public community-board data or advertising profiles.
 
 Stored PayPal checkout, capture and webhook responses can also include payer contact or transaction details supplied by PayPal; records are not limited to a receipt number. We use them to verify payments, prevent duplicate processing, reconcile support and resolve billing questions. PayPal.Me contributions may not automatically link to an account.
 
@@ -362,7 +362,7 @@ Any future change to an ongoing payment amount or frequency must be disclosed an
 
 ### 4. Receipts and account linking
 
-Supported account-linked checkout currently uses Steam. A PayPal.Me contribution may not automatically appear on that account. For a missing receipt or link, contact us with the transaction reference, date, amount, currency and the relevant account identifier. Do not send full card details, provider passwords or login codes.
+Account-linked one-time checkout supports Steam and Google. Monthly support management currently uses Steam. These provider accounts remain separate unless a future verified linking process explicitly says otherwise; a matching email address does not merge their payment histories. A PayPal.Me contribution may not automatically appear on an account. For a missing receipt or link, contact us with the transaction reference, date, amount, currency and the relevant account identifier. Do not send full card details, provider passwords or login codes.
 
 Receipt verification and recognition depend on payment status and storage availability. A pending record, repeated webhook or client success message alone is not proof of a new settled payment. We may correct duplicate, refunded, reversed or fraudulent records.
 
@@ -376,7 +376,7 @@ If a future paid product or entitlement is offered, its scope, price, delivery a
 
 ### 6. Recognition, credits and feature changes
 
-Supporter acknowledgements, account displays, community roles or previews, where offered, are service features subject to availability and the conduct rules. They do not transfer intellectual property or guarantee lifetime access. No unannounced perk is promised merely because you contribute.
+Supporter acknowledgements, account displays, community roles or previews, where offered, are service features subject to availability and the conduct rules. They do not transfer intellectual property or guarantee lifetime access. No unannounced perk is promised merely because you contribute. We retain verified account-bound contribution history so future recognition or eligibility can be considered under separately published terms. VIP plans are currently undefined and unavailable for purchase; past donations do not automatically purchase future products or benefits. A future paid VIP offer must disclose its price, duration, benefits and applicable remedies before sale, and its purchase record must preserve those terms.
 
 E_s Credits, yield and intelligence seeds are game records. Contributions do not purchase them as redeemable balances and do not create a cash-out right or guaranteed return. Changes to any promised paid benefit remain subject to its disclosed terms and non-waivable consumer remedies.
 
