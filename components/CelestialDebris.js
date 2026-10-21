@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { UNIVERSE_LANDMARKS } from '@/lib/universeSpace';
 import { COSMIC_POSITIONS } from '@/lib/cosmicLayout';
 import { createDebrisField, debrisNoise } from '@/lib/celestialDebris';
 
@@ -98,7 +99,7 @@ function Comet({ profile, index = 0 }) {
     if (!group.current) return;
     group.current.position.set(24 + index * 75 + Math.sin(t) * (18 + index * 12), 13 + index * 9 + Math.sin(t * .7) * 7, 68 - index * 45 + Math.cos(t) * 11);
     // Dust and ion tails point away from the main stellar anchor, not behind arbitrary velocity.
-    const away = group.current.position.clone().sub(new THREE.Vector3(...COSMIC_POSITIONS.solar_system)).normalize();
+    const away = new THREE.Vector3(...UNIVERSE_LANDMARKS.find(node => node.key === 'asteroid_belt').position).sub(new THREE.Vector3(...COSMIC_POSITIONS.solar_system)).normalize();
     group.current.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), away);
     if (dust.current) dust.current.rotation.z = t * .3;
   });
@@ -112,14 +113,16 @@ function Comet({ profile, index = 0 }) {
 }
 
 export default function CelestialDebris({ profile, bus, localOrbit = false, lightDirection }) {
-  const rocks = useMemo(() => createDebrisField(profile.asteroids, localOrbit), [profile.asteroids, localOrbit]);
+  const anchor = localOrbit ? [0, 0, 0] : UNIVERSE_LANDMARKS.find(node => node.key === 'asteroid_belt').position;
+  const rocks = useMemo(() => createDebrisField(profile.asteroids, localOrbit).map(rock => localOrbit ? rock : ({ ...rock, position: rock.position.map(v => v * 40), radius: rock.radius * 40 })), [profile.asteroids, localOrbit]);
+  const colliders = useMemo(() => rocks.map(rock => ({ ...rock, position: rock.position.map((v, i) => v + anchor[i]) })), [rocks, localOrbit]);
   useEffect(() => {
     if (!bus) return;
-    bus.current.colliders = rocks;
-    return () => { if (bus.current.colliders === rocks) bus.current.colliders = []; };
-  }, [rocks, bus]);
-  return <>
+    bus.current.colliders = colliders;
+    return () => { if (bus.current.colliders === colliders) bus.current.colliders = []; };
+  }, [colliders, bus]);
+  return <group position={anchor}>
     {[0, 1, 2, 3, 4, 5].map((variant) => <RockBatch key={variant} variant={variant} rocks={rocks.filter((_, index) => index % 6 === variant)} profile={profile} lightDirection={lightDirection} />)}
-    {!localOrbit ? [0, 1, 2].map((index) => <Comet key={index} index={index} profile={profile} />) : null}
-  </>;
+    {!localOrbit ? [0, 1, 2].map((index) => <group key={index} scale={40}><Comet index={index} profile={profile} /></group>) : null}
+  </group>;
 }

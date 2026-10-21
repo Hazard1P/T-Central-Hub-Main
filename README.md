@@ -112,3 +112,5 @@ On touch devices, hold a direction, Boost or Fire with separate fingers, and dra
 ### One continuous universe
 
 All active simulation destinations share one coordinate system and the selected multiplayer room. Solar System bodies are farther out in the same space; destination selection and arrival never change rooms or reset the ship. Cruise uses automatic deep-space thrust and slows near objects. The camera rebases its render origin for precision without changing authoritative positions. See [Solar System flight](docs/SOLAR-SYSTEM.md) for scale and astronomical fidelity.
+
+Celestial dimensions and Earth spawn/return behaviour are documented in [UNIVERSE-SCALE.md](docs/UNIVERSE-SCALE.md).

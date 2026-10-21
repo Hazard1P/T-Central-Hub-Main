@@ -24,7 +24,7 @@ function GeoBeacon({ stateRef, clock }) {
     }
     if(label.current) label.current.style.display=new THREE.Vector3(...position).sub(origin.current).distanceTo(camera.position)<3000?'block':'none';
   });
-  return <><group ref={ring}><Line points={points} color="#74c7af" opacity={.16} transparent lineWidth={.7} /></group><group ref={marker}><mesh><octahedronGeometry args={[.7,0]} /><meshBasicMaterial color="#a8ead5" /></mesh><Html center zIndexRange={[20,0]}><span ref={label} className="solar-flight-geo-tag">GEO</span></Html></group></>;
+  return <><group ref={ring}><Line points={points} color="#74c7af" opacity={.16} transparent lineWidth={.7} /></group><group ref={marker}><mesh><octahedronGeometry args={[3.5,0]} /><meshBasicMaterial color="#a8ead5" /></mesh><Html center zIndexRange={[20,0]}><span ref={label} className="solar-flight-geo-tag">GEO</span></Html></group></>;
 }
 export default function UnifiedSolarSystem({ clock, profile, onSelect }) {
   const [initial]=useState(()=>getSolarSystemState(clock.getTime()));
@@ -33,7 +33,7 @@ export default function UnifiedSolarSystem({ clock, profile, onSelect }) {
     if(renderClock.elapsedTime-last.current>.1){last.current=renderClock.elapsedTime;stateRef.current=getSolarSystemState(clock.getTime());}
   },-1);
   return <>
-    {SOLAR_BODIES.map(body=><SolarBody key={body.id} body={body} stateRef={stateRef} segments={profile.segments} onSelect={onSelect} />)}
+    {SOLAR_BODIES.map(body=><SolarBody key={body.id} body={body} stateRef={stateRef} segments={Math.max(64, profile.segments)} onSelect={onSelect} />)}
     <GeoBeacon stateRef={stateRef} clock={clock} />
   </>;
 }

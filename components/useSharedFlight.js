@@ -15,7 +15,7 @@ async function release(session) {
   } catch {}
 }
 
-export default function useSharedFlight({ lobbyMode, roomName, identity, telemetryRef, inputsRef, simRuntimeClient, gravitySources, onCorrection }) {
+export default function useSharedFlight({ lobbyMode, restartTick = 0, roomName, identity, telemetryRef, inputsRef, simRuntimeClient, gravitySources, onCorrection }) {
   const { setSession, setAuthoritativeState, setServerStatus } = useMultiplayerSession();
 
   useEffect(() => {
@@ -106,5 +106,5 @@ export default function useSharedFlight({ lobbyMode, roomName, identity, telemet
       window.removeEventListener('pagehide', unload);
       void release(session);
     };
-  }, [lobbyMode, roomName, identity, telemetryRef, inputsRef, simRuntimeClient, gravitySources, onCorrection, setSession, setAuthoritativeState, setServerStatus]);
+  }, [lobbyMode, restartTick, roomName, identity, telemetryRef, inputsRef, simRuntimeClient, gravitySources, onCorrection, setSession, setAuthoritativeState, setServerStatus]);
 }

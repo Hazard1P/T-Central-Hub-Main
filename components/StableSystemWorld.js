@@ -24,7 +24,7 @@ import TouchFlightPad from '@/components/TouchFlightPad';
 import ExplorationHud from '@/components/ExplorationHud';
 import DestinationBearing from '@/components/DestinationBearing';
 import useSharedFlight from '@/components/useSharedFlight';
-import { distanceBetween, getApproachPoint, getCruiseControl, getExplorationDestinations } from '@/lib/exploration';
+import { distanceBetween, getApproachPoint, getCruiseControl, getExplorationDestinations, getPilotSpawn } from '@/lib/exploration';
 import { isValidRoomName } from '@/lib/exploration';
 import { FLIGHT_KEYS, isInteractiveTarget, shouldIgnoreFlightKey } from '@/lib/flightInput';
 import { gameEngine } from '@/lib/gameEngine';
@@ -36,7 +36,9 @@ import useSolarClock from '@/components/useSolarClock';
 import UnifiedSolarSystem from '@/components/UnifiedSolarSystem';
 import UniverseFrame, { UniverseSky, useUniverseFrame } from '@/components/UniverseFrame';
 import { RENDER_DISTANCE, flightSubsteps } from '@/lib/universeSpace';
-import { getSolarDestinations } from '@/lib/universeFlight';
+import { getSolarDestinations, getUniverseSolarState } from '@/lib/universeFlight';
+import ProjectedCelestial from '@/components/ProjectedCelestial';
+import { celestialMetrics, stellarCoreRadius } from '@/lib/celestialScale';
 import WeaponEffects from '@/components/WeaponEffects';
 
 const SIM_RENDERER_OPTIONS = { antialias: true, powerPreference: 'high-performance', toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.0 };
@@ -408,7 +410,6 @@ function SolarSubSystem({ node, animate = true }) {
   const stellarProfile = node.stellarProfile || {};
   const starColor = stellarProfile.color || node.color || '#ffd46b';
   const luminosity = stellarProfile.luminositySolar || 1;
-  const radiusScale = 1 + Math.min((stellarProfile.radiusSolar || 1) * 0.12, 0.35);
 
   useFrame(({ clock }, delta) => {
 
@@ -428,7 +429,7 @@ function SolarSubSystem({ node, animate = true }) {
 
   return (
     <group>
-      <StellarSurface radius={1.15 * radiusScale} color={starColor} animate={animate} />
+      <StellarSurface radius={stellarCoreRadius(node)} color={starColor} animate={animate} />
       {node.orbiters?.map((orbit, index) => (
         <group key={orbit.key}>
           <mesh rotation={[Math.PI / 2 + orbit.tilt, 0, 0]}>
@@ -453,6 +454,7 @@ function NodeVisual({ node, onSelect, selectedKey, graphNode, condensedLabels = 
   const spinRef = useRef(null);
   const securityState = graphNode?.securityState || node.securityState || 'open';
   const quarantined = securityState === 'quarantined';
+  const metrics = celestialMetrics(graphNode || node);
 
   useFrame(({ clock }, delta) => {
     if (spinRef.current) spinRef.current.rotation.y += delta * (isBlackhole ? 0.42 : isDyson ? 0.3 : 0.14);
@@ -460,18 +462,18 @@ function NodeVisual({ node, onSelect, selectedKey, graphNode, condensedLabels = 
   });
 
   return (
-    <group position={node.position || [0, 0, 0]}>
+    <ProjectedCelestial position={node.position || [0, 0, 0]} scale={metrics.renderScale}>
       {isSolar && node.key !== 'solar_system' ? <group onClick={() => onSelect(node)}><SolarSubSystem node={graphNode || node} animate={animate} /></group> : null}
 
-      <group ref={spinRef} scale={quarantined ? 0.88 : 1}>
+      <group ref={spinRef}>
         {isBlackhole ? (
-          <>
-            <mesh onClick={() => onSelect(node)}>
+          <group onClick={(event) => { event.stopPropagation(); onSelect(node); }}>
+            <mesh>
               <sphereGeometry args={[0.46, 24, 24]} />
               <meshStandardMaterial color="#020409" emissive="#000000" roughness={0.32} metalness={0.2} />
             </mesh>
             <EventHorizon radius={1.08} animate={animate} />
-          </>
+          </group>
         ) : isDyson ? (
           <group onClick={() => onSelect(node)}>
             <DysonSphereStructure node={node} sessionMode={sessionMode} ringAdjustments={ringAdjustments} />
@@ -496,11 +498,12 @@ function NodeVisual({ node, onSelect, selectedKey, graphNode, condensedLabels = 
       {node.key === 'deep_blackhole' ? <MeteorSwarm count={12} radius={8.6} /> : null}
 
 
-    </group>
+    </ProjectedCelestial>
   );
 }
 
-function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTelemetryChange, onCombatAction, touchInput, isMobile = false, authenticated = false, epochSummary = null, flightConfig = null, multiplayerMode = false, simulationSeed = 'tcentral-main', simulationGravitySources = [], onSimulationFrame = null, correctionState = null, resetTick = 0, navigationCommand, cruising, onManualControl, onArrival, explorationNodes = [], destination, roomKey = 'tcentral-main' }) {
+function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTelemetryChange, onCombatAction, touchInput, isMobile = false, authenticated = false, epochSummary = null, flightConfig = null, multiplayerMode = false, simulationSeed = 'tcentral-main', simulationGravitySources = [], onSimulationFrame = null, correctionState = null, resetTick = 0, navigationCommand, cruising, onManualControl, onArrival, explorationNodes = [], destination, roomKey = 'tcentral-main', spawnTick = 0 }) {
+  const [initialSpawn] = useState(() => getPilotSpawn());
   const groupRef = useRef(null);
   const engineCoreRef = useRef(null);
   const enginePortRef = useRef(null);
@@ -514,6 +517,7 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
   const lastGravity = useRef([0, 0, 0]);
   const { camera, gl } = useThree();
   const { origin: worldOrigin, rebase } = useUniverseFrame();
+  const privateObstacles = useMemo(() => simulationGravitySources.filter(source => source.privateOnly), [simulationGravitySources]);
 
   const firing = useShipControls({ gl, yaw, pitch, keys, blocked: flightConfig?.inputBlocked, onManualControl, onSimulationFrame });
   const lastShot = useRef(-1);
@@ -526,11 +530,15 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
   }, [resetTick]);
 
   useEffect(() => {
-    if (groupRef.current) groupRef.current.position.set(0, 0, 18);
-    velocity.current.set(0, 0, 0); keys.current = {}; yaw.current = 0; pitch.current = -.08;
+    const spawn = getPilotSpawn();
+    if (groupRef.current) groupRef.current.position.set(...spawn);
+    const earth = getUniverseSolarState().find(body => body.id === 'earth');
+    const direction = new THREE.Vector3(...earth.position).sub(new THREE.Vector3(...spawn)).normalize();
+    velocity.current.set(0, 0, 0); keys.current = {};
+    yaw.current = Math.atan2(direction.x, direction.z); pitch.current = -Math.asin(direction.y);
     correctionTargetRef.current = null; cruiseTarget.current = null;
     camera.position.set(0, 3.6, 7.6); camera.near = .1; camera.far = RENDER_DISTANCE; camera.updateProjectionMatrix();
-  }, [roomKey, camera]);
+  }, [roomKey, camera, spawnTick]);
 
   const quantumRef = useRef(createQuantumState(12));
   useEffect(() => {
@@ -581,14 +589,14 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
       const position = groupRef.current.position.toArray();
       if (!flightConfig?.inputBlocked && cruising && cruiseTarget.current) {
         if (destination?.solarBody || destination?.key === 'solar-geo') cruiseTarget.current = getApproachPoint(position, destination);
-        controlVector = getCruiseControl({ position, velocity: velocity.current.toArray(), target: cruiseTarget.current, gravity: lastGravity.current });
+        controlVector = getCruiseControl({ position, velocity: velocity.current.toArray(), target: cruiseTarget.current, gravity: lastGravity.current, obstacles: privateObstacles });
         const direction = new THREE.Vector3(...(destination || navigationCommand.destination).position).sub(groupRef.current.position).normalize();
         yaw.current = Math.atan2(direction.x, direction.z);
         pitch.current = -Math.asin(Math.max(-1, Math.min(1, direction.y)));
         lookQuat.setFromEuler(new THREE.Euler(pitch.current, yaw.current, roll.current, 'YXZ'));
         if (distanceBetween(position, cruiseTarget.current) < .8 && velocity.current.length() < .7) onArrival?.(destination || navigationCommand.destination);
       } else if (flightConfig?.inputBlocked || keys.current.KeyX || (flightConfig?.inertialDampers && rawMove.lengthSq() === 0)) {
-        controlVector = getCruiseControl({ position, velocity: velocity.current.toArray(), target: position, gravity: lastGravity.current, braking: true });
+        controlVector = getCruiseControl({ position, velocity: velocity.current.toArray(), target: position, gravity: lastGravity.current, braking: true, obstacles: privateObstacles });
       }
       stepped = simRuntimeClient.stepSnapshot({
         mode: multiplayerMode ? 'multiplayer' : 'singleplayer',
@@ -725,7 +733,7 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
   }, -2);
 
   return (
-    <group ref={groupRef} position={[0, 0, 18]}>
+    <group ref={groupRef} position={initialSpawn}>
       <InterceptorHull />
       <pointLight position={[0, 1, 1]} color="#b8dcff" intensity={4} distance={7} />
       <mesh ref={engineCoreRef} position={[0, -.06, -2.1]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -775,7 +783,7 @@ function RemotePilot({ pilot, isSelf = false }) {
   );
 }
 
-function StableSceneContent({ simRuntimeClient, graph, displayNodes, onSelect, selectedKey, onAutoFocus, onTelemetryChange, onCombatAction, touchInput, deviceTier, graphicsProfile, authenticated = false, flightConfig = null, remotePilots = [], projectiles = [], presentationMode = true, multiplayerMode = false, simulationSeed = 'tcentral-main', simulationGravitySources = [], onSimulationFrame = null, correctionState = null, resetTick = 0, sessionMode = SESSION_MODES.IDLE, ringAdjustments = null, navigationCommand, cruising, onManualControl, onArrival, destination, solarClock, weaponBus }) {
+function StableSceneContent({ simRuntimeClient, graph, displayNodes, onSelect, selectedKey, onAutoFocus, onTelemetryChange, onCombatAction, touchInput, deviceTier, graphicsProfile, authenticated = false, flightConfig = null, remotePilots = [], projectiles = [], presentationMode = true, multiplayerMode = false, simulationSeed = 'tcentral-main', simulationGravitySources = [], onSimulationFrame = null, correctionState = null, resetTick = 0, spawnTick = 0, sessionMode = SESSION_MODES.IDLE, ringAdjustments = null, navigationCommand, cruising, onManualControl, onArrival, destination, solarClock, weaponBus }) {
   const epochSummary = useMemo(() => summarizeEpochRelativity(graph.epochAnchor), [graph]);
   const graphByKey = useMemo(() => Object.fromEntries(graph.nodes.map((node) => [node.key, node])), [graph]);
   const positions = useMemo(() => getNodePositionMap(graph), [graph]);
@@ -836,7 +844,7 @@ function StableSceneContent({ simRuntimeClient, graph, displayNodes, onSelect, s
         simulationGravitySources={simulationGravitySources}
         onSimulationFrame={onSimulationFrame}
         correctionState={correctionState}
-        resetTick={resetTick}
+        resetTick={resetTick} spawnTick={spawnTick}
         navigationCommand={navigationCommand} cruising={cruising} onManualControl={onManualControl} onArrival={onArrival}
         explorationNodes={[...getExplorationDestinations(displayNodes), ...getSolarDestinations(solarClock.getTime())]} destination={destination} roomKey={simulationSeed}
       />
@@ -860,10 +868,12 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
     return isValidRoomName(requested) ? requested : process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main';
   });
   const activeRoom = roomName;
-  const [selected, setSelected] = useState(() => initialSolarBody ? { key: 'solar-' + initialSolarBody } : null);
+  const [selected, setSelected] = useState(() => ({ key: 'solar-' + (initialSolarBody || 'earth') }));
   const [touchInput, setTouchInput] = useState({ x: 0, y: 0, z: 0, boost: 0 });
   const [flightConfig, setFlightConfig] = useState({ ...FLIGHT_PRESETS.freeFlight, inertialDampers: true });
   const [flightResetTick, setFlightResetTick] = useState(0);
+  const [spawnTick, setSpawnTick] = useState(0);
+  const [respawning, setRespawning] = useState(false);
   const [hudVisible, setHudVisible] = useState(true);
   const [panelOpen, setPanelOpen] = useState(false);
   const [prayerOpen, setPrayerOpen] = useState(false);
@@ -878,7 +888,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   const [notice, setNotice] = useState('');
   const commandIndex = useRef(0);
   const lastTelemetryPublish = useRef(0);
-  const [telemetry, setTelemetry] = useState({ speed: 0, gravity: 0, horizonFactor: 0, nearest: null, position: [0, 0, 18], velocity: [0, 0, 0], direction: [0, 0, 1], quantum: summarizeQuantumState(createQuantumState(12)) });
+  const [telemetry, setTelemetry] = useState({ speed: 0, gravity: 0, horizonFactor: 0, nearest: null, position: getPilotSpawn(), velocity: [0, 0, 0], direction: [0, 0, 1], quantum: summarizeQuantumState(createQuantumState(12)) });
   const telemetryRef = useRef(telemetry);
   const predictionHistoryRef = useRef([]);
   const simRuntimeClient = useMemo(() => createSimulationRuntimeClient(), []);
@@ -888,8 +898,14 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   const graph = useMemo(() => buildUniverseGraph(Date.now(), { lobbyMode, roomName, extraNodes: privateWorldAsset?.nodes || [], extraRouteLinks: privateWorldAsset?.routeLinks || [] }), [privateWorldAsset, lobbyMode, roomName]);
   const displayNodes = useMemo(() => graph.nodes.filter((node) => ['blackhole', 'dyson', 'solar', 'node'].includes(node.kind)), [graph]);
   const destinations = useMemo(() => [...getExplorationDestinations(displayNodes).filter(node=>node.key!=='solar_system'), ...getSolarDestinations(solarClock.utcMs || Date.now())], [displayNodes, solarClock.utcMs]);
-  const destination = destinations.find(node=>node.key===selected?.key) || selected || destinations.find(node=>node.key==='halcyon');
-  const simulationGravitySources = useMemo(() => buildGravitySourcesFromSeed(activeRoom), [activeRoom]);
+  const destination = destinations.find(node=>node.key===selected?.key) || selected || destinations.find(node=>node.key==='solar-earth');
+  const simulationGravitySources = useMemo(() => [
+    ...buildGravitySourcesFromSeed(activeRoom),
+    ...graph.nodes.filter(node => node.privateOnly && ['solar', 'blackhole', 'dyson'].includes(node.kind)).map(node => {
+      const size = celestialMetrics(node);
+      return { ...node, mass: node.kind === 'blackhole' ? 140 : 190, radius: size.clearanceRadius, solidRadius: size.radius, eventHorizonRadius: size.radius };
+    }),
+  ], [activeRoom, graph]);
   const cameraConfig = useMemo(() => ({ position: [0, 5, 4], fov: deviceTier.isMobile ? 58 : 52, near: .1, far: RENDER_DISTANCE }), [deviceTier.isMobile]);
   const remotePilots = useMemo(() => (authoritativeState.players || []).filter((pilot) => pilot.id !== serverSession?.id), [authoritativeState.players, serverSession?.id]);
 
@@ -907,7 +923,28 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
     }
   }, []);
 
-  useSharedFlight({ lobbyMode, roomName: activeRoom, identity, telemetryRef, inputsRef: predictionHistoryRef, simRuntimeClient, gravitySources: simulationGravitySources, onCorrection: setCorrectionState });
+  useSharedFlight({ lobbyMode, restartTick: spawnTick, roomName: activeRoom, identity, telemetryRef, inputsRef: predictionHistoryRef, simRuntimeClient, gravitySources: simulationGravitySources, onCorrection: setCorrectionState });
+
+  async function respawn() {
+    if (respawning) return;
+    setRespawning(true); setCruising(false);
+    try {
+      if (lobbyMode === 'hub' && serverSession?.token) {
+        const response = await fetch('/api/multiplayer/disconnect', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ roomName: activeRoom, id: serverSession.id, token: serverSession.token }),
+        });
+        if (!response.ok) throw new Error('Unable to return yet. Please try again.');
+      }
+      predictionHistoryRef.current = [];
+      setCorrectionState(null); setNavigationCommand(null);
+      setTouchInput({ x: 0, y: 0, z: 0, boost: 0 });
+      setSelected({ key: 'solar-earth' });
+      setSpawnTick(tick => tick + 1);
+      setNotice('Returned to Earth orbit.');
+    } catch (error) { setNotice(error.message); }
+    finally { setRespawning(false); }
+  }
 
   const weapons = useShipWeapons({ session: serverSession, roomName: activeRoom, shared: lobbyMode === 'hub' });
 
@@ -1060,6 +1097,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           pilots={authoritativeState.players || []} selfId={serverSession?.id} serverStatus={serverStatus}
           graphicsQuality={graphicsQuality} onGraphicsChange={setGraphicsQuality} dampers={flightConfig.inertialDampers}
           onDampersChange={() => setFlightConfig((current) => ({ ...current, inertialDampers: !current.inertialDampers }))}
+          onRespawn={respawn} respawning={respawning}
           onRecenter={() => setFlightResetTick((tick) => tick + 1)} notice={notice} onPanelChange={setPanelOpen} seedCount={universe?.prayerSeeds?.total || 0} />
       </div> : <button type="button" className="stable-show-hud-button" onClick={() => gameEngine.setHUDVisible(true)}>Show HUD · H</button>}
 
@@ -1071,7 +1109,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
             selectedKey={destination?.key} onTelemetryChange={handleTelemetry} touchInput={touchInput} deviceTier={deviceTier}
             graphicsProfile={graphicsProfile} authenticated={Boolean(identity.authenticated)} flightConfig={{ ...flightConfig, inputBlocked: prayerOpen || panelOpen }} remotePilots={remotePilots}
             presentationMode multiplayerMode={lobbyMode === 'hub'} simulationSeed={activeRoom} simulationGravitySources={simulationGravitySources}
-            resetTick={flightResetTick} onSimulationFrame={handleSimulationFrame} correctionState={correctionState}
+            resetTick={flightResetTick} spawnTick={spawnTick} onSimulationFrame={handleSimulationFrame} correctionState={correctionState}
             sessionMode={lobbyMode === 'hub' ? SESSION_MODES.MULTI_PLAYER : SESSION_MODES.SINGLE_PLAYER} ringAdjustments={authoritativeState.ringAdjustments}
             navigationCommand={navigationCommand} cruising={cruising} onManualControl={cancelCruise} onArrival={arrive} destination={destination} solarClock={solarClock} weaponBus={weapons.bus} onCombatAction={weapons.fire} projectiles={(authoritativeState.projectiles || []).filter((shot) => shot.ownerId !== serverSession?.id)} />
           </UniverseFrame>

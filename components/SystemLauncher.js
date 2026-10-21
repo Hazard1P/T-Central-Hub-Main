@@ -19,7 +19,7 @@ export default function SystemLauncher({ onEnter }) {
         <p className="eyebrow">T-Central universe</p>
         <h1>Your next horizon starts here.</h1>
         <p className="muted">
-          Fly through the hub, set a course for distant planets, or share a room with friends. You can start as a guest.
+          Start near Earth in our full-scale, time-synchronized Solar System. Explore the planets, then set a course beyond the outer system. You can start as a guest or share a room with friends.
         </p>
 
         <div className="entry-actions">

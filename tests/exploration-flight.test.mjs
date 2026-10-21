@@ -9,7 +9,7 @@ test('cruise reaches a planetary viewing point through bounded thrust and stops 
   let state = { position: [0, 0, 18], velocity: [0, 0, 0], gravity: [0, 0, 0] };
   const target = getApproachPoint(state.position, planet);
   const gravitySources = buildGravitySourcesFromSeed('exploration-test');
-  for (let frame = 0; frame < 1800; frame++) {
+  for (let frame = 0; frame < 12000; frame++) {
     const controlVector = getCruiseControl({ ...state, target });
     assert.ok(Math.hypot(...controlVector) <= 1.75001);
     state = stepFrame({ ...state, controlVector, dt: 1 / 60, gravitySources });

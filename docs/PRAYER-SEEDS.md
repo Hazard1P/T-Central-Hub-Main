@@ -1,6 +1,6 @@
 # Account-bound In-Prayer-Intelligence
 
-The quiet signal is an unlisted relic near Halcyon's approach point, at `[18.7, 8.3, 60]`. It becomes visible within 23 units. Within 5 units, listen with **E** or the contextual touch button. It is deliberately absent from Explore, initial HUD labels and destination search. Opening the encounter cancels cruise, clears flight input and applies braking. Writing never becomes a movement command.
+The quiet signal is an unlisted relic near Halcyon's approach point, at a position derived from its enlarged ring envelope and the Earth starting direction in `lib/prayerSeedDiscovery.js`. It becomes visible within 23 units. Within 5 units, listen with **E** or the contextual touch button. It is deliberately absent from Explore, initial HUD labels and destination search. Opening the encounter cancels cruise, clears flight input and applies braking. Writing never becomes a movement command.
 
 Players choose their own prayer, intention or thought (1–320 characters). Saving also captures the game flight signature. Steam and Google sessions are resolved on the server; request-supplied owner IDs, intelligence IDs and timestamps cannot select ownership. Guests may discover the relic and sign in but cannot bind a seed until authenticated. A client position check gates this cosmetic discovery; it is not an anti-cheat proof of flight.
 

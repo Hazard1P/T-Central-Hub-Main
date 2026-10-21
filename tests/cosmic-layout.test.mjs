@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { WORLD_LAYOUT } from '../lib/worldLayout.js';
 import { COSMIC_POSITIONS, COSMIC_STAR_SYSTEMS } from '../lib/cosmicLayout.js';
+import { DOCK_OFFSET } from '../lib/celestialScale.js';
 import { buildGravitySourcesFromSeed, stepFrame } from '../lib/simCore/stepFrame.js';
 import { distanceBetween, getApproachPoint, getCruiseControl, getExplorationDestinations } from '../lib/exploration.js';
 
@@ -15,9 +16,10 @@ test('stars, Dyson spheres and black holes occupy distinct, reachable regions ar
   assert.equal(COSMIC_STAR_SYSTEMS.length,4);
   cosmic.forEach(node => {
     assert.ok(distanceBetween([0,0,18],node.position)>35, `${node.key} leaves spawn clear`);
-    assert.ok(Math.abs(node.position[0])<=30000 && Math.abs(node.position[1])<=2000 && Math.abs(node.position[2])<=15000);
+    assert.ok(node.position.every(value => Math.abs(value) < 1_000_000_000));
+    if (node.key !== 'solar_system') assert.ok(distanceBetween(node.position,COSMIC_POSITIONS.solar_system)>100_000_000, 'deep space stays beyond the outer Solar System');
   });
-  assert.deepEqual(COSMIC_POSITIONS.ss_dock.map((v,i)=>Number((v-COSMIC_POSITIONS.ss[i]).toFixed(2))),[31.5,12.5,14.5]);
+  assert.deepEqual(COSMIC_POSITIONS.ss_dock.map((v,i)=>Number((v-COSMIC_POSITIONS.ss[i]).toFixed(2))),DOCK_OFFSET);
 });
 
 test('static rendered anchors, navigation and gravity use identical coordinates across room seeds', () => {

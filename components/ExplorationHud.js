@@ -7,7 +7,7 @@ import { isInteractiveTarget } from '@/lib/flightInput';
 import { formatSpaceDistance } from '@/lib/universeSpace';
 import { gameEngine } from '@/lib/gameEngine';
 
-export default function ExplorationHud({ telemetry, destinations, destination, onSelect, onNavigate, onFace, cruising, onCancelCruise, visited, lobbyMode, onModeChange, roomName, onRoomChange, pilots, selfId, serverStatus, graphicsQuality, onGraphicsChange, dampers, onDampersChange, onRecenter, notice, onPanelChange, seedCount = 0 }) {
+export default function ExplorationHud({ telemetry, destinations, destination, onSelect, onNavigate, onFace, cruising, onCancelCruise, visited, lobbyMode, onModeChange, roomName, onRoomChange, pilots, selfId, serverStatus, graphicsQuality, onGraphicsChange, dampers, onDampersChange, onRecenter, onRespawn, respawning, notice, onPanelChange, seedCount = 0 }) {
   const [panel, setPanel] = useState(null);
   const [filter, setFilter] = useState('');
   const [roomDraft, setRoomDraft] = useState(roomName);
@@ -87,7 +87,7 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
           {panel === 'settings' ? <>
             <label className="exploration-setting">Visual quality<select value={graphicsQuality} onChange={(event) => onGraphicsChange(event.target.value)}><option value="auto">Auto</option><option value="high">High</option><option value="performance">Performance</option></select></label>
             <label className="exploration-check"><input type="checkbox" checked={dampers} onChange={onDampersChange} />Brake automatically when thrust is released</label>
-            <button className="button secondary" onClick={onRecenter}>Recenter view</button>
+            <div className="exploration-actions"><button className="button secondary" onClick={onRecenter}>Recenter view</button><button className="button secondary" onClick={onRespawn} disabled={respawning}>{respawning ? 'Returning…' : 'Return to Earth'}</button></div>
             <div className="exploration-controls"><h3>Flight controls</h3><p>W / S forward and back · A / D strafe<br />Space / R rise · Shift / F descend<br />Ctrl boost · X brake<br />Move mouse to steer · Click / V fire · Esc release mouse · M destinations · H hide HUD</p><p>Deep-space assist increases thrust in open space and slows near objects. No region changes or ship resets occur during travel.</p><p>On touch screens, use the flight pad and drag the open scene to look around.</p></div>
             <Link className="exploration-account-link" href="/">Account and sign-in on the homepage</Link>
             {seedCount > 0 ? <Link className="exploration-account-link" href="/profile">Your Prayer Seed collection · {seedCount}</Link> : null}

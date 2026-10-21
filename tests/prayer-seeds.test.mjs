@@ -7,6 +7,7 @@ import { createBoundPrayerSeed, createCyberIntelligence, getSeedOwner, validateS
 import { createPrayerSeedRepository } from '../lib/server/prayerSeedRepository.js';
 import { isNearPrayerRelic, PRAYER_RELIC_POSITION } from '../lib/prayerSeedDiscovery.js';
 import { getExplorationDestinations, getApproachPoint } from '../lib/exploration.js';
+import { getSolarSpawn } from '../lib/universeFlight.js';
 
 const steam = { authenticated: true, provider: 'steam', accountId: 'test-account', displayName: 'Explorer' };
 const google = { ...steam, provider: 'google' };
@@ -16,7 +17,7 @@ test('a hidden relic is reachable at Halcyon, absent from public destinations, a
   const destinations = getExplorationDestinations([]);
   assert.ok(destinations.every((entry) => !/prayer|relic|quiet.signal/i.test(entry.key + entry.label)));
   const halcyon = destinations.find((entry) => entry.key === 'halcyon');
-  assert.ok(isNearPrayerRelic(getApproachPoint([0, 0, 18], halcyon)));
+  assert.ok(isNearPrayerRelic(getApproachPoint(getSolarSpawn('', Date.UTC(2026, 9, 20)), halcyon)));
   for (const position of [null, [], [0, 0, 0], ['18.7', 8.3, 60], [NaN, 8, 60], [Infinity, 0, 60]]) assert.equal(isNearPrayerRelic(position), false);
 });
 

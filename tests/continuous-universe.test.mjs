@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { getUniverseSolarState, getSolarDestinations, getFlightEnvironment, getCruiseWaypoint } from '../lib/universeFlight.js';
 import { SOLAR_UNITS_PER_AU, SOLAR_WORLD_CENTER, WORLD_LIMIT, floatingOrigin, flightSubsteps } from '../lib/universeSpace.js';
-import { getApproachPoint, getCruiseControl, distanceBetween } from '../lib/exploration.js';
+import { getApproachPoint, getCruiseControl, distanceBetween, getPilotSpawn } from '../lib/exploration.js';
 import { stepFrame, buildGravitySourcesFromSeed } from '../lib/simCore/stepFrame.js';
 import { joinAuthoritativeRoom, updateAuthoritativePlayer, getAuthoritativeState } from '../lib/authoritativeMultiplayerStore.js';
 
@@ -85,7 +85,7 @@ test('the game has one scene and room; celestial selection cannot reset the ship
 });
 
 test('slow render frames preserve elapsed flight time with bounded server-valid inputs',()=>{
-  const payload={position:[0,0,18],velocity:[0,0,0],gravitySources:[{mass:0,position:[0,0,0]}],controlVector:[0,0,1]};
+  const payload={position:getPilotSpawn('slow-render'),velocity:[0,0,0],gravitySources:[{mass:0,position:[0,0,0]}],controlVector:[0,0,1]};
   const run=(fps)=>{let state=payload;for(let i=0;i<fps*2;i++)for(const dt of flightSubsteps(1/fps))state={...state,...stepFrame({...state,dt})};return state;};
   const fast=run(60),slow=run(5);
   assert.ok(distanceBetween(fast.position,slow.position)<.02);

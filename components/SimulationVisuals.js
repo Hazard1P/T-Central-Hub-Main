@@ -4,6 +4,7 @@ import { memo, useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Environment, Lightformer } from '@react-three/drei';
 import * as THREE from 'three';
+import ProjectedCelestial from '@/components/ProjectedCelestial';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
@@ -176,11 +177,11 @@ function OrbitalPlanet({ node, profile }) {
   const surface = useRef();
   useFrame((_, delta) => { if (surface.current && profile.animate) surface.current.rotation.y += delta * .012; });
   const gas = node.key === 'halcyon';
-  return <group position={node.position} rotation={gas ? [.1, -.4, -.27] : [0, 0, -.16]}>
-    <group ref={surface}><PlanetSurface radius={node.radius} color={node.color} gas={gas} segments={profile.segments} /></group>
-    <Atmosphere radius={node.radius} color={gas ? '#efd0a1' : '#70d6ff'} segments={profile.segments} />
+  return <ProjectedCelestial position={node.position}><group rotation={gas ? [.1, -.4, -.27] : [0, 0, -.16]}>
+    <group ref={surface}><PlanetSurface radius={node.radius} color={node.color} gas={gas} segments={Math.max(64, profile.segments)} /></group>
+    <Atmosphere radius={node.radius} color={gas ? '#efd0a1' : '#70d6ff'} segments={Math.max(64, profile.segments)} />
     {gas ? <PlanetRings radius={node.radius} /> : profile.clouds ? <OrbitalClouds radius={node.radius} animate={profile.animate} /> : null}
-  </group>;
+  </group></ProjectedCelestial>;
 }
 
 export const DeepSpaceScenery = memo(function DeepSpaceScenery({ profile, weaponBus }) {
