@@ -9,7 +9,7 @@ export default function AboutPage() {
       <div className="card-grid two">
         <article className="content-card">
           <h2>Find your server</h2>
-          <p className="muted">Compare game modes, find connection details, and open a server through Steam. Each route has its own briefing and address.</p>
+          <p className="muted">Discover independent Rust and Arma 3 communities, review player counts and connect through Steam. T-Central does not currently operate active game servers.</p>
           <Link className="button secondary" href="/server-info">Browse servers</Link>
         </article>
         <article className="content-card">

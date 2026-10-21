@@ -78,7 +78,7 @@ export default function ReportPlayerPage() {
   };
 
   return (
-    <PageShell eyebrow="T-Central moderation" title="Report a player" text="Report cheating, griefing, abuse, or rule violations. Include the server, player name, and evidence so the team can investigate.">
+    <PageShell eyebrow="T-Central moderation" title="Report a player" text="Report concerns in T-Central spaces with the player name, location and relevant evidence. Independent Rust and Arma server operators handle moderation on their own servers; contact their admins for server-specific incidents.">
       <section className="report-shell report-shell--shared" aria-label="Player report form">
         <div className="report-identity">
           <div>

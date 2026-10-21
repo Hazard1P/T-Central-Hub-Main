@@ -2,7 +2,7 @@
 
 Michael Rybaltowicz, operating as Central Synaptic Intelligence Systems, British Columbia, Canada.
 
-Draft revision: 2026-10-19-draft.1. Updated October 19, 2026.
+Draft revision: 2026-10-19-draft.2. Updated October 19, 2026.
 
 Review draft — not yet adopted. The operator has confirmed a 19+ community and voluntary support with no cash redemption. The service address and deployment-specific privacy details still need confirmation. These documents need qualified legal review before final adoption. The date below is a draft revision date, not an effective date.
 
@@ -190,7 +190,7 @@ The current seed feature records text and associated game data; its “intellige
 
 ### 5. Posts, contact requests and reports
 
-Public board posts contain your topic, category, message, time and public author display information. The underlying author record may also store provider identifiers, email and verification status for account association. The public response excludes those authentication fields; names and content you deliberately publish may still identify you.
+Public board posts contain your heading, optional subheading, category, message, time and public author display information. The underlying author record may also store provider identifiers, email and verification status for account association. The public response excludes those authentication fields; names and content you deliberately publish may still identify you.
 
 A contact submission may include name, email, optional phone, subject, message, reference and time. If the contact page prepares an email draft, the draft is sent only when you send it in your email application. A player report includes the reported player, location, reason, evidence, time and, where the report flow recognizes it, the reporter’s Steam identity. Reports may be assigned a severity and review status.
 
@@ -342,7 +342,7 @@ Voluntary support, PayPal checkout, recurring billing, cancellation, refund requ
 
 ### 1. What a contribution means
 
-One-time contributions and recurring support help maintain T-Central. Ordinary community participation does not require a contribution. Support is voluntary and does not buy equity, profit sharing, ownership, stored value, cash-redemption rights or a paid competitive advantage.
+One-time contributions and recurring support fund ongoing T-Central development, marketing, hardware and project infrastructure. Contributions support the project as a whole rather than a fixed allocation or a promised delivery date. Ordinary community participation does not require a contribution. Support is voluntary and does not buy equity, profit sharing, ownership, stored value, cash-redemption rights or a paid competitive advantage.
 
 The word “donation” describes voluntary support; it is not a representation that T-Central is a registered charity or that a payment is tax deductible. Do not claim a charitable deduction based solely on this site. No charitable registration or tax-receipt eligibility is asserted. Any required tax or business disclosures must be confirmed before adoption.
 

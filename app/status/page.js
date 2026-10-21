@@ -1,51 +1,16 @@
+import Link from 'next/link';
 import PageShell from '@/components/PageShell';
-import { PRIMARY_SERVER_ROUTES } from '@/lib/serverData';
 import { WORLD_SUMMARY } from '@/lib/worldLayout';
 
-export const metadata = { title: 'Project Status' };
+export const metadata = { title: 'Project status' };
 
 export default function StatusPage() {
-  return (
-    <PageShell
-      eyebrow="Project status"
-      title="Hub status and server routes"
-      text="Browse the configured universe and game server routes. These counts describe the hub layout; they do not confirm that external game servers are online."
-    >
-      <div className="arma-brief-grid">
-        <article className="content-card">
-          <p className="eyebrow">World counts</p>
-          <h3>Generated system shell</h3>
-          <ul className="arma-list">
-            <li>{WORLD_SUMMARY.blackholes} blackholes in the world layout.</li>
-            <li>{WORLD_SUMMARY.dysonSpheres} Dyson spheres in the universe.</li>
-            <li>{WORLD_SUMMARY.solarSystems} solar system anchor.</li>
-            <li>{WORLD_SUMMARY.nodes} total route and expansion nodes rendered from shared generators.</li>
-          </ul>
-        </article>
-
-        <article className="content-card">
-          <p className="eyebrow">Primary routes</p>
-          <h3>{PRIMARY_SERVER_ROUTES.length} configured routes</h3>
-          <div className="system-news-list">
-            {PRIMARY_SERVER_ROUTES.map((server) => (
-              <a className="system-news-link" href={server.href} key={server.id}>
-                <span>{server.shortTitle}</span>
-                <small>{server.ip}</small>
-              </a>
-            ))}
-          </div>
-        </article>
-
-        <article className="content-card">
-          <p className="eyebrow">Connection help</p>
-          <h3>Before you connect</h3>
-          <ul className="arma-list">
-            <li>Open a server route to find its address and connection options.</li>
-            <li>Steam launch links need the desktop Steam app and the matching game installed.</li>
-            <li>If a connection fails, try joining with the listed address in-game or contact the team.</li>
-          </ul>
-        </article>
-      </div>
-    </PageShell>
-  );
+  return <PageShell eyebrow="Project status" title="A universe in development." text="Follow the browser project, find community servers and help shape what comes next.">
+    <div className="card-grid two">
+      <article className="content-card"><h2>Browser universe</h2><p>Explore one continuous universe with {WORLD_SUMMARY.blackholes} blackholes, {WORLD_SUMMARY.dysonSpheres} Dyson spheres and a UTC-based Solar System. These are game-world features, not a count of hosted servers.</p><Link href="/system" className="button primary">Play in your browser</Link></article>
+      <article className="content-card"><h2>Game server hosting</h2><p>T-Central does not currently operate active Rust or Arma 3 servers. Our discovery browser showcases independent communities using current third-party rankings when available.</p><Link href="/server-info" className="button secondary">Find community servers</Link></article>
+      <article className="content-card"><h2>Community and feedback</h2><p>Use your Steam or Google account to publish ideas and updates under a heading and category. The board refreshes while you browse.</p><Link href="/hub-form" className="button secondary">Visit the board</Link></article>
+      <article className="content-card"><h2>Keep development moving</h2><p>Voluntary contributions support ongoing development, marketing and project hardware. No contribution is required to play or participate.</p><Link href="/donate" className="button secondary">Support the project</Link></article>
+    </div>
+  </PageShell>;
 }

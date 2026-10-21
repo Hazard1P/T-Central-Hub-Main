@@ -4,10 +4,17 @@ import { resolveGameAuthContext } from '@/lib/auth/resolveGameAuthContext';
 import { getHubPostStorageReadiness, listHubPosts, persistHubPost } from '@/lib/serverPersistence';
 import { buildHubPostRecord, publicHubPost } from '@/lib/hubPosts';
 
+export const dynamic = 'force-dynamic';
+const noStore = { 'Cache-Control': 'private, no-store' };
+
 export async function GET() {
-  const records = await listHubPosts();
   const readiness = getHubPostStorageReadiness();
-  return NextResponse.json({ ok: true, posts: records.slice(0, 40).map(publicHubPost), ...readiness });
+  try {
+    const records = await listHubPosts();
+    return NextResponse.json({ ok: true, posts: records.slice(0, 40).map(publicHubPost), ...readiness }, { headers: noStore });
+  } catch {
+    return NextResponse.json({ ok: false, posts: [], ...readiness, storageConfigured: false, error: 'The community board is temporarily unavailable. Please retry shortly.' }, { status: 503, headers: noStore });
+  }
 }
 
 export async function POST(request) {
@@ -25,10 +32,10 @@ export async function POST(request) {
 
   const { record } = builtPost;
 
-  const persistence = await persistHubPost(record);
+  const persistence = await persistHubPost(record).catch(() => ({ ok: false }));
   if (!persistence.ok) {
     return NextResponse.json({ ok: false, error: 'Durable post storage is not configured.', code: 'HUB_POST_STORAGE_UNAVAILABLE' }, { status: 503 });
   }
 
-  return NextResponse.json({ ok: true, reference: record.reference, storage: persistence.storage, provider: record.author.provider });
+  return NextResponse.json({ ok: true, reference: record.reference, post: publicHubPost(record), storage: persistence.storage, provider: record.author.provider }, { status: 201, headers: noStore });
 }

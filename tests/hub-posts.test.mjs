@@ -82,3 +82,20 @@ test('missing names and legacy email fallback names do not expose Google email',
   record.author.displayName = record.author.email;
   assert.equal(publicHubPost(record).author.displayName, 'Community Pilot');
 });
+
+test('headings and subheadings persist in the public post without changing the body', () => {
+  const result = buildHubPostRecord({ body: { topic: '  Build night  ', subheading: '  A shared exploration event  ', message: 'Line one\nLine two', category: 'Events' }, auth: { googleUser: { sub: 'g-1', name: 'Pilot' } } });
+  const visible = publicHubPost(result.record);
+  assert.equal(visible.topic, 'Build night');
+  assert.equal(visible.subheading, 'A shared exploration event');
+  assert.equal(visible.message, 'Line one\nLine two');
+  assert.equal(visible.category, 'Events');
+  assert.equal(publicHubPost({ author: {} }).subheading, '');
+  assert.equal(normalizeHubPostPayload({ subheading: 's'.repeat(300) }).subheading.length, 180);
+});
+
+test('posts created in the same millisecond have distinct references', () => {
+  const input = { body: { topic: 'Topic', message: 'Body' }, auth: { steamUser: { steamid: '1' } }, now: new Date(0) };
+  const references = Array.from({ length: 50 }, () => buildHubPostRecord(input).record.reference);
+  assert.equal(new Set(references).size, 50);
+});

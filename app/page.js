@@ -109,7 +109,7 @@ export default async function HomePage() {
             <span className="entry-panel-kicker">Support Route</span>
             <strong>Donation and subscriptions</strong>
             <p>
-              Open the donation page to compare one-time and recurring support models, plus the benefits of PayPal integration for the T-Central Hub.
+              Help fund ongoing development, marketing and project hardware. Choose a one-time contribution or recurring support when available.
             </p>
             <Link className="button secondary" href="/donate">Open donation page</Link>
           </article>

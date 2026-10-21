@@ -16,7 +16,7 @@ test('donation route options are generated from world layout route data', () => 
   assert.ok(solarSystemKeys.includes('solar_system'));
 
   const armaAnchor = blackholeAnchors.find((anchor) => anchor.anchorSlug === 'arma3-cth');
-  assert.equal(armaAnchor.label, 'Arma3 CTH');
+  assert.equal(armaAnchor.label, 'Arma 3 servers');
   assert.equal(armaAnchor.category, 'blackhole');
   assert.equal(armaAnchor.route.href, '/servers/arma3-cth');
   assert.equal(armaAnchor.route.targetServerId, 'arma3-cth-primary');

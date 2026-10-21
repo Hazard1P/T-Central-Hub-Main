@@ -1,11 +1,7 @@
-import ServerDetailStats from '@/components/ServerDetailStats';
-import { getServerBySlug } from '@/lib/serverData';
+import ServerDirectoryPage from '@/components/ServerDirectoryPage';
 
-export const metadata = {
-  title: 'Rust Vanilla',
-  description: 'Official T-Central Rust Vanilla server page with direct connect details, wipe cadence, and map info.',
-};
+export const metadata = { title: 'Community servers' };
 
-export default function RustPage() {
-  return <ServerDetailStats server={getServerBySlug('rust-vanilla')} />;
+export default function RustVanillaPage() {
+  return <ServerDirectoryPage initialGame="rust" />;
 }

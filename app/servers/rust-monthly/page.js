@@ -1,8 +1,7 @@
-import ServerDetailStats from '@/components/ServerDetailStats';
-import { getServerBySlug } from '@/lib/serverData';
+import ServerDirectoryPage from '@/components/ServerDirectoryPage';
 
-export const metadata = { title: 'Rust Monthly' };
+export const metadata = { title: 'Community servers' };
 
 export default function RustMonthlyPage() {
-  return <ServerDetailStats server={getServerBySlug('rust-monthly')} />;
+  return <ServerDirectoryPage initialGame="rust" />;
 }

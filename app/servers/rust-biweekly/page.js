@@ -1,8 +1,7 @@
-import ServerDetailStats from '@/components/ServerDetailStats';
-import { getServerBySlug } from '@/lib/serverData';
+import ServerDirectoryPage from '@/components/ServerDirectoryPage';
 
-export const metadata = { title: 'Rust Bi-Weekly' };
+export const metadata = { title: 'Community servers' };
 
 export default function RustBiweeklyPage() {
-  return <ServerDetailStats server={getServerBySlug('rust-biweekly')} />;
+  return <ServerDirectoryPage initialGame="rust" />;
 }

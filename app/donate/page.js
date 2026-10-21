@@ -2,55 +2,26 @@ import PageShell from '@/components/PageShell';
 import DonateSupportClient from '@/components/DonateSupportClient';
 import Link from 'next/link';
 
-export const metadata = { title: 'Support the hub' };
+export const metadata = { title: 'Support the project', description: 'Help fund ongoing T-Central development, marketing and project hardware through voluntary one-time or recurring support.' };
 
-const legalDisclosureLinks = [
-  { href: '/support-policy', label: 'Support & payments' },
-  { href: '/terms-and-conditions', label: 'Terms' },
-  { href: '/privacy-policy', label: 'Privacy' },
-  { href: '/eula', label: 'EULA' },
-  { href: '/multiplayer-policy', label: 'Multiplayer Policy' },
-  { href: '/contact', label: 'Contact' }
+const purposes = [
+  { title: 'Build a better universe', text: 'Support continued work on exploration, graphics, mobile play, multiplayer and the community tools around them.', label: 'Development' },
+  { title: 'Bring more people together', text: 'Help fund project marketing, creative material and outreach so more players can discover the universe and join the conversation.', label: 'Marketing' },
+  { title: 'Give the project room to grow', text: 'Contribute toward hardware, testing devices and project infrastructure needed for ongoing development and operation.', label: 'Hardware and infrastructure' },
 ];
 
-function PaymentLegalDisclosure() {
-  return (
-    <aside className="donate-legal-disclosure" aria-label="Payment legal disclosure">
-      <strong>Payment disclosure</strong>
-      <p>
-        One-time donations and recurring support are voluntary and processed by PayPal. Monthly support recurs until
-        cancelled through PayPal or the available account-management path, and support does not provide in-game
-        currency, stored value, external payout rights, real-world return, paid gameplay advantage, or ownership in T-Central. PayPal.Me fallback may not automatically
-        bind to a Steam-linked account. See the linked legal pages for details or use <Link href="/contact">contact</Link> for help.
-      </p>
-      <nav className="donate-legal-links" aria-label="Donation legal links">
-        {legalDisclosureLinks.map((link) => (
-          <Link key={link.href} href={link.href}>{link.label}</Link>
-        ))}
-      </nav>
-    </aside>
-  );
-}
-
 export default function DonatePage() {
-  return (
-    <PageShell eyebrow="Support T-Central" title="Help keep the hub moving." text="Support hosting, community events, and future development. Choose a Steam-linked checkout when available, or send a one-time gift through PayPal.Me.">
-      <div className="support-options">
-        <section className="content-card" id="protected-paypal-flow" aria-labelledby="protected-checkout-title">
-          <p className="eyebrow">Account-linked support</p>
-          <h2 id="protected-checkout-title">Donate or subscribe</h2>
-          <p className="muted">Sign in with Steam to link your support to your account. Available checkout options and subscription management appear below.</p>
-          <DonateSupportClient />
-        </section>
-        <section className="content-card" aria-labelledby="direct-support-title">
-          <p className="eyebrow">One-time support</p>
-          <h2 id="direct-support-title">Choose your own amount</h2>
-          <p className="muted">Use PayPal.Me for a direct gift. This contribution may not automatically appear on your Steam-linked account.</p>
-          <a className="button secondary" href="https://paypal.me/TCentralG" target="_blank" rel="noreferrer">Continue to PayPal.Me</a>
-          <p className="muted">Need help with a contribution? <Link href="/contact">Contact the team</Link>.</p>
-        </section>
-      </div>
-      <PaymentLegalDisclosure />
-    </PageShell>
-  );
+  return <PageShell eyebrow="Made possible by the community" title="Help build the universe you want to explore." text="Your voluntary support funds development, marketing and hardware for T-Central on an ongoing basis. Give once, or help sustain the work with recurring support when available.">
+    <section className="support-purpose-grid" aria-label="What contributions support">{purposes.map((item) => <article className="content-card" key={item.title}><p className="eyebrow">{item.label}</p><h2>{item.title}</h2><p>{item.text}</p></article>)}</section>
+    <section className="content-card support-community-value"><h2>A shared project, shaped by its players</h2><p>The incentive is a more capable universe and a growing community you can help shape. Share what you want to see next and follow published project posts. Feedback and participation stay open whether or not you contribute.</p><div className="entry-actions"><Link className="button secondary" href="/hub-form">Share an idea or read updates</Link><Link className="button secondary" href="/system">Explore what’s being built</Link></div><p className="muted">Contributions support the overall project. No fixed allocation percentages, delivery dates, exclusive perks or competitive advantages are promised.</p></section>
+    <DonateSupportClient />
+    <section className="content-card support-direct" aria-labelledby="direct-support-title"><p className="eyebrow">Simple one-time support</p><h2 id="direct-support-title">Choose your own amount through PayPal.Me</h2><p>No Steam sign-in is required for this direct option. Choose an amount and check the recipient, currency and total on PayPal. A direct contribution may not automatically appear on your T-Central account.</p><a className="button primary" href="https://paypal.me/TCentralG" target="_blank" rel="noreferrer">Contribute through PayPal.Me ↗</a><p className="muted">If contributing isn’t right for you, sharing the project and giving useful feedback also helps. Browser play and community participation remain free.</p></section>
+    <section className="content-card support-faq" aria-labelledby="support-faq-title"><h2 id="support-faq-title">Before you contribute</h2>
+      <details><summary>What will my contribution fund?</summary><p>Ongoing development, marketing, hardware and project infrastructure. Funds are used across project needs rather than reserved for the card or game location you select. We do not currently operate active Rust or Arma 3 servers.</p></details>
+      <details><summary>Will I receive credits, paid power or ownership?</summary><p>No. This is voluntary project support, not a purchase of redeemable credits, seeds, competitive power, equity or a financial return. We do not represent payments as tax-deductible charitable gifts.</p></details>
+      <details><summary>How does monthly support work?</summary><p>When a verified monthly plan is available, its amount and currency appear before checkout. It renews until cancelled. Use PayPal’s automatic-payment controls or the account cancellation option when provided.</p></details>
+      <details><summary>Need a receipt, refund or payment help?</summary><p>Contact us with the transaction reference, amount, currency and date. Do not send passwords or full payment details. Mandatory consumer rights and payment-provider dispute processes remain available.</p><Link href="/contact">Get payment help</Link></details>
+    </section>
+    <aside className="donate-legal-disclosure" aria-label="Payment legal disclosure"><strong>Voluntary support · 19+</strong><p>PayPal processes payments externally. Recurring support renews until cancelled. Contributions do not buy currency, cash-out rights, ownership or a guaranteed feature. Read the support policy and checkout terms before paying.</p><nav className="donate-legal-links" aria-label="Donation legal links"><Link href="/support-policy">Support and payments</Link><Link href="/terms-and-conditions">Terms</Link><Link href="/privacy-policy">Privacy</Link><Link href="/contact">Contact</Link></nav></aside>
+  </PageShell>;
 }

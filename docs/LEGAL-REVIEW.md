@@ -1,6 +1,6 @@
 # Community legal documents — review record
 
-Draft revision: `2026-10-19-draft.1`, October 19, 2026. Not an effective date.
+Draft revision: `2026-10-19-draft.2`, October 19, 2026. Not an effective date.
 
 The user confirmed Michael Rybaltowicz, operator name Central Synaptic Intelligence Systems, and B.C. They also confirmed a 19+ minimum age and voluntary support only, with no cash redemption of credits or seeds. The draft identifies an individual operating under that name in British Columbia, Canada; it does not invent a corporation, registration number, charitable status or street address. The contact email comes from the existing site: BrainandBodyai@gmail.com.
 
