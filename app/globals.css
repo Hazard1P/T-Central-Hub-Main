@@ -7378,3 +7378,52 @@ body:has(.system-entry-screen.phase-in_sim) .global-footer { display: none; }
 .contribution-history dd { margin: .25rem 0 .8rem; overflow-wrap: anywhere; }
 .contribution-history dt { color: #bdd3df; }
 .contribution-history h3 { overflow-wrap: anywhere; }
+
+/* Orbital identity shared by the landing page and community pages. */
+.site-header { gap: 1.2rem; padding: 17px clamp(20px, 3.4vw, 48px); background: #091116; border-bottom-color: #baf5df1c; }
+.site-brand { display: inline-flex; flex-shrink: 0; }
+.brand-lockup { display: inline-flex; align-items: center; gap: 10px; }
+.brand-mark { display: block; width: 46px; height: 46px; object-fit: contain; }
+.site-brand .brand-wordmark, .brand-wordmark { display: flex; flex-direction: column; gap: 5px; color: #edf5ef; font-size: 17px; font-weight: 600; letter-spacing: .12em; line-height: 1.1; }
+.brand-wordmark small { font-size: 7px; font-weight: 400; letter-spacing: .17em; color: #91a99e; }
+.site-navigation { gap: 2px; flex-wrap: nowrap; }
+.site-navigation a { font-size: 12px; padding: 12px 11px; border-radius: 5px; }
+.site-support { font-size: 12px; border-radius: 5px; padding: 11px 17px; border-color: #baf5df55; }
+.site-navigation a:hover, .site-navigation a[aria-current], .site-support:hover, .site-support[aria-current] { color: #baf5df; background: #baf5df0c; }
+.site-menu-toggle { display: none; }
+.global-footer { background: #080f14; border-top-color: #baf5df20; }
+.global-footer__inner { padding-block: 36px; gap: 34px; }
+.global-footer__brand { display: inline-flex; margin-bottom: 20px; }
+.global-footer__text { font-size: 12px; line-height: 1.9; color: #93a49f; }
+.global-footer__caption { font-size: 11px; line-height: 1.8; margin-top: 9px; color: #93a49f; }
+.global-footer__links { gap: 13px 20px; align-content: start; }
+.global-footer__link { font-size: 11px; color: #b6cec2; line-height: 1.7; }
+@media (min-width: 761px) and (max-width: 1100px) {
+  .site-header { flex-wrap: wrap; }
+  .site-navigation { order: 3; flex-basis: 100%; justify-content: center; margin: 0; }
+  .site-support { margin-left: auto; }
+}
+@media (min-width: 1101px) {
+  .site-header { flex-wrap: nowrap; }
+  .site-navigation { order: initial; flex-basis: auto; margin-left: auto; }
+}
+@media (max-width: 760px) {
+  .site-header { gap: 10px; padding: 13px 20px; flex-wrap: wrap; }
+  .brand-mark { width: 37px; height: 37px; }
+  .brand-lockup { gap: 7px; }
+  .site-brand .brand-wordmark { font-size: 14px; letter-spacing: .08em; }
+  .brand-wordmark small { font-size: 6px; letter-spacing: .12em; }
+  .site-menu-toggle { display: inline-flex; justify-content: center; align-items: center; gap: 8px; margin-left: auto; min-height: 42px; color: #dceae1; border: 1px solid #baf5df33; background: transparent; border-radius: 5px; padding: 10px 12px; font-size: 12px; cursor: pointer; }
+  .site-menu-toggle span { font-size: 15px; }
+  .site-support { margin-left: 0; font-size: 11px; padding: 12px 10px; }
+  .site-navigation { display: none; order: 4; flex-basis: 100%; margin: 4px 0 0; padding-top: 10px; border-top: 1px solid #baf5df20; }
+  .site-navigation.is-open { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .site-navigation a { padding: 14px 12px; font-size: 13px; }
+  .global-footer__inner { padding-inline: 20px; }
+}
+@media (max-width: 359px) {
+  .site-header { padding-inline: 14px; gap: 7px; }
+  .site-support { padding-inline: 8px; }
+  .site-menu-toggle { padding-inline: 8px; }
+  .site-brand .brand-wordmark { font-size: 12px; }
+}

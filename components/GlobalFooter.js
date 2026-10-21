@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import BrandLogo from '@/components/BrandLogo';
 
 const footerLinks = [
   { href: '/legal', label: 'Legal documents' },
@@ -18,9 +19,9 @@ export default function GlobalFooter() {
     <footer className="global-footer">
       <div className="global-footer__inner">
         <div>
-          <p className="global-footer__title">T-Central Hub</p>
+          <Link href="/" aria-label="T-Central Hub home" className="global-footer__brand"><BrandLogo /></Link>
           <p className="global-footer__text">
-            T-Central is a game universe with private and shared spaces, route portals, and an in-game entropic settlement loop.
+            An independent browser universe and a place for curious players to explore, connect and create.
           </p>
         </div>
         <nav className="global-footer__links" aria-label="Legal and contact">

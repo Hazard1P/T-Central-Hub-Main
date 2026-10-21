@@ -13,10 +13,11 @@ export const viewport = { width: 'device-width', initialScale: 1, viewportFit: '
 export const metadata = {
   metadataBase: new URL(siteUrl),
   title: { default: 'T-Central Hub', template: '%s | T-Central Hub' },
-  description: 'Interactive game server and web-game hub for T-Central.',
+  description: 'Explore a continuous browser universe and discover the T-Central gaming community.',
+  icons: { icon: '/brand/tcentral-mark.png', apple: '/brand/tcentral-mark.png' },
   openGraph: {
     title: 'T-Central Hub',
-    description: 'Interactive game server and web-game hub for T-Central.',
+    description: 'Explore a continuous browser universe and discover the T-Central gaming community.',
     url: siteUrl,
     siteName: 'T-Central Hub',
     type: 'website',
