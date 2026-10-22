@@ -11,6 +11,7 @@ export default function useShipEconomy({ session, roomName, shared }) {
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState('');
+  const [miningFeedback, setMiningFeedback] = useState(null);
   const send = useCallback(async function requestShip(action = 'state', fields = {}, quiet = false) {
     if (!key || current.current !== key) return;
     if (busy.current) {
@@ -33,7 +34,10 @@ export default function useShipEconomy({ session, roomName, shared }) {
       if (current.current !== key) return;
       if (!response.ok || !data.ok) throw new Error(data.error || 'Shipyard request failed.');
       setSnapshot({ ...data, key }); setError('');
-      if (data.receipt?.type === 'mine') setFeedback(data.receipt.ore ? '+' + data.receipt.ore + ' ore loaded.' : 'Rock integrity: ' + data.receipt.hp + '/3');
+      if (data.receipt?.type === 'mine') {
+        const message = '+' + data.receipt.ore + ' ore · ' + (data.receipt.hp ? data.receipt.hp + '/3 integrity' : 'asteroid depleted');
+        setFeedback(message); setMiningFeedback({ message, at: Date.now() });
+      }
       if (data.receipt?.type === 'deliver') setFeedback('Delivered ' + data.receipt.ore + ' ore · +' + data.receipt.credits + ' credits.');
       if (data.receipt?.type === 'upgrade') setFeedback('Upgrade installed · level ' + data.receipt.level + '.');
     } catch (failure) {
@@ -44,7 +48,7 @@ export default function useShipEconomy({ session, roomName, shared }) {
     }
   }, [key, session, roomName]);
   useEffect(() => {
-    setSnapshot(null); setError(''); setFeedback(''); setPending(false); busy.current = false;
+    setSnapshot(null); setError(''); setFeedback(''); setMiningFeedback(null); setPending(false); busy.current = false;
     if (!key) return;
     send();
     const interval = window.setInterval(() => { if (document.visibilityState === 'visible') send(); }, 1500);
@@ -55,5 +59,5 @@ export default function useShipEconomy({ session, roomName, shared }) {
     if (!data?.location?.canMine || performance.now() - lastShot.current < MINING_COOLDOWN) return;
     lastShot.current = performance.now(); send('mine', { direction }, true);
   }, [data, send]);
-  return { data, error, pending, feedback, shared, ready: Boolean(key), send, mineShot };
+  return { data, error, pending, feedback, miningFeedback, shared, ready: Boolean(key), send, mineShot };
 }

@@ -35,14 +35,17 @@ function rockGeometry(seed, detail) {
 
 function RockMaterial({ ice = false, lightDirection, variant = 0 }) {
   const uniforms = useMemo(() => ({ lightDirection: { value: new THREE.Vector3(...(lightDirection || [-.7, .4, -.8])).normalize() }, ice: { value: ice ? 1 : 0 }, mineral: { value: variant / 5 } }), [ice, lightDirection, variant]);
-  return <shaderMaterial uniforms={uniforms} vertexShader={`varying vec3 rock;varying vec3 worldNormal;varying vec3 worldPoint;varying vec3 toEye;varying float seed;
-    void main(){rock=position;vec4 p=vec4(position,1.);vec3 n=normal;seed=0.;
+  return <shaderMaterial uniforms={uniforms} vertexShader={`varying vec3 rock;varying vec3 worldNormal;varying vec3 worldPoint;varying vec3 toEye;varying float seed;varying float miningDamage;
+    void main(){rock=position;vec4 p=vec4(position,1.);vec3 n=normal;seed=0.;miningDamage=0.;
+    #ifdef USE_INSTANCING_COLOR
+      miningDamage=instanceColor.r;
+    #endif
     #ifdef USE_INSTANCING
       seed=dot(instanceMatrix[3].xyz,vec3(.13,.29,.07));
       p=instanceMatrix*p;n=mat3(instanceMatrix)*n;
     #endif
     vec4 world=modelMatrix*p;worldPoint=world.xyz;worldNormal=normalize(mat3(modelMatrix)*n);toEye=cameraPosition-world.xyz;gl_Position=projectionMatrix*viewMatrix*world;}
-  `} fragmentShader={`varying vec3 rock;varying vec3 worldNormal;varying vec3 worldPoint;varying vec3 toEye;varying float seed;uniform vec3 lightDirection;uniform float ice;uniform float mineral;${noise}
+  `} fragmentShader={`varying vec3 rock;varying vec3 worldNormal;varying vec3 worldPoint;varying vec3 toEye;varying float seed;varying float miningDamage;uniform vec3 lightDirection;uniform float ice;uniform float mineral;${noise}
     void main(){vec3 samplePoint=rock+vec3(seed*.19,seed*.31,seed*.07);
     float strata=fbm(samplePoint*7.);float grit=noise3(samplePoint*145.);float pores=noise3(samplePoint*43.);
     float vein=1.-smoothstep(.015,.065,abs(noise3(samplePoint*19.)-.5));
@@ -62,7 +65,8 @@ function RockMaterial({ ice = false, lightDirection, variant = 0 }) {
     vec3 color=mix(basalt,frost,ice);float rough=mix(.95,.45,ice*icePatch);
     float spec=pow(max(dot(reflect(-lightDirection,n),normalize(toEye)),0.),mix(9.,55.,1.-rough))*(.05+icePatch*ice*.23);
     float rim=pow(1.-max(dot(n,normalize(toEye)),0.),3.)*.035;
-    gl_FragColor=vec4(color*(.2+day*1.35)+spec+vec3(.3,.46,.57)*rim,1.);${finish}}
+    vec3 exposed=vec3(.8,.31,.07)*fracture*miningDamage*.8;
+    gl_FragColor=vec4(color*(.2+day*1.35)*(1.-miningDamage*.18)+spec+vec3(.3,.46,.57)*rim+exposed,1.);${finish}}
   `} />;
 }
 
@@ -70,6 +74,12 @@ export function RockBatch({ rocks, variant, profile, lightDirection }) {
   const mesh = useRef(null);
   const geometry = useMemo(() => rockGeometry(variant * 19 + 7, profile.segments > 32 ? 6 : 3), [variant, profile.segments]);
   const dummy = useMemo(() => new THREE.Object3D(), []);
+  useEffect(() => {
+    if (!mesh.current || !rocks.some(rock => rock.hp !== undefined)) return;
+    const color = new THREE.Color();
+    rocks.forEach((rock, index) => mesh.current.setColorAt(index, color.setRGB((3 - (rock.hp ?? 3)) / 3, 0, 0)));
+    if (mesh.current.instanceColor) mesh.current.instanceColor.needsUpdate = true;
+  }, [rocks]);
   useEffect(() => () => geometry.dispose(), [geometry]);
   useFrame(() => {
     const time = profile.animate ? Date.now() / 1000 * .035 : 0;

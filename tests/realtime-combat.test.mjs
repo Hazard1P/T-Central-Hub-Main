@@ -68,6 +68,9 @@ test("the fixed server clock advances flight and ignores client position, elapse
       dt: 9999,
       position: [0, 0, 0],
       damage: 99999,
+      health: 99999,
+      shield: 99999,
+      repairState: "repairing",
     }),
   );
   advance(200);
@@ -75,6 +78,8 @@ test("the fixed server clock advances flight and ignores client position, elapse
   assert(Math.hypot(...shooter.position) > 100000);
   assert.equal(target.health, SHIP_HEALTH);
   assert.equal(target.shield, SHIP_SHIELD);
+  assert.equal(shooter.health, SHIP_HEALTH);
+  assert.equal(shooter.shield, SHIP_SHIELD);
   assert.equal(
     world.input("shared", a.player.id, "forged", {
       frameIndex: 2,
@@ -93,6 +98,25 @@ test("the fixed server clock advances flight and ignores client position, elapse
   );
   const snapshot = world.state("shared", a.player.id, a.token);
   assert(!JSON.stringify(snapshot.state).includes(a.token));
+  assert.equal(typeof snapshot.state.players.find(p => p.id === a.player.id).repairState, 'string');
+  assert.equal('repairState' in snapshot.state.players.find(p => p.id === target.id), false);
+  assert.equal('shieldReadyAt' in world.state('shared',a.player.id,a.token,{compact:true}).state.players.find(p => p.id === target.id), false);
+});
+test("live server repairs at Earth, interrupts recovery on fire, and reports shield versus hull hits", (t) => {
+  const {world, a, room, shooter, target, advance}=fixture(t);
+  shooter.health=40;shooter.shield=0;shooter.invulnerableUntil=0;
+  shooter.lastDamage=Date.now();
+  advance(4900);assert.equal(shooter.health,40);assert.equal(shooter.shield,0);
+  advance(200);assert(shooter.health>40);assert(shooter.shield>0);
+  const repaired=shooter.health;
+  assert(world.requestFire('shared',a.player.id,a.token,[-1,0,0]).ok);
+  advance(1000);assert.equal(shooter.health,repaired);
+  assert.equal(world.state('shared',a.player.id,a.token).state.players.find(p=>p.id===a.player.id).repairState,'combat-lock');
+  target.shield=10;world.damage(room,target,shooter,Date.now());
+  const hit=room.events.at(-1);assert.equal(hit.shieldDamage,10);assert.equal(hit.hullDamage,10);assert.equal(hit.shieldBroken,true);
+  assert.equal(target.health,90);assert.equal(target.shield,0);
+  advance(4950);assert.equal(target.health,90);
+  advance(100);assert(target.health>90);
 });
 test("pulses use swept server collisions, cooldown, spawn protection, shields, destruction and Earth respawn", (t) => {
   const { world, a, b, shooter, target, advance } = fixture(t);

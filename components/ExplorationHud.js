@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import ShipyardPanel from './ShipyardPanel';
+import ShipSystemsReadout from './ShipSystemsReadout';
 import { useEffect, useRef, useState } from 'react';
 import { distanceBetween, isValidRoomName } from '@/lib/exploration';
 import { isInteractiveTarget } from '@/lib/flightInput';
@@ -36,6 +37,7 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
   }
   const recentHits = combatEvents.filter(event => event.type === 'hit' && Date.now() - event.at < 500);
   const incomingHit = recentHits.some(event => event.targetId === selfId);
+  const incomingHullHit = recentHits.some(event => event.targetId === selfId && event.hullDamage > 0);
   const confirmedHit = recentHits.some(event => event.ownerId === selfId);
   const combatSelf = pilots.find(pilot => pilot.id === selfId);
   const nearby = pilots.filter((pilot) => pilot.id !== selfId);
@@ -51,7 +53,7 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
   const visibleDestinations = destinations.filter((node) => (node.label + ' ' + node.kind).toLowerCase().includes(filter.toLowerCase()));
 
   return (
-    <div className={'exploration-hud' + (incomingHit ? ' combat-damaged' : '')}>
+    <div className={'exploration-hud' + (incomingHullHit ? ' combat-damaged' : incomingHit ? ' combat-shield-hit' : '')}>
       {confirmedHit ? <span className="combat-hit-confirm" aria-label="Hit confirmed">✛</span> : null}
       <header className="exploration-toolbar">
         <Link href="/" className="exploration-home" aria-label="Leave simulation for homepage">T<span> / </span>C</Link>
@@ -93,7 +95,7 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
               {!nearby.length ? <p className="exploration-help">The universe is open. Invite a friend to fly alongside you.</p> : null}
             </> : <p className="exploration-help">Your solo session is isolated from shared room traffic. Switch back to rejoin other pilots.</p>}
           </> : null}
-          {panel === 'shipyard' && economy ? <ShipyardPanel economy={economy} onMiningWaypoint={() => { onMiningWaypoint(); setPanel(null); }} onEarthWaypoint={() => { onEarthWaypoint(); setPanel(null); }} onMiningApproach={(id) => { onMiningApproach(id); setPanel(null); }} /> : null}
+          {panel === 'shipyard' && economy ? <ShipyardPanel economy={economy} ship={combatSelf} onMiningWaypoint={() => { onMiningWaypoint(); setPanel(null); }} onEarthWaypoint={() => { onEarthWaypoint(); setPanel(null); }} onMiningApproach={(id) => { onMiningApproach(id); setPanel(null); }} /> : null}
           {panel === 'settings' ? <>
             <label className="exploration-setting">Visual quality<select value={graphicsQuality} onChange={(event) => onGraphicsChange(event.target.value)}><option value="auto">Auto</option><option value="high">High</option><option value="performance">Performance</option></select></label>
             {sound ? <fieldset className="exploration-audio" disabled={!sound.supported} aria-describedby="ship-audio-help">
@@ -118,13 +120,10 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
         {destination ? <span className="exploration-target"><small>{cruising ? 'Cruising to' : 'Waypoint'}</small><strong>{destination.label}</strong><small>{formatSpaceDistance(distance)} {bearing !== null ? '· ' + bearing + '° off nose' : ''}</small></span> : <span className="exploration-target"><small>Free flight</small><strong>Choose a destination to begin</strong></span>}
         {cruising ? <button type="button" onClick={onCancelCruise}>Cancel cruise</button> : <button type="button" onClick={() => toggle('explore')}>Destinations</button>}
       </div>
-      {serverStatus.transport === 'websocket' && combatSelf ? <div className="combat-status" aria-label="Ship combat status">
-        <label>Shield <meter min="0" max="60" value={combatSelf.shield} /> <span>{Math.ceil(combatSelf.shield)}</span></label>
-        <label>Hull <meter min="0" max="100" value={combatSelf.health} /> <span>{Math.ceil(combatSelf.health)}%</span></label>
-        {combatSelf.alive && combatSelf.invulnerableUntil > Date.now() ? <small>Spawn shield · firing ends protection</small> : null}
-        <small>{combatSelf.kills || 0} kills · {combatSelf.deaths || 0} losses</small>
-      </div> : null}
-      {economy?.data ? <button className="ship-cargo-pill" onClick={() => toggle('shipyard')} aria-label="Open shipyard and cargo">{economy.data.wallet.cargo}/{economy.data.stats.capacity} ore <span>·</span> {economy.data.wallet.credits} cr</button> : null}
+      {serverStatus.transport === 'websocket' && combatSelf ? <ShipSystemsReadout ship={combatSelf} /> : null}
+      {economy?.data ? <button className="ship-cargo-pill" onClick={() => toggle('shipyard')} aria-label="Open shipyard and cargo">{economy.data.wallet.cargo}/{economy.data.stats.capacity} ore <span>·</span> {economy.data.wallet.credits} cr
+        {economy.miningFeedback && Date.now() - economy.miningFeedback.at < 3000 ? <small role="status">{economy.miningFeedback.message}</small> : economy.data.location.canMine ? <small>Rock in range · aim and fire</small> : null}
+      </button> : null}
       <p className="exploration-notice" role="status">{notice}</p>
     </div>
   );
