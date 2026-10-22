@@ -28,7 +28,8 @@ for (const route of routes) {
   const html = await response.text();
   assert.equal((html.match(/<h1(?:\s|>)/g) || []).length, 1, `${route}: expected one main heading`);
   if (new URL(response.url).pathname !== '/system') assert.match(html, /aria-label="Main navigation"/, `${route}: shared navigation missing`);
-  if (route.startsWith('/admin/')) assert.match(html, /Sign in before opening Dyson administration/, `${route}: guest authentication guard missing`);
+  if (route === '/admin/support') assert.match(html, /Authorized account required/, `${route}: support administration guard missing`);
+  else if (route.startsWith('/admin/')) assert.match(html, /Sign in before opening Dyson administration/, `${route}: guest authentication guard missing`);
   console.log(`PASS ${route}`);
 }
 console.log(`Verified ${routes.length} page routes and guest admin guards.`);

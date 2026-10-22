@@ -3,60 +3,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSteamSession } from '@/components/SteamSessionProvider';
 import ContributionHistory from '@/components/ContributionHistory';
-import { SUPPORT_FOCUS } from '@/lib/accountPayments';
+import { loadPayPalSdk } from '@/lib/paypalSdk';
+import { SUPPORT_FOCUS, moneyToMinor, currencyDigits } from '@/lib/accountPayments';
 import { SUPPORT_RECEIPT_MAX_AGE_DAYS } from '@/lib/supportSessionConfig';
 
-function buildSdkSrc({ clientId, currency, mode }) {
-  const params = new URLSearchParams({
-    'client-id': clientId,
-    components: 'buttons',
-    currency,
-  });
-
-  if (mode === 'subscription') {
-    params.set('vault', 'true');
-    params.set('intent', 'subscription');
-  } else {
-    params.set('intent', 'capture');
-  }
-
-  return `https://www.paypal.com/sdk/js?${params.toString()}`;
-}
-
-function loadPayPalSdk({ clientId, currency, mode }) {
-  const scriptId = 'paypal-donation-sdk';
-  const existing = document.getElementById(scriptId);
-  const src = buildSdkSrc({ clientId, currency, mode });
-
-  if (existing && existing.getAttribute('src') === src) {
-    return Promise.resolve();
-  }
-
-  if (existing) {
-    existing.remove();
-    delete window.paypal;
-  }
-
-  return new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.id = scriptId;
-    script.src = src;
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('PayPal SDK failed to load'));
-    document.body.appendChild(script);
-  });
-}
-
-function LoginCallout({ currentPath = '/donate' }) {
+function LoginCallout({ currentPath = '/donate', config }) {
   return (
     <div className="content-card donate-note-box">
       <strong>Want an account-linked receipt?</strong>
-      <p>Sign in with Steam or Google so your contribution can be recorded against your account. New contributions require a signed-in account. Contact support to review an older external receipt.</p>
-      <a className="button primary" href={`/api/auth/steam/login?redirectTo=${encodeURIComponent(currentPath)}`}>
+      <p>Sign in with Steam or Google so your contribution can be recorded against your account. Automatic account tracking requires a signed-in account. Contact support to review an older external receipt.</p>
+      {config?.steam ? <a className="button primary" href={`/api/auth/steam/login?redirectTo=${encodeURIComponent(currentPath)}`}>
         Continue with Steam
-      </a>
-      <a className="button secondary" href={`/api/auth/google/login?redirectTo=${encodeURIComponent(currentPath)}`}>Continue with Google</a>
+      </a> : null}
+      {config?.google ? <a className="button secondary" href={`/api/auth/google/login?redirectTo=${encodeURIComponent(currentPath)}`}>Continue with Google</a> : null}
+      {!config ? <p>Checking sign-in availability…</p> : !config.steam && !config.google ? <p>Account sign-in is currently unavailable. The direct PayPal link below remains an option.</p> : null}
     </div>
   );
 }
@@ -64,19 +24,29 @@ function LoginCallout({ currentPath = '/donate' }) {
 export default function DonateSupportClient() {
   const orderContainerRef = useRef(null);
   const subscriptionContainerRef = useRef(null);
-  const { steamUser, googleUser, support, refresh } = useSteamSession();
+  const { steamUser, googleUser, support, refresh, loading } = useSteamSession();
   const accountUser = steamUser || googleUser;
+  const accountKey = steamUser?.steamid ? 'steam:' + steamUser.steamid : googleUser?.sub ? 'google:' + googleUser.sub : '';
   const requestId = useRef(null);
   const [focus, setFocus] = useState('general');
   const [historyRevision, setHistoryRevision] = useState(0);
   const [config, setConfig] = useState(null);
+  const [authConfig, setAuthConfig] = useState(null);
   const [status, setStatus] = useState('');
+  const [sdkRetry, setSdkRetry] = useState(0);
+  const [sdkStatus, setSdkStatus] = useState('idle');
   const [amount, setAmount] = useState('10.00');
 
   const [checkoutMode, setCheckoutMode] = useState('donation');
   const [cancellingSubscription, setCancellingSubscription] = useState(false);
 
+  let validAmount = false;
+  try { validAmount = moneyToMinor(amount, config?.currency || 'USD') <= moneyToMinor('10000', config?.currency || 'USD'); } catch {}
+  let amountStep = '0.01';
+  try { if (currencyDigits(config?.currency || 'USD') === 0) amountStep = '1'; } catch {}
+
   useEffect(() => {
+    fetch('/api/auth/config', { cache: 'no-store' }).then(r => r.ok ? r.json() : {}).then(setAuthConfig).catch(() => setAuthConfig({}));
     fetch('/api/donations/paypal/config', { cache: 'no-store' })
       .then((r) => r.json())
       .then((data) => setConfig(data?.ok ? data : { configured: false }))
@@ -141,13 +111,15 @@ export default function DonateSupportClient() {
     const inactiveContainer = availableMode === 'subscription' ? orderContainerRef.current : subscriptionContainerRef.current;
     if (inactiveContainer) inactiveContainer.innerHTML = '';
 
-    if (!config?.configured || !config?.clientId || !activeContainer || !accountUser) return;
+    if (!config?.configured || !config?.clientId || !activeContainer || !accountKey || (availableMode === 'donation' && !validAmount)) { setSdkStatus('idle'); return; }
 
     let cancelled = false;
+    let buttons;
+    setSdkStatus('loading');
 
     loadPayPalSdk({ clientId: config.clientId, currency: availableMode === 'subscription' ? config.monthlyPlan.currency : config.currency, mode: availableMode })
-      .then(() => {
-        if (cancelled || !window.paypal || !activeContainer) return;
+      .then((sdk) => {
+        if (cancelled || !activeContainer) return;
         activeContainer.innerHTML = '';
 
         const buttonsConfig = availableMode === 'subscription'
@@ -172,7 +144,7 @@ export default function DonateSupportClient() {
                 throw new Error(payload?.error || 'Unable to create your subscription. Please retry.');
               },
               onApprove: async (data) => {
-                setStatus('Membership approved. Verifying and linking support...');
+                setStatus('Monthly support approved. Verifying your account link...');
                 const response = await fetch('/api/support/link', {
                   method: 'POST',
                   headers: { 'content-type': 'application/json' },
@@ -190,7 +162,7 @@ export default function DonateSupportClient() {
                 }
                 requestId.current = crypto.randomUUID();
                 setHistoryRevision((value) => value + 1);
-                setStatus('Membership linked to your Steam account. Payments appear in history once verified.');
+                setStatus('Monthly support linked to your Steam account. Payments appear in history once verified.');
                 refresh();
               },
               onCancel: () => { requestId.current = crypto.randomUUID(); setStatus('Subscription checkout cancelled.'); },
@@ -234,22 +206,32 @@ export default function DonateSupportClient() {
               onError: (error) => setStatus(error?.message || 'PayPal checkout error'),
             };
 
-        window.paypal.Buttons(buttonsConfig).render(activeContainer);
+        const approve = buttonsConfig.onApprove;
+        buttonsConfig.onApprove = async (...args) => {
+          try { return await approve(...args); }
+          catch {
+            setStatus('Payment verification was interrupted. Refresh your account history before trying another contribution.');
+            setHistoryRevision(value => value + 1);
+          }
+        };
+        buttons = sdk.Buttons(buttonsConfig);
+        return Promise.resolve(buttons.render(activeContainer)).then(() => { if (!cancelled) setSdkStatus('ready'); });
       })
-      .catch((error) => setStatus(error.message || 'Unable to load PayPal'));
+      .catch((error) => { if (!cancelled) { setSdkStatus('error'); setStatus(error.message || 'Unable to load PayPal. Please retry.'); } });
 
     return () => {
       cancelled = true;
+      try { Promise.resolve(buttons?.close?.()).catch(() => {}); } catch {}
       if (orderContainerRef.current) orderContainerRef.current.innerHTML = '';
       if (subscriptionContainerRef.current) subscriptionContainerRef.current.innerHTML = '';
     };
-  }, [config, steamUser, googleUser, accountUser, amount, focus, refresh, availableMode]);
+  }, [config, accountKey, amount, focus, refresh, availableMode, sdkRetry]);
 
+  if (loading) return <p role="status">Checking your account…</p>;
   if (!accountUser) {
-    return <LoginCallout currentPath="/donate" />;
+    return <LoginCallout currentPath="/donate" config={authConfig} />;
   }
 
-  const validAmount = Number.isFinite(Number(amount)) && Number(amount) >= .01 && Number(amount) <= 10000;
   return (
     <>
     <section className="content-card support-checkout" aria-labelledby="support-checkout-title">
@@ -261,7 +243,7 @@ export default function DonateSupportClient() {
       </div>
       {availableMode === 'donation' ? <>
         <div className="support-amounts" aria-label="Suggested contribution amounts">{['5.00', '15.00', '30.00'].map((value) => <button key={value} type="button" className={`button ${amount === value ? 'primary' : 'secondary'}`} aria-pressed={amount === value} onClick={() => setAmount(value)}>{Number(value)} {config?.currency || 'USD'}</button>)}</div>
-        <label className="donation-field"><span>Your amount ({config?.currency || 'USD'})</span><input value={amount} onChange={(event) => setAmount(event.target.value)} inputMode="decimal" type="number" min="0.01" max="10000" step="0.01" aria-describedby="support-amount-help" /></label>
+        <label className="donation-field"><span>Your amount ({config?.currency || 'USD'})</span><input value={amount} onChange={(event) => setAmount(event.target.value)} inputMode="decimal" type="number" min={amountStep} max="10000" step={amountStep} aria-describedby="support-amount-help" /></label>
         <label className="donation-field"><span>Area you’d like to support</span><select value={focus} onChange={(event) => setFocus(event.target.value)}>{Object.entries(SUPPORT_FOCUS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
         <p className="muted">This records your preference. Contributions remain available across project needs.</p>
         <p className="muted" id="support-amount-help">Choose any amount from 0.01 to 10,000. Review the currency and final total in PayPal before approving.</p>
@@ -274,6 +256,8 @@ export default function DonateSupportClient() {
         <div ref={orderContainerRef} hidden={availableMode !== 'donation' || !validAmount} />
         <div ref={subscriptionContainerRef} hidden={availableMode !== 'subscription'} />
       </div> : null}
+      {config?.configured && sdkStatus === 'loading' ? <p role="status">Loading secure PayPal checkout…</p> : null}
+      {config?.configured && sdkStatus === 'error' ? <button className="button secondary" type="button" onClick={() => { setStatus(''); setSdkRetry(value => value + 1); }}>Retry PayPal checkout</button> : null}
       {status ? <p className="support-link-status" role="status">{status}</p> : null}
       <details className="support-account-details"><summary>Receipts and subscription management</summary>
         <p>Payment history is stored against your verified account and remains available across devices.</p><p>{linkedSupportReceipt ? 'A verified support receipt is linked to this Steam account.' : 'No verified receipt is linked yet.'}</p>

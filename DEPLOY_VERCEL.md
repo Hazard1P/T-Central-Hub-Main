@@ -37,9 +37,9 @@
 
 ## PayPal donation flow
 
-Protected PayPal checkout requires a valid Steam session. Before testing PayPal buttons, validate Steam sign-in by opening `/api/auth/steam/login?redirectTo=/donate` on the production origin and confirming the completed Steam login returns to `/donate?steam=linked`. If it does not, verify `NEXT_PUBLIC_APP_URL` and the stability of `SESSION_SECRET`.
+Account-linked one-time PayPal checkout supports a valid Steam or Google session; monthly management requires Steam. Before testing PayPal buttons, validate Steam sign-in by opening `/api/auth/steam/login?redirectTo=/donate` on the production origin and confirming the completed Steam login returns to `/donate?steam=linked`. If it does not, verify `NEXT_PUBLIC_APP_URL` and the stability of `SESSION_SECRET`.
 
-PayPal.Me remains available without Steam binding for direct one-time support, but it bypasses the protected Steam-linked order flow and may not automatically attach the payment to a Steam support record.
+The existing https://paypal.me/TCentralG link allows direct support. It does not automatically attach payments to an account. Use signed-in checkout for automatic history, and see docs/ACCOUNT-PAYMENTS.md for the required database migration and verified financial events.
 
 Add these environment variables in Vercel:
 - `NEXT_PUBLIC_PAYPAL_CLIENT_ID`

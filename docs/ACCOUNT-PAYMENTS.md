@@ -33,7 +33,7 @@ Enable and verify the PayPal webhook using the real `PAYPAL_WEBHOOK_ID`. Financi
 
 The signature is verified before reconciliation. Capture completion is checked against provider order details. Refund relationships resolve to known transactions; user email or browser assertions never assign ownership. Recurring receipts resolve through the recorded subscription binding. Existing Steam subscriptions can be linked through a trusted server ledger and verified provider subscription metadata before their newly received payments are recorded.
 
-New giving links use authenticated checkout. The donation page directs older external contributors to a receipt-review process instead of offering an unbound PayPal.Me checkout.
+Signed-in checkout automatically records verified contributions. The donation page also offers the existing `https://paypal.me/TCentralG` direct link. External gifts do not automatically sync to an account; contributors can request receipt review. Never infer an account from a payer email or grant future benefits from an unverified external receipt.
 
 Unknown financial events are retained as unmatched for operator review. PayPal.Me gifts cannot automatically be assigned by payer email or claimed receipt text. Reconciliation/storage failures return a retryable error instead of acknowledging an unrecorded payment as successful. Durable monetary records are reconciled before the legacy in-memory compatibility cache is consulted.
 
@@ -60,3 +60,7 @@ Local verification uses PostgreSQL via PGlite, controlled PostgREST/PayPal fixtu
 `scripts/verify-account-payments-db.mjs` runs the financial migration and authorization checks against an isolated in-memory PostgreSQL database. It requires optional `@electric-sql/pglite` tooling (verified with version 0.5.10), not a production dependency. Install it in a separate tooling directory and supply the absolute path to its `dist/index.js` using `PGLITE_MODULE_PATH`, then run `node scripts/verify-account-payments-db.mjs`. No application database or payment credentials are used.
 
 The checks cover rerunnable imports, provider isolation, immutable ownership/history, exact totals beyond the displayed receipt limit, replay protection, refunds and reversals, sandbox separation, future benefit snapshots and denial of browser database roles.
+
+## Checkout usability
+
+The public config endpoint only offers embedded checkout when credentials, webhook ID, stable production session secret, supported currency and a reachable payment-intent table are available. It returns no private settings or records. Monthly support is offered only after verifying the actual plan. The SDK loader shares pending loads across amount changes, isolates capture/subscription SDK namespaces, bounds load time and supports retry; buttons are closed on cleanup. No live PayPal settlement is implied by local fixture tests.
