@@ -7,12 +7,12 @@ import { joinAuthoritativeRoom, applyAuthoritativeAction, getAuthoritativeState 
 import { stepFrame } from '../lib/simCore/stepFrame.js';
 
 test('physical Solar surfaces constrain the same global flight space while preserving tangential movement', () => {
-  const earth=getUniverseSolarState().find(body=>body.id==='earth');
+  const utcMs=Date.UTC(2026,9,22),earth=getUniverseSolarState(utcMs).find(body=>body.id==='earth');
   const position=earth.position.map((v,i)=>v+(i===2?-10:0));
-  const safe=constrainSolarFlight(position,[3,0,5]);
+  const safe=constrainSolarFlight(position,[3,0,5],utcMs);
   assert.ok(Math.abs(Math.hypot(...safe.position.map((v,i)=>v-earth.position[i]))-(earth.radius*1.02+2))<.0001);
   assert.deepEqual(safe.velocity,[3,0,0]);
-  const result=stepFrame({worldSeed:'same-universe',position,velocity:[0,0,8],dt:.1,controlVector:[0,0,1]});
+  const result=stepFrame({utcMs,worldSeed:'same-universe',position,velocity:[0,0,8],dt:.1,controlVector:[0,0,1]});
   assert.ok(Math.hypot(...result.position.map((v,i)=>v-earth.position[i]))>=earth.radius*1.02+1.999);
 });
 

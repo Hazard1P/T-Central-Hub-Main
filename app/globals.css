@@ -7070,6 +7070,8 @@ body:has(.system-interface-sidebar) .stable-system-hud {
 .touch-flight-row { display: flex; gap: 5px; }
 .touch-flight-pad button { min-width: 44px; border: 1px solid rgba(131,235,255,.35); border-radius: 12px; background: rgba(5,18,30,.92); color: #e4f7ff; pointer-events: auto; padding: .6rem; font: inherit; font-size: .8rem; }
 .touch-flight-cluster.vertical button { width: 74px; }
+.touch-flight-actions { display: flex; gap: 5px; }
+.touch-flight-cluster.vertical .touch-flight-actions button { width: 44px; min-width: 44px; padding: .4rem .2rem; font-size: .7rem; }
 @media (max-width: 700px) {
   .simulation-visual-settings { left: 14px; right: auto; bottom: 176px; }
 }
@@ -7509,6 +7511,14 @@ body:has(.system-entry-screen.phase-in_sim) .global-footer { display: none; }
 .combat-damaged { box-shadow:inset 0 0 80px #ff553b66; }
 .combat-hit-confirm { position:absolute; left:50%; top:50%; color:#ffda9c; font-size:24px; transform:translate(-50%,-50%); pointer-events:none; }
 .combat-shield-hit { box-shadow:inset 0 0 65px #6cc9ff55; }
+.flight-physics-readout { margin:14px 0; padding:12px; border:1px solid #83ebff30; border-radius:10px; font-size:12px; }
+.flight-physics-readout summary { cursor:pointer; min-height:32px; align-content:center; color:#d7e9f2; }
+.flight-physics-readout dl { display:grid; gap:10px; margin-block:12px; }
+.flight-physics-readout dl > div { display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px; }
+.flight-physics-readout dt { color:#a6bdca; }
+.flight-physics-readout dd { margin:0; color:#baf5df; font-variant-numeric:tabular-nums; }
+.touch-flight-pad .touch-flight-brake { color:#baf5df; border-color:#baf5df66; min-height:44px; }
+.touch-flight-pad .touch-flight-brake.is-held { background:#285444; }
 .combat-status[data-critical="true"] { border-color:#ff956f99; }
 .combat-status[data-critical="true"] label:last-of-type { color:#ffb192; }
 .shipyard-systems { display:grid; gap:8px; padding:16px; margin-block:16px; border:1px solid #83ebff33; border-radius:10px; background:#07152288; font-size:12px; }

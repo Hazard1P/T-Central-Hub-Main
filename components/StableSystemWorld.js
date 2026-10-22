@@ -508,7 +508,7 @@ function NodeVisual({ node, onSelect, selectedKey, graphNode, condensedLabels = 
   );
 }
 
-function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTelemetryChange, onCombatAction, touchInput, isMobile = false, authenticated = false, epochSummary = null, flightConfig = null, multiplayerMode = false, simulationSeed = 'tcentral-main', simulationGravitySources = [], onSimulationFrame = null, correctionState = null, resetTick = 0, navigationCommand, cruising, onManualControl, onArrival, explorationNodes = [], destination, roomKey = 'tcentral-main', spawnTick = 0, pendingInputsRef }) {
+function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTelemetryChange, onCombatAction, touchInput, isMobile = false, authenticated = false, epochSummary = null, flightConfig = null, multiplayerMode = false, simulationSeed = 'tcentral-main', simulationGravitySources = [], onSimulationFrame = null, correctionState = null, resetTick = 0, navigationCommand, cruising, onManualControl, onArrival, explorationNodes = [], destination, roomKey = 'tcentral-main', spawnTick = 0, pendingInputsRef, getPhysicsTime = Date.now }) {
   const [initialSpawn] = useState(() => getPilotSpawn());
   const groupRef = useRef(null);
   const engineCoreRef = useRef(null);
@@ -521,6 +521,7 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
   const keys = useRef({});
   const cruiseTarget = useRef(null);
   const lastGravity = useRef([0, 0, 0]);
+  const lastPhysicsStep = useRef(null);
   const { camera, gl } = useThree();
   const { origin: worldOrigin, rebase } = useUniverseFrame();
   const privateObstacles = useMemo(() => simulationGravitySources.filter(source => source.privateOnly), [simulationGravitySources]);
@@ -543,6 +544,7 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
     velocity.current.set(0, 0, 0); keys.current = {};
     yaw.current = Math.atan2(direction.x, direction.z); pitch.current = -Math.asin(direction.y);
     correctionTargetRef.current = null; cruiseTarget.current = null;
+    lastPhysicsStep.current = null; lastGravity.current = [0, 0, 0];
     camera.position.set(0, 3.6, 7.6); camera.near = .1; camera.far = RENDER_DISTANCE; camera.updateProjectionMatrix();
   }, [roomKey, camera, spawnTick]);
 
@@ -556,7 +558,7 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
     cruiseTarget.current = getApproachPoint(groupRef.current.position.toArray(), navigationCommand.destination);
   }, [navigationCommand?.id]);
   useEffect(() => {
-    if (Math.abs(touchInput.x) + Math.abs(touchInput.y) + Math.abs(touchInput.z) > 0 || touchInput.boost) onManualControl?.();
+    if (Math.abs(touchInput.x) + Math.abs(touchInput.y) + Math.abs(touchInput.z) > 0 || touchInput.boost || touchInput.brake) onManualControl?.();
   }, [touchInput, onManualControl]);
 
   const frameCounter = useRef(0);
@@ -565,6 +567,7 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
   useEffect(() => {
     if (!correctionState?.position || !correctionState?.velocity) return;
     if (correctionState.snap && Number.isSafeInteger(correctionState.frameIndex)) frameCounter.current = correctionState.frameIndex;
+    if (correctionState.snap) { lastPhysicsStep.current = null; lastGravity.current = [0, 0, 0]; }
     correctionTargetRef.current = {
       position: new THREE.Vector3(...correctionState.position),
       velocity: new THREE.Vector3(...correctionState.velocity),
@@ -589,29 +592,31 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
     const lookQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch.current, yaw.current, roll.current, 'YXZ'));
     const orientedMove = rawMove.clone();
     if (flightConfig?.sixAxis || flightConfig?.mouseLook) orientedMove.applyQuaternion(lookQuat);
-    let dt = 0, controlVector = [0, 0, 0], stepped = { gravityMagnitude: Math.hypot(...lastGravity.current), gravity: lastGravity.current };
+    let dt = 0, controlVector = [0, 0, 0], stepped = lastPhysicsStep.current || { gravityMagnitude: Math.hypot(...lastGravity.current), gravity: lastGravity.current };
     for (dt of flightSubsteps(delta)) {
       // Keep local prediction within the acknowledgement window on slow links.
       // Dropping old unacknowledged controls makes the server follow stale steering.
       if (multiplayerMode && pendingInputsRef?.current.reduce((sum, frame) => sum + frame.dt, 0) + dt > .3) break;
+      const utcMs = getPhysicsTime();
       frameCounter.current += 1;
       controlVector = [orientedMove.x * thrustScale, orientedMove.y * thrustScale, orientedMove.z * thrustScale];
       const position = groupRef.current.position.toArray();
       if (!flightConfig?.inputBlocked && cruising && cruiseTarget.current) {
         const movingTarget = destination?.solarBody || destination?.key === 'solar-geo' || destination?.key === 'earth-mining-field' || destination?.kind === 'mining asteroid';
         if (movingTarget) cruiseTarget.current = getApproachPoint(position, destination);
-        controlVector = getCruiseControl({ position, velocity: velocity.current.toArray(), target: cruiseTarget.current, gravity: lastGravity.current, obstacles: privateObstacles });
+        controlVector = getCruiseControl({ position, velocity: velocity.current.toArray(), target: cruiseTarget.current, gravity: lastGravity.current, obstacles: privateObstacles, utcMs });
         const direction = new THREE.Vector3(...(destination || navigationCommand.destination).position).sub(groupRef.current.position).normalize();
         yaw.current = Math.atan2(direction.x, direction.z);
         pitch.current = -Math.asin(Math.max(-1, Math.min(1, direction.y)));
         lookQuat.setFromEuler(new THREE.Euler(pitch.current, yaw.current, roll.current, 'YXZ'));
         if (distanceBetween(position, cruiseTarget.current) < (movingTarget ? 5 : .8) && velocity.current.length() < (movingTarget ? 8 : .7)) onArrival?.(destination || navigationCommand.destination);
-      } else if (flightConfig?.inputBlocked || keys.current.KeyX || (flightConfig?.inertialDampers && rawMove.lengthSq() === 0)) {
-        controlVector = getCruiseControl({ position, velocity: velocity.current.toArray(), target: position, gravity: lastGravity.current, braking: true, obstacles: privateObstacles });
+      } else if (flightConfig?.inputBlocked || keys.current.KeyX || touchInput.brake || (flightConfig?.inertialDampers && rawMove.lengthSq() === 0)) {
+        controlVector = getCruiseControl({ position, velocity: velocity.current.toArray(), target: position, gravity: lastGravity.current, braking: true, obstacles: privateObstacles, utcMs });
       }
       stepped = simRuntimeClient.stepSnapshot({
         mode: multiplayerMode ? 'multiplayer' : 'singleplayer',
         unifiedFlight: true,
+        utcMs,
         frameIndex: frameCounter.current,
         simulationSeed,
         position: [groupRef.current.position.x, groupRef.current.position.y, groupRef.current.position.z],
@@ -624,13 +629,14 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
         gravitySources: simulationGravitySources,
         isMobile,
       });
+      lastPhysicsStep.current = stepped;
 
       velocity.current.set(...(stepped.velocity || [0, 0, 0]));
       groupRef.current.position.set(...(stepped.position || [0, 0, 18]));
       onSimulationFrame?.({
         frameIndex: frameCounter.current,
-        controlVector: controlVector.map((v) => Number(v.toFixed(4))),
-        dt: Number(dt.toFixed(5)),
+        controlVector: [...controlVector],
+        dt,
         position: [Number(groupRef.current.position.x.toFixed(3)), Number(groupRef.current.position.y.toFixed(3)), Number(groupRef.current.position.z.toFixed(3))],
         velocity: [Number(velocity.current.x.toFixed(3)), Number(velocity.current.y.toFixed(3)), Number(velocity.current.z.toFixed(3))],
         simulationSeed,
@@ -659,8 +665,8 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
       const distance = groupRef.current.position.distanceTo(new THREE.Vector3(...node.position));
       return !best || distance < best.distance ? { key: node.key, distance } : best;
     }, null);
-    const nearest = nearestNode;
-    const horizonFactor = nearest?.horizonFactor || 0;
+    const nearest = stepped.nearest || nearestNode;
+    const horizonFactor = stepped.horizon?.lensing || 0;
 
     quantumRef.current = evolveQuantumState({
       prevState: quantumRef.current,
@@ -704,11 +710,13 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
     onTelemetryChange?.({
       speed: Number(speed.toFixed(2)),
       gravity: Number(gravityMagnitude.toFixed(2)),
+      gravityAcceleration: gravityMagnitude,
       horizonFactor: Number(horizonFactor.toFixed(2)),
       nearest: nearest?.key || null,
       nearestDistance: Number((nearest?.distance || 0).toFixed(2)),
-      escapeVelocity: Number((nearest?.escapeVelocity || 0).toFixed(2)),
+      escapeVelocity: nearest?.escapeVelocity || 0,
       horizon: stepped.horizon,
+      physics: stepped.physics,
       quantum: summarizeQuantumState(quantumRef.current),
       epoch: epochSummary,
       boosting: boostActive,
@@ -730,8 +738,8 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
         Number(direction.y.toFixed(2)),
         Number(direction.z.toFixed(2)),
       ],
-      controlVector: controlVector.map((v) => Number(v.toFixed(4))),
-      dt: Number(dt.toFixed(5)),
+      controlVector: [...controlVector],
+      dt,
       simulationSeed,
       runtime: {
         status: stepped.runtimeStatus || SIM_RUNTIME_STATUS.ONLINE,
@@ -858,7 +866,7 @@ function StableSceneContent({ simRuntimeClient, graph, displayNodes, onSelect, s
         simulationGravitySources={simulationGravitySources}
         onSimulationFrame={onSimulationFrame}
         correctionState={correctionState}
-        resetTick={resetTick} spawnTick={spawnTick}
+        resetTick={resetTick} spawnTick={spawnTick} getPhysicsTime={solarClock.getTime}
         navigationCommand={navigationCommand} cruising={cruising} onManualControl={onManualControl} onArrival={onArrival}
         explorationNodes={[...getExplorationDestinations(displayNodes), ...getSolarDestinations(solarClock.getTime())]} destination={destination} roomKey={simulationSeed}
       />

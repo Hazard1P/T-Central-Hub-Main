@@ -53,6 +53,8 @@ export default function useSharedFlight({
       revision = 0;
     let roster = new Map();
     let acknowledgedFrame = 0;
+    let predictionFrame = null,
+      pendingPrediction = null;
     const controller = new AbortController();
     setSession(null);
     setAuthoritativeState(emptyState);
@@ -108,7 +110,7 @@ export default function useSharedFlight({
         tick: 0,
       });
     }
-    function reconcile(self, snap = false) {
+    function reconcile(self, snap = false, utcMs = Date.now()) {
       if (!self?.position || !self?.velocity) return;
       inputsRef.current = snap
         ? []
@@ -130,6 +132,7 @@ export default function useSharedFlight({
         authoritativeVelocity: self.velocity,
         simulationSeed: roomName,
         gravitySources,
+        utcMs,
       });
       const error = Math.hypot(
         ...prediction.position.map(
@@ -138,6 +141,21 @@ export default function useSharedFlight({
         ),
       );
       if (error > 0.3) onCorrection(prediction);
+    }
+    function queuePrediction(self, snap, utcMs) {
+      if (snap || self.alive === false) {
+        pendingPrediction = null;
+        reconcile(self, snap, utcMs);
+        return;
+      }
+      pendingPrediction = { self, utcMs };
+      if (predictionFrame !== null) return;
+      predictionFrame = window.requestAnimationFrame(() => {
+        predictionFrame = null;
+        const latest = pendingPrediction;
+        pendingPrediction = null;
+        if (!stopped && latest) reconcile(latest.self, false, latest.utcMs);
+      });
     }
     function openRealtime(data) {
       socket = new WebSocket(data.endpoint);
@@ -221,7 +239,7 @@ export default function useSharedFlight({
               population: packet.state.population,
               tick: packet.state.tick,
             });
-            reconcile(self, respawned);
+            queuePrediction(self, respawned, packet.state.physicsUtcMs);
             if (respawned) onRespawn?.();
           }
         } catch {
@@ -233,6 +251,9 @@ export default function useSharedFlight({
         window.clearInterval(inputTimer);
         if (stopped || socket !== connection) return;
         socket = null;
+        window.cancelAnimationFrame(predictionFrame);
+        predictionFrame = null;
+        pendingPrediction = null;
         session = null;
         setSession(null);
         inputsRef.current = [];
@@ -370,6 +391,8 @@ export default function useSharedFlight({
       window.clearTimeout(timer);
       window.clearTimeout(joinTimer);
       window.clearInterval(inputTimer);
+      window.cancelAnimationFrame(predictionFrame);
+      pendingPrediction = null;
       socket?.close(1000, "Flight ended");
       window.removeEventListener("pagehide", unload);
       if (session?.transport !== "websocket") void release(session);

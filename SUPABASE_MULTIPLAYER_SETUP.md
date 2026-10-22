@@ -72,3 +72,7 @@ The population script launches its own loopback service and synthetic clients, c
 ## Legacy HTTP adapter
 
 `MULTIPLAYER_TRANSPORT=http` explicitly enables the previous HTTP polling adapter for regression or rollback. It uses the Supabase room tables and atomic capacity RPC from `20261023_multiplayer_capacity.sql`; a non-production single-process memory adapter is also available. It does not implement the new authoritative PvP combat loop. `scripts/verify-exploration.mjs` and `scripts/verify-multiplayer-population.mjs` exercise that adapter. Supabase Realtime subscriptions are not the game transport. The existing authenticated cleanup cron applies to legacy database room rows, not the live WebSocket service.
+
+## Physics version
+
+The shared core is `universe-physics-1`. Deploy the website and service together; the worker owns the physics epoch and sends `physicsUtcMs` with snapshots for replay. Planetary gravity, vacuum coasting, swept surfaces, ship impulses and moving-target projectile checks are described in [the physics engine](docs/PHYSICS-ENGINE.md). No additional database migration is needed for the engine itself.

@@ -71,6 +71,10 @@ test("the fixed server clock advances flight and ignores client position, elapse
       health: 99999,
       shield: 99999,
       repairState: "repairing",
+      utcMs: 0,
+      mass: 0,
+      force: [999999,999999,999999],
+      gravitySources: [{position:[0,0,0],mu:999999999999}],
     }),
   );
   advance(200);
@@ -319,4 +323,48 @@ test("one verified identity owns one flight across rooms, and moving rooms frees
   assert.equal(world.rooms.size, 1);
   assert.equal(world.lobby("other").population.available, 0);
   assert.equal(world.lobby("other").population.full, true);
+});
+
+test("authoritative ship contacts stop high-speed crossing with mass-weighted impulses", (t) => {
+  const {world,a,b,shooter,target,room,advance}=fixture(t);
+  shooter.position=[-20,0,18];target.position=[20,0,18];
+  shooter.velocity=[2000,0,0];target.velocity=[-2000,0,0];
+  shooter.lastInput=target.lastInput=Date.now();
+  advance(50);
+  assert(shooter.position[0]<target.position[0]);
+  assert(shooter.velocity[0]<0&&target.velocity[0]>0);
+  assert(Math.hypot(...shooter.position.map((v,i)=>v-target.position[i]))>=6.4);
+  assert(room.events.some(event=>event.type==='collision'));
+  assert.equal(shooter.health,100);assert.equal(target.health,100);
+  const state=world.state('shared',a.player.id,a.token).state;
+  assert.equal(state.physicsVersion,'universe-physics-1');
+  assert.equal(state.physicsUtcMs,Date.now());
+  assert(!JSON.stringify(state).includes('previousPosition'));
+  assert(world.state('shared',b.player.id,b.token).ok);
+});
+
+test("pulse sweeps hit a moving ship even when it crosses entirely between server snapshots", (t) => {
+  const {world,a,shooter,target,advance}=fixture(t);
+  shooter.position=[0,0,18];target.position=[20,-450,18];
+  shooter.velocity=[0,0,0];target.velocity=[0,2000,0];
+  shooter.lastInput=target.lastInput=Date.now();target.invulnerableUntil=0;
+  assert(world.requestFire('shared',a.player.id,a.token,[1,0,0]).ok);
+  advance(250);
+  assert.equal(target.shield,40);
+});
+
+test('shared snapshot caches are immutable, contain no flight token and refresh on same-tick state changes', t=>{
+ const {world,a,room,shooter,target}=fixture(t);
+ const first=world.state('shared',a.player.id,a.token).state.players.find(p=>p.id===a.player.id);
+ const repeated=world.state('shared',a.player.id,a.token).state.players.find(p=>p.id===a.player.id);
+ assert.equal(first,repeated);assert(Object.isFrozen(first.position));
+ assert.throws(()=>{first.position[0]=0},TypeError);
+ world.damage(room,shooter,target,Date.now());
+ const changed=world.state('shared',a.player.id,a.token).state.players.find(p=>p.id===a.player.id);
+ assert.notEqual(changed,first);assert.equal(changed.shield,40);
+ assert(!JSON.stringify(changed).includes(a.token));
+ world.requestFire('shared',shooter.id,shooter.token,[0,0,1]);
+ const shot=world.state('shared',a.player.id,a.token).state.projectiles[0];
+ assert(Object.isFrozen(shot.position));
+ assert.equal(shot,world.state('shared',a.player.id,a.token).state.projectiles[0]);
 });

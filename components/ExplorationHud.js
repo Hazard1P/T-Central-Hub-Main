@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import ShipyardPanel from './ShipyardPanel';
 import ShipSystemsReadout from './ShipSystemsReadout';
+import FlightPhysicsReadout from './FlightPhysicsReadout';
 import { useEffect, useRef, useState } from 'react';
 import { distanceBetween, isValidRoomName } from '@/lib/exploration';
 import { isInteractiveTarget } from '@/lib/flightInput';
@@ -106,6 +107,7 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
               <p className="exploration-help" id="ship-audio-help">{sound.supported ? 'The hum starts very quietly. Sound begins after a tap or key press and pauses in background tabs. Your choices are saved on this device.' : 'Sound is unavailable in this browser. Flight controls still work.'}</p>
             </fieldset> : null}
             <label className="exploration-check"><input type="checkbox" checked={dampers} onChange={onDampersChange} />Brake automatically when thrust is released</label>
+            <FlightPhysicsReadout telemetry={telemetry} />
             <div className="exploration-actions"><button className="button secondary" onClick={onRecenter}>Recenter view</button><button className="button secondary" onClick={onRespawn} disabled={respawning}>{respawning ? 'Returning…' : economy?.data?.wallet?.cargo ? 'Return to Earth · discard cargo' : 'Return to Earth'}</button></div>
             <p className="exploration-help">Emergency return discards carried ore. Credits and installed upgrades remain saved.</p>
             <div className="exploration-controls"><h3>Flight controls</h3><p>W / S forward and back · A / D strafe<br />Space / R rise · Shift / F descend<br />Ctrl boost · X brake<br />Move mouse to steer · Click / V fire · Esc release mouse · M destinations · H hide HUD</p><p>Deep-space assist increases thrust in open space and slows near objects. No region changes or ship resets occur during travel.</p><p>On touch screens, use the flight pad and drag the open scene to look around.</p></div>

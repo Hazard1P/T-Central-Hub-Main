@@ -80,7 +80,10 @@ export default function TouchFlightPad({ onInputChange }) {
       </div>
       <p className="touch-look-hint">Drag space to look</p>
       <div className="touch-flight-cluster vertical">
-        {button('fire', 1, 'Hold to fire', 'Fire', 'touch-flight-fire')}
+        <div className="touch-flight-actions">
+          {button('fire', 1, 'Hold to fire', 'Fire', 'touch-flight-fire')}
+          {button('brake', 1, 'Hold to brake', 'Brake', 'touch-flight-brake')}
+        </div>
         {button('y', 1, 'Ascend', 'Ascend')}
         {button('y', -1, 'Descend', 'Descend')}
       </div>

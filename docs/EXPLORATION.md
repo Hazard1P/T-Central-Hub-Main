@@ -61,3 +61,7 @@ Deployment: apply `supabase/migrations/20261022_ship_economy.sql` after the exis
 Verification includes pure rule/repository tests, a PostgreSQL-compatible PGlite migration and role-permission check, and production API/browser tests using a local database REST fixture. OAuth upstream responses are mocked for callback regression checks; live Google/Steam round trips and real device performance require deployment verification. This includes a runnable dedicated game service with combat, account persistence and shared mining. Hosting, credentials and production capacity still require deployment validation.
 
 The cooperative-mining migration retains existing wallets, shared rocks and action receipts. Previous receipts replay unchanged; already-partially-mined rocks are not retroactively paid for hits made under the old rules. Deploy the migration before the matching website/game-service release. Hull repairs require the updated persistent game service, not the legacy HTTP adapter.
+
+## Shared physics engine
+
+Flight now uses shared Newtonian planetary gravity, double-precision RK4 substeps, vacuum coasting, swept celestial contacts and authoritative ship-to-ship impulses. Disable automatic braking in Settings to coast; X/Brake applies thrust to slow down. Settings → Flight physics shows local gravity and escape speed. The same physics drives legacy movement interfaces and client/server prediction. See [physics architecture and limits](PHYSICS-ENGINE.md).
