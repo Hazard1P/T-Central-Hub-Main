@@ -1,22 +1,12 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
-import { getGoogleAuthBaseUrl, shouldUseSecureGoogleCookie } from '@/lib/googleAuthUrl';
+import { getRequestBaseUrl, shouldUseSecureCookies } from '@/lib/runtimeConfig';
 
 export async function GET(request) {
-  const baseUrl = getGoogleAuthBaseUrl();
-  const secure = shouldUseSecureGoogleCookie(baseUrl);
-  const url = new URL(request.url);
-  const redirectUrl = new URL('/', url.origin);
-  const response = NextResponse.redirect(redirectUrl);
-
+  const response = NextResponse.redirect(new URL('/', getRequestBaseUrl(request)));
   response.cookies.set({
-    name: 'google_session',
-    value: '',
-    httpOnly: true,
-    secure,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 0,
+    name: 'google_session', value: '', httpOnly: true,
+    secure: shouldUseSecureCookies(request), sameSite: 'lax', path: '/', maxAge: 0,
   });
-
   return response;
 }

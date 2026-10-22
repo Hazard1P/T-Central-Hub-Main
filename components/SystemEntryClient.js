@@ -1,8 +1,6 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import SteamLoginHud from '@/components/SteamLoginHud';
 import SystemLauncher from '@/components/SystemLauncher';
 import SystemErrorBoundary from '@/components/SystemErrorBoundary';
 import StableSystemWorld from '@/components/StableSystemWorld';
@@ -79,6 +77,7 @@ export default function SystemEntryClient() {
   }, [launchPhase]);
 
   const handleEnter = (options = {}) => {
+    if (options.mode) setLobbyMode(options.mode);
     setInitialSolarBody(resolveSolarBody(options.solarBody));
     setLaunchError('');
 
@@ -98,8 +97,6 @@ export default function SystemEntryClient() {
 
   return (
     <div className={`system-entry-screen phase-${launchPhase}${hudVisible ? '' : ' hud-hidden'}`}>
-      {launchPhase !== 'in_sim' ? <SteamLoginHud /> : null}
-      {launchPhase !== 'in_sim' ? <Link className="button secondary system-home-link" href="/">Back to homepage</Link> : null}
       {launchPhase === 'in_sim' ? (
         <SystemErrorBoundary onReset={resetLauncher}>
           <MultiplayerSessionProvider>

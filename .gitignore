@@ -5,3 +5,5 @@ dist/
 .env*.local
 .vercel/
 data/account-prayer-seeds.json*
+
+data/ship-economy.json*

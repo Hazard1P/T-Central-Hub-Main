@@ -66,7 +66,7 @@ function RockMaterial({ ice = false, lightDirection, variant = 0 }) {
   `} />;
 }
 
-function RockBatch({ rocks, variant, profile, lightDirection }) {
+export function RockBatch({ rocks, variant, profile, lightDirection }) {
   const mesh = useRef(null);
   const geometry = useMemo(() => rockGeometry(variant * 19 + 7, profile.segments > 32 ? 6 : 3), [variant, profile.segments]);
   const dummy = useMemo(() => new THREE.Object3D(), []);

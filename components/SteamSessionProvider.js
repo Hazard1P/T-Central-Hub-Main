@@ -35,51 +35,28 @@ export function SteamSessionProvider({ children }) {
   const [lobbyMode, setLobbyModeState] = useState('hub');
   const channelRef = useRef(null);
 
+  const refreshGeneration = useRef(0);
+  const [sessionError, setSessionError] = useState('');
   const refresh = useCallback(async () => {
-    try {
-      const [steamRes, googleRes, supportRes, universeRes] = await Promise.all([
-        fetch('/api/auth/steam/session', { cache: 'no-store' }),
-        fetch('/api/auth/google/session', { cache: 'no-store' }),
-        fetch('/api/support/session', { cache: 'no-store' }),
-        fetch(`/api/universe/session?lobbyMode=${encodeURIComponent(lobbyMode)}`, { cache: 'no-store' }),
-      ]);
-
-      const steamData = await steamRes.json().catch(() => null);
-      const googleData = await googleRes.json().catch(() => null);
-      const supportData = await supportRes.json().catch(() => null);
-      const universeData = await universeRes.json().catch(() => null);
-
-      setSteamUser(steamData?.authenticated ? steamData.user : null);
-      setGoogleUser(googleData?.authenticated ? googleData.user : null);
-      setSupport(supportData?.linked ? supportData.support : null);
-
-      if (universeData?.ok || universeData?.unavailable) {
-        setUniverse(universeData);
-      } else {
-        setUniverse({
-          ok: false,
-          unavailable: true,
-          code: 'UNIVERSE_SESSION_UNAVAILABLE',
-          message: 'Universe session could not be resolved.',
-          privacy: { observanceScope: 'hub:public', privacyTier: 'guest-public', storageKey: 'vault:guest' },
-          prayerSeeds: { total: 0, latest: [] },
-        });
-      }
-    } catch {
-      setSteamUser(null);
-      setSupport(null);
-      setGoogleUser(null);
-      setUniverse({
-        ok: false,
-        unavailable: true,
-        code: 'UNIVERSE_SESSION_FETCH_FAILED',
-        message: 'Universe session request failed.',
-        privacy: { observanceScope: 'hub:public', privacyTier: 'guest-public', storageKey: 'vault:guest' },
-        prayerSeeds: { total: 0, latest: [] },
-      });
-    } finally {
-      setLoading(false);
-    }
+    const generation = ++refreshGeneration.current;
+    const read = async (url) => {
+      const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(10000) });
+      if (!response.ok) throw new Error('Session request failed');
+      return response.json();
+    };
+    const results = await Promise.allSettled([
+      read('/api/auth/steam/session'), read('/api/auth/google/session'),
+      read('/api/support/session'), read(`/api/universe/session?lobbyMode=${encodeURIComponent(lobbyMode)}`),
+    ]);
+    if (generation !== refreshGeneration.current) return;
+    const [steam, google, supportResult, universeResult] = results;
+    // A failed auxiliary request must never sign a verified player out.
+    if (steam.status === 'fulfilled') setSteamUser(steam.value?.authenticated ? steam.value.user : null);
+    if (google.status === 'fulfilled') setGoogleUser(google.value?.authenticated ? google.value.user : null);
+    setSupport(supportResult.status === 'fulfilled' && supportResult.value?.linked ? supportResult.value.support : null);
+    setUniverse(universeResult.status === 'fulfilled' ? universeResult.value : { unavailable: true, message: 'Account collection is temporarily unavailable.' });
+    setSessionError(steam.status === 'rejected' || google.status === 'rejected' ? 'Could not refresh your account. Your last verified session is retained; retry before joining a flight.' : '');
+    setLoading(false);
   }, [lobbyMode]);
 
   const setLobbyMode = useCallback((nextMode) => {
@@ -177,8 +154,9 @@ export function SteamSessionProvider({ children }) {
     updatePresence,
     lobbyMode,
     setLobbyMode,
+    sessionError,
     authenticated: Boolean(steamUser?.steamid || googleUser?.sub),
-  }), [steamUser, googleUser, support, universe, presence, loading, refresh, updatePresence, lobbyMode]);
+  }), [steamUser, googleUser, support, universe, presence, loading, refresh, updatePresence, lobbyMode, sessionError]);
 
   return <SteamSessionContext.Provider value={value}>{children}</SteamSessionContext.Provider>;
 }

@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { resolveGameAuthContext } from '@/lib/auth/resolveGameAuthContext';
@@ -15,5 +16,5 @@ export async function GET() {
       identityKind: authContext.identityKind,
     },
     user: authContext.googleUser || null,
-  });
+  }, { headers: { 'Cache-Control': 'private, no-store' } });
 }

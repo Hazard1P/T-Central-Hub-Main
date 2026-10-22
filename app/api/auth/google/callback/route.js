@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { encryptJson } from '@/lib/security';
@@ -7,7 +8,7 @@ import { ensurePlayerAccountForLogin } from '@/lib/serverPersistence';
 function normalizeRedirectPath(value) {
   const raw = String(value || '').trim();
   if (!raw.startsWith('/')) return '/';
-  if (raw.startsWith('//')) return '/';
+  if (raw.startsWith('//') || /[\\\x00-\x1f\x7f]/.test(raw)) return '/';
   return raw;
 }
 
@@ -53,7 +54,7 @@ export async function GET(request) {
         redirect_uri: `${baseUrl}/api/auth/google/callback`,
         grant_type: 'authorization_code',
       }).toString(),
-      cache: 'no-store',
+      cache: 'no-store', signal: AbortSignal.timeout(10000),
     });
 
     if (!tokenRes.ok) {
@@ -74,7 +75,7 @@ export async function GET(request) {
 
     const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
       headers: { Authorization: `Bearer ${accessToken}` },
-      cache: 'no-store',
+      cache: 'no-store', signal: AbortSignal.timeout(10000),
     });
 
     if (!userRes.ok) {
@@ -85,6 +86,7 @@ export async function GET(request) {
     }
 
     const profile = await userRes.json();
+    if (typeof profile.sub !== 'string' || !profile.sub) throw new Error('Invalid Google identity');
     const user = {
       sub: profile.sub,
       name: profile.name,
@@ -120,6 +122,7 @@ export async function GET(request) {
       path: '/',
       maxAge: 60 * 60 * 24 * 7,
     });
+    response.cookies.set({ name: 'steam_session', value: '', httpOnly: true, secure, sameSite: 'lax', path: '/', maxAge: 0 });
     clearTransientCookies(response, secure);
     return response;
   } catch {

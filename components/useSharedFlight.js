@@ -62,12 +62,12 @@ export default function useSharedFlight({ lobbyMode, restartTick = 0, roomName, 
           setSession(session);
           // Rejoin at the server's position rather than publishing a private-world transform.
           inputsRef.current = [];
-          onCorrection({ position: data.player.position, velocity: data.player.velocity, snap: true });
+          onCorrection({ position: data.player.position, velocity: data.player.velocity, frameIndex: data.player.frameIndex, snap: true });
         }
 
         const snapshot = {
           ...telemetryRef.current,
-          inputs: inputsRef.current.slice(0, 48).map(({ frameIndex, dt, controlVector }) => ({ frameIndex, dt, controlVector })),
+          inputs: inputsRef.current.slice(0, 72).map(({ frameIndex, dt, controlVector }) => ({ frameIndex, dt, controlVector })),
         };
         const { response, data } = await post('state', { roomName: session.room, id: session.id, token: session.token, mode: 'multi_player', snapshot });
         if (stopped) return;

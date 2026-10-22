@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPulseShot, PULSE_INTERVAL_MS } from '@/lib/shipWeapons';
 
-export default function useShipWeapons({ session, roomName, shared }) {
+export default function useShipWeapons({ session, roomName, shared, onMineShot }) {
   const bus = useRef({ shots: [], impacts: [], lastFired: 0 });
   const inFlight = useRef(false), sequence = useRef(0), generation = useRef(0);
   const [status, setStatus] = useState('');
@@ -16,6 +16,7 @@ export default function useShipWeapons({ session, roomName, shared }) {
     const shot = createPulseShot({ ...action, now, id: 'local-' + (++sequence.current), ownerId: session?.id });
     if (!shot) return;
     bus.current.lastFired = now;
+    onMineShot?.(shot.direction);
     bus.current.shots = [...bus.current.shots.filter((entry) => entry.expiresAt > now).slice(-47), shot];
     if (!shared || !session?.token || session.room !== roomName || inFlight.current) return;
     inFlight.current = true;
@@ -30,6 +31,6 @@ export default function useShipWeapons({ session, roomName, shared }) {
       setStatus(response.ok || response.status === 429 ? '' : 'Local cannons ready · shared weapons reconnecting');
     }).catch(() => { if (requestGeneration === generation.current) setStatus('Local cannons ready · shared weapons reconnecting'); })
       .finally(() => { window.clearTimeout(timeout); if (requestGeneration === generation.current) inFlight.current = false; });
-  }, [roomName, session, shared]);
+  }, [roomName, session, shared, onMineShot]);
   return { bus, fire, status };
 }
