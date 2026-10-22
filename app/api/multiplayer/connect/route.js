@@ -1,3 +1,6 @@
+import { hasRealtimeServer, realtimeTicket, requiresRealtimeServer } from '@/lib/server/realtimeBridge';
+import { allowsMemoryMultiplayer } from '@/lib/multiplayerCapacity';
+import { isSameOriginPaymentRequest } from '@/lib/paymentRequest';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { joinAuthoritativeRoom, pruneAuthoritativeRooms } from '@/lib/authoritativeMultiplayerStore';
@@ -62,7 +65,7 @@ function resolveIdentity(body = {}, authContext, guestSession) {
 }
 
 function sessionResponse(payload, guestSession, status = 200) {
-  const response = NextResponse.json(payload, { status });
+  const response = NextResponse.json(payload, { status, headers: { 'Cache-Control':'private, no-store', ...(payload.retryAfter ? {'Retry-After':String(payload.retryAfter)} : {}) } });
   if (guestSession?.setCookie) response.cookies.set('tcentral_guest_pilot', guestSession.value, {
     httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/',
   });
@@ -127,6 +130,9 @@ function withModePayload(payload = {}, { roomName, mode, source, playerCount = 0
 }
 
 export async function POST(request) {
+  if (!isSameOriginPaymentRequest(request)) return NextResponse.json({ ok:false,error:'SAME_ORIGIN_REQUIRED' },{status:403});
+  if (!hasRealtimeServer() && requiresRealtimeServer()) return NextResponse.json({ok:false,error:'REALTIME_SETUP_REQUIRED'}, {status:503});
+  if (!hasRealtimeServer() && !hasDurableMultiplayer() && !allowsMemoryMultiplayer()) return NextResponse.json({ok:false,error:'MULTIPLAYER_SETUP_REQUIRED'}, {status:503});
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
     return NextResponse.json({ ok: false, error: 'Invalid JSON payload' }, { status: 400 });
@@ -141,6 +147,7 @@ export async function POST(request) {
   const authContext = resolveGameAuthContext(cookieStore);
   const guestSession = authContext.authenticated ? null : resolveGuestPilotSession(cookieStore.get('tcentral_guest_pilot')?.value);
   const identity = resolveIdentity(body, authContext, guestSession);
+  if (hasRealtimeServer()) return sessionResponse(realtimeTicket(identity,roomName),guestSession);
   const responseAuthContext = toApiAuthContext(authContext);
   const requestedMode = resolveRequestedMode(body);
   const incomingTransfer = body?.modeBridgeTransfer && typeof body.modeBridgeTransfer === 'object' ? body.modeBridgeTransfer : null;
@@ -160,7 +167,7 @@ export async function POST(request) {
   }
 
   const joinEventId = `connect-${roomName}-${identity.id}`;
-  const progressionPromise = awardMultiplayerProgressionEvent({
+  const progression = () => awardMultiplayerProgressionEvent({
     playerId: identity.id,
     roomName,
     eventId: joinEventId,
@@ -175,19 +182,20 @@ export async function POST(request) {
       identity,
       steamUser: identity.steamUser,
     });
-    const progression = await progressionPromise;
+    if (!result.ok) return sessionResponse(result,guestSession,result.status || 503);
+    const awarded = await progression();
     // Frontend consumers expect mode, modeTransition, and ringAdjustments fields on connect responses.
     const payload = withModePayload(
       {
         ...result,
         authContext: responseAuthContext,
-        progressionDelta: progression?.delta || null,
+        progressionDelta: awarded?.delta || null,
       },
       {
         roomName,
         mode: requestedMode,
         source: 'connect',
-        playerCount: result?.state?.playerCount || 0,
+        playerCount: result?.population?.playerCount || 0,
       }
     );
     const bridgePayload = applyModeBridge(payload, { roomName, identity, authContext, incomingTransfer, incomingState });
@@ -203,20 +211,21 @@ export async function POST(request) {
     identity,
     steamUser: identity.steamUser,
   });
-  const progression = await progressionPromise;
+  if (!result.ok) return sessionResponse(result,guestSession,result.status || 503);
+  const awarded = await progression();
   // Frontend consumers expect mode, modeTransition, and ringAdjustments fields on connect responses.
   const payload = withModePayload(
     {
       ...result,
       durable: false,
       authContext: responseAuthContext,
-      progressionDelta: progression?.delta || null,
+      progressionDelta: awarded?.delta || null,
     },
     {
       roomName,
       mode: requestedMode,
       source: 'connect',
-      playerCount: result?.state?.playerCount || 0,
+      playerCount: result?.population?.playerCount || 0,
     }
   );
   const bridgePayload = applyModeBridge(payload, { roomName, identity, authContext, incomingTransfer, incomingState });

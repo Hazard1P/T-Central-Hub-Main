@@ -7,6 +7,7 @@ import { FLIGHT_CONTROL_COPY } from '@/lib/siteContent';
 
 export default function SystemLauncher({ onEnter }) {
   const { steamUser, googleUser, loading, sessionError, refresh } = useSteamSession();
+  const [lobby, setLobby] = useState(null);
   const [config, setConfig] = useState(null);
   const [authMessage, setAuthMessage] = useState('');
   const [returnTo, setReturnTo] = useState('/system');
@@ -16,7 +17,13 @@ export default function SystemLauncher({ onEnter }) {
     setReturnTo('/system' + (room ? '?room=' + encodeURIComponent(room) : ''));
     const status = url.searchParams.get('google') || url.searchParams.get('steam');
     if (status) setAuthMessage(status === 'linked' ? 'Account connected. Ready for launch.' : 'Sign-in did not finish. Please try again.');
+    const roomName = room || process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main';
+    let active = true;
+    const checkLobby = () => fetch('/api/multiplayer/lobby?room=' + encodeURIComponent(roomName), { cache:'no-store', signal:AbortSignal.timeout(6000) }).then(r => r.json()).then(data => { if (active) setLobby(data); }).catch(() => { if (active) setLobby({ok:false}); });
+    checkLobby();
+    const timer = window.setInterval(checkLobby,10000);
     fetch('/api/auth/config', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(setConfig).catch(() => {});
+    return () => { active = false; window.clearInterval(timer); };
   }, []);
   const user = steamUser || googleUser;
   return (
@@ -27,13 +34,13 @@ export default function SystemLauncher({ onEnter }) {
           <section className="launch-intro" aria-labelledby="launch-title">
             <p className="eyebrow">One universe. Your course.</p>
             <h1 id="launch-title">Space & Time</h1>
-            <p className="launch-description">Begin near Earth. Explore a living Solar System, discover deep space and fly alongside other pilots.</p>
-            <div className="launch-facts"><span>UTC orbital motion</span><span>Shared flights</span><span>Mobile controls</span></div>
+            <p className="launch-description">Begin near Earth. Explore a living Solar System, discover deep space and fly alongside other pilots in real-time ship combat.</p>
+            <div className="launch-facts"><span>UTC orbital motion</span><span>Live multiplayer & combat</span><span>Mobile controls</span></div>
             <div className="entry-actions launch-actions">
-              <button type="button" className="button primary" disabled={loading || Boolean(sessionError)} onClick={() => onEnter?.({ mode: 'hub' })}>Join shared flight <span aria-hidden="true">→</span></button>
+              <button type="button" className="button primary" disabled={loading || Boolean(sessionError) || !lobby?.ok} onClick={() => onEnter?.({ mode: 'hub' })}>{lobby?.population?.full ? 'Wait for a pilot slot' : 'Join shared flight'} <span aria-hidden="true">→</span></button>
               <button type="button" className="button secondary" onClick={() => onEnter?.({ mode: 'private' })}>Fly solo</button>
             </div>
-            <p className="launch-caption">{loading ? 'Checking your account…' : 'Shared flights use the same room. Invite a friend from Pilots after launch.'}</p>
+            <p className="launch-caption">{loading ? 'Checking your account…' : !lobby ? 'Checking the shared universe…' : !lobby.ok ? 'Shared flight is temporarily unavailable. Checking again shortly.' : `${lobby.population.playerCount} / ${lobby.population.capacity} pilots in this room. ${lobby.population.full ? 'Wait here or join to retry a slot.' : 'Launch together; share your room from Pilots.'}`}</p>
           </section>
           <aside className="launch-account" aria-labelledby="launch-account-title">
             <span className="entry-panel-kicker">Your pilot</span>

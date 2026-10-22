@@ -18,6 +18,7 @@ export default function useShipWeapons({ session, roomName, shared, onMineShot }
     bus.current.lastFired = now;
     onMineShot?.(shot.direction);
     bus.current.shots = [...bus.current.shots.filter((entry) => entry.expiresAt > now).slice(-47), shot];
+    if(session?.transport==='websocket'){session.fire?.(shot.direction);return;}
     if (!shared || !session?.token || session.room !== roomName || inFlight.current) return;
     inFlight.current = true;
     const requestGeneration = generation.current;

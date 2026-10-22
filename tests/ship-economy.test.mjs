@@ -66,3 +66,14 @@ test('mining field reduces deep-space assist to safe local maneuvering speeds',a
  assert.equal(near.scale,1);assert.equal(near.speedLimit,20);
  assert(getFlightEnvironment(center.map((v,i)=>v+(i===0?10000:0)),now).speedLimit>near.speedLimit);
 });
+test('profile summaries expose saved upgrades without credentials or clearing carried ore',async()=>{
+ const dir=await mkdtemp(path.join(os.tmpdir(),'ship-profile-')),store=createShipEconomyRepository({localPath:path.join(dir,'wallet.json')});
+ const args={owner:'google:profile',room:'profile',token:'flight-token-profile'};
+ try{
+  for(let i=0;i<3;i++)await store.run({...args,requestId:randomUUID(),command:{action:'mine',asteroid:'ore-0'},now:10000+i*1000});
+  const summary=await store.summary(args.owner);assert.equal(summary.credits,0);assert.equal(summary.stats.capacity,20);
+  assert.equal('flight_token' in summary,false);assert.equal('cargo' in summary,false);
+  assert.equal((await store.run({...args,command:{action:'state'},now:14000})).wallet.cargo,4);
+  assert.equal((await store.summary('steam:profile')).delivered,0);
+ }finally{await rm(dir,{recursive:true,force:true})}
+});

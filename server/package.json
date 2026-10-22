@@ -1,0 +1,8 @@
+{
+  "name": "tcentral-space-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": "24.x" },
+  "dependencies": { "astronomy-engine": "2.1.19", "ws": "8.22.0" }
+}

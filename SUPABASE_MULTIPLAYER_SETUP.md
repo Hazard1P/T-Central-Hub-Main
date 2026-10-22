@@ -1,66 +1,72 @@
-# Durable Multiplayer Hub Setup
+# Real-time multiplayer deployment
 
-This package is prepared for a durable multiplayer hub on Vercel by using:
+Shared Play now uses a persistent authoritative WebSocket game service. Next.js serves the website, signs short-lived join tickets from verified Google/Steam or guest cookies, and mediates account/economy requests. The game service runs flight and combat at 20 Hz and streams snapshots at 10 Hz. Supabase stores account, financial and ship-economy records. Vercel API functions do not host the WebSocket simulation.
 
-- Next.js on Vercel for the web/game shell
-- Supabase Postgres for durable room state
-- Supabase Realtime for player/event fanout
-- Vercel API routes for secure room/session actions
+## Start the game service
 
-## 1) Create the Supabase schema
+Use Node 24 and `npm ci`, then configure the game-service process:
 
-Run the SQL in:
-
-- `supabase/migrations/20260419_multiplayer_hub.sql`
-
-That creates:
-
-- `multiplayer_rooms`
-- `multiplayer_players`
-- `multiplayer_events`
-
-and enables those tables for Realtime.
-
-## 2) Add environment variables in Vercel
-
-Set the values from `.env.example`:
-
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `NEXT_PUBLIC_MULTIPLAYER_ROOM`
-- `NEXT_PUBLIC_MULTIPLAYER_MAX_SLOTS`
-- `SIM_EVENT_VALIDATION_MODE` (`true` to force 100% simulation event capture for targeted validation sessions)
-- `SIM_EVENT_VALIDATION_ROOMS` (comma-separated room names or `*`)
-- `SIM_EVENT_VALIDATION_SESSIONS` (comma-separated session tokens or `*`)
-- `CRON_SECRET`
-
-## 3) Deploy
-
-Standard deploy:
-
-```bash
-npm install
-npm run build
-vercel --prod
+```dotenv
+REALTIME_SERVER_SECRET=<generate-a-random-secret-of-at-least-32-characters>
+REALTIME_ALLOWED_ORIGINS=https://t-central.me
+MULTIPLAYER_MAX_PLAYERS=128
+PORT=8080
 ```
 
-## 4) Cleanup job
+Run `npm run server:realtime`. Origins are an explicit comma-separated allowlist; include the actual `www` or preview origin only when needed. Use a persistent container or VM with WebSocket upgrades, TLS termination, a restart policy and idle timeouts above 30 seconds. `/healthz` is a public health check; other HTTP service endpoints require the server secret. Keep the private HTTP service behind network access controls where the host supports them.
 
-The project includes a cleanup route at:
+A minimal container uses only the server's locked `ws` and `astronomy-engine` dependencies:
 
-- `/api/multiplayer/cleanup`
+```bash
+docker build -f server/Dockerfile -t tcentral-space .
+docker run --env-file /secure/path/realtime.env -p 8080:8080 --restart unless-stopped tcentral-space
+```
 
-Use the `CRON_SECRET` header if you trigger it from an external cron, or keep the built-in Vercel cron in `vercel.json`.
+In a managed Codex build, additionally pass `--secret id=proxy_ca,src="$CODEX_PROXY_CERT"` to trust the session proxy. Do not place production secrets in source control or image layers.
 
-## 5) Runtime model
+## Connect the website
 
-- room/session actions go through secure API routes
-- player/world state is stored durably in Postgres
-- client fanout comes from Supabase Realtime subscriptions
-- if durable config is missing, the app can still fall back to the session-based in-memory authority layer for development
+Configure the website deployment with:
 
-## 6) Production note
+```dotenv
+APP_URL=https://t-central.me
+REALTIME_SERVER_URL=https://your-game-service.example
+NEXT_PUBLIC_REALTIME_WS_URL=wss://your-game-service.example/flight
+REALTIME_SERVER_SECRET=<the-same-server-only-secret>
+NEXT_PUBLIC_MULTIPLAYER_ROOM=tcentral-main
+```
 
-This is a durable multiplayer hub foundation for roaming, presence, shared state, and combat-ready world events.
-For very high-frequency twitch movement/combat at large scale, move the simulation tick to a dedicated stateful game service later and keep Vercel for the web shell and control APIs.
+The private service URL may instead use a reachable private HTTP address. Browser connections need public `wss://` when the website uses HTTPS. Redeploy the website after configuration. Only `NEXT_PUBLIC_REALTIME_WS_URL` is public; never prefix the secret with `NEXT_PUBLIC_`. The launcher queries live admission status. Production shared flight reports unavailable when this configuration is absent instead of silently substituting solo flight.
+
+For local browser development use `APP_URL=http://localhost:3000`, an allowed origin of exactly that address, `REALTIME_SERVER_URL=http://127.0.0.1:8080` and `NEXT_PUBLIC_REALTIME_WS_URL=ws://localhost:8080/flight`. Start the web and game processes separately. `localhost` and `127.0.0.1` are different origins.
+
+## Account and economy persistence
+
+Apply the repository's Supabase migrations in filename order, including the existing account/payment migrations and `20261022_ship_economy.sql` / `20261023_multiplayer_capacity.sql`. Set `NEXT_PUBLIC_SUPABASE_URL`, the appropriate public anon key, `SUPABASE_SERVICE_ROLE_KEY`, a stable `SESSION_SECRET`, and the Google/Steam callback settings in `.env.example`. The service role stays on the website server. Raw room, token, economy and audit tables are server-only. Public anonymous subscriptions to those tables must remain disabled.
+
+Economy actions read the ship position from the game service and use service-only transactional wallet/rock/receipt operations in Postgres. Clients cannot submit credited positions or rewards. Account credits and installed upgrades persist; carried ore belongs to the current flight and is discarded on destruction, room change or emergency return. A reconnect during the active 30-second lease resumes that flight. Account seeds and private contribution records never enter public room snapshots.
+
+## Combat and admission rules
+
+- One service process admits up to 128 pilots total, across all named rooms. Set `MULTIPLAYER_MAX_PLAYERS` lower for smaller hosts. A full service rejects admission; additional room names do not bypass the limit.
+- Every service tick uses fixed 50 ms steps. Clients send controls and aim; their frame duration, position and hit claims do not control the simulation. A server stall catches up at most 250 ms.
+- Ships have 60 shield and 100 hull. Pulse cannons deal 20 damage, fire at most every 200 ms, sweep for celestial/ship collisions, and expire after 2.2 seconds. Shield regeneration starts five seconds after damage at 6 points/second.
+- Spawn protection lasts five seconds or until firing. Destruction rotates the flight credential, discards cargo, and respawns near Earth after five seconds in the same room. Kills/losses are session statistics, with no combat currency reward.
+- Snapshots prioritize up to 31 nearby peers; a complete roster arrives once per second. Scene rendering budgets detailed ships and uses instanced markers for other nearby pilots. WebSocket compression is disabled to keep the simulation independent of compression-worker saturation. Size bandwidth for crowded scenes as well as CPU.
+- Broken connections brake after 250 ms without controls and retain their slot for a 30-second heartbeat lease. Clean exits release the slot. Joining the same account elsewhere replaces its old connection; changing rooms creates a new flight.
+
+This is a single authoritative game-service process. Do not horizontally replicate the same rooms behind random load balancing: each process owns independent world state. Multi-node routing, world persistence, latency compensation and larger populations need further implementation and measured hosting capacity. Running world transforms, projectiles and combat scores reset on process restart; account ledgers and upgrades remain in Postgres.
+
+## Verification
+
+```bash
+node --test tests/*.test.mjs
+npm run build
+node scripts/verify-realtime-population.mjs
+```
+
+The population script launches its own loopback service and synthetic clients, checks 128 admissions plus overflow rejection, and measures simulation cadence and traffic during movement/fire. It does not target production. See [validation evidence](docs/REALTIME-VALIDATION.md) and the [request integration record](docs/REQUEST-INTEGRATION.md). Before public launch verify actual TLS/upgrade routing, origins, credentials, database migrations, two separate networks, target phone browsers, long-duration load, memory, bandwidth and host latency.
+
+## Legacy HTTP adapter
+
+`MULTIPLAYER_TRANSPORT=http` explicitly enables the previous HTTP polling adapter for regression or rollback. It uses the Supabase room tables and atomic capacity RPC from `20261023_multiplayer_capacity.sql`; a non-production single-process memory adapter is also available. It does not implement the new authoritative PvP combat loop. `scripts/verify-exploration.mjs` and `scripts/verify-multiplayer-population.mjs` exercise that adapter. Supabase Realtime subscriptions are not the game transport. The existing authenticated cleanup cron applies to legacy database room rows, not the live WebSocket service.

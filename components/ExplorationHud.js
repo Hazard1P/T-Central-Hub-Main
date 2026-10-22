@@ -8,7 +8,7 @@ import { isInteractiveTarget } from '@/lib/flightInput';
 import { formatSpaceDistance } from '@/lib/universeSpace';
 import { gameEngine } from '@/lib/gameEngine';
 
-export default function ExplorationHud({ telemetry, destinations, destination, onSelect, onNavigate, onFace, cruising, onCancelCruise, visited, lobbyMode, onModeChange, roomName, onRoomChange, pilots, selfId, serverStatus, graphicsQuality, onGraphicsChange, dampers, onDampersChange, onRecenter, onRespawn, respawning, notice, onPanelChange, seedCount = 0, economy, onMiningWaypoint, onEarthWaypoint, onMiningApproach }) {
+export default function ExplorationHud({ telemetry, destinations, destination, onSelect, onNavigate, onFace, cruising, onCancelCruise, visited, lobbyMode, onModeChange, roomName, onRoomChange, pilots, selfId, serverStatus, graphicsQuality, onGraphicsChange, dampers, onDampersChange, onRecenter, onRespawn, respawning, notice, onPanelChange, seedCount = 0, economy, onMiningWaypoint, onEarthWaypoint, onMiningApproach, combatEvents = [] }) {
   const [panel, setPanel] = useState(null);
   const [filter, setFilter] = useState('');
   const [roomDraft, setRoomDraft] = useState(roomName);
@@ -34,6 +34,10 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
     try { await navigator.clipboard.writeText(url.href); setCopyStatus('Invite link copied.'); }
     catch { setCopyStatus('Share this link: ' + url.href); }
   }
+  const recentHits = combatEvents.filter(event => event.type === 'hit' && Date.now() - event.at < 500);
+  const incomingHit = recentHits.some(event => event.targetId === selfId);
+  const confirmedHit = recentHits.some(event => event.ownerId === selfId);
+  const combatSelf = pilots.find(pilot => pilot.id === selfId);
   const nearby = pilots.filter((pilot) => pilot.id !== selfId);
   const distance = destination ? distanceBetween(telemetry.position, destination.position) : null;
   const bearing = destination && telemetry.direction ? (() => {
@@ -41,14 +45,17 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
     const scale = Math.hypot(...offset) * Math.hypot(...telemetry.direction);
     return scale > .001 ? Math.round(Math.acos(Math.max(-1, Math.min(1, offset.reduce((sum, value, index) => sum + value * telemetry.direction[index], 0) / scale))) * 180 / Math.PI) : 0;
   })() : null;
+  const population = serverStatus.population;
+  const populationLabel = population ? `${population.playerCount} / ${population.capacity} pilots` : pilots.length + ' pilots';
   const modeLabel = lobbyMode === 'hub' ? serverStatus.connected ? 'Shared space' : serverStatus.label : 'Solo universe';
   const visibleDestinations = destinations.filter((node) => (node.label + ' ' + node.kind).toLowerCase().includes(filter.toLowerCase()));
 
   return (
-    <div className="exploration-hud">
+    <div className={'exploration-hud' + (incomingHit ? ' combat-damaged' : '')}>
+      {confirmedHit ? <span className="combat-hit-confirm" aria-label="Hit confirmed">✛</span> : null}
       <header className="exploration-toolbar">
         <Link href="/" className="exploration-home" aria-label="Leave simulation for homepage">T<span> / </span>C</Link>
-        <span className="exploration-connection"><i className={serverStatus.connected && lobbyMode === 'hub' ? 'live' : ''} />{modeLabel}<small>{lobbyMode === 'hub' && serverStatus.connected ? pilots.length + ' pilot' + (pilots.length === 1 ? '' : 's') + (serverStatus.durable ? '' : ' · single server') : 'Free flight'}</small></span>
+        <span className="exploration-connection"><i className={serverStatus.connected && lobbyMode === 'hub' ? 'live' : ''} />{modeLabel}<small>{lobbyMode === 'hub' && serverStatus.connected ? populationLabel + (serverStatus.transport === 'websocket' ? ' · real-time' : '') : lobbyMode === 'hub' ? 'Waiting for shared server' : 'Free flight'}</small></span>
         <nav aria-label="Flight tools">
           {[['explore', 'Explore'], ['shipyard', 'Shipyard'], ['crew', 'Pilots'], ['settings', 'Settings']].map(([key, label]) => <button key={key} type="button" aria-expanded={panel === key} aria-controls="exploration-panel" onClick={() => toggle(key)}>{label}</button>)}
           <button type="button" onClick={() => gameEngine.setHUDVisible(false)} aria-label="Hide HUD">Hide<span className="exploration-key"> H</span></button>
@@ -72,17 +79,17 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
             {destination ? <div className="exploration-selection"><h3>{destination.label}</h3><p>{destination.description}</p><div className="exploration-actions"><button className="button primary" onClick={() => { onNavigate(); setPanel(null); }}>Cruise to destination</button><button className="button secondary" onClick={() => { onFace(); setPanel(null); }}>Face destination</button></div></div> : null}
           </> : null}
           {panel === 'crew' ? <>
-            <p className="exploration-help">Fly solo, or join a shared room to see other pilots and travel together. Anyone with the room name can join.</p>
+            <p className="exploration-help">Shared flight includes live ship combat and exploration. Invite friends into the same room. Spawn shields last five seconds and end when you fire; destroyed ships return to Earth after five seconds.</p>
             <div className="exploration-actions"><button aria-pressed={lobbyMode === 'hub'} onClick={() => onModeChange('hub')}>Shared universe</button><button aria-pressed={lobbyMode === 'private'} onClick={() => onModeChange('private')}>Solo universe</button></div>
             {lobbyMode === 'hub' ? <>
-              {serverStatus.connected && !serverStatus.durable ? <p className="exploration-help">This flight uses one running server. Cross-instance shared rooms require the Supabase deployment.</p> : null}
+              {serverStatus.connected && serverStatus.transport === 'websocket' ? <p className="exploration-help">The server controls flight, pulse hits, shields and respawns. Opening another flight with this account resumes it there.</p> : null}
               <form className="exploration-room" onSubmit={(event) => { event.preventDefault(); if (isValidRoomName(roomDraft.trim())) onRoomChange(roomDraft.trim()); }}>
                 <label>Room name<input value={roomDraft} onChange={(event) => setRoomDraft(event.target.value)} maxLength={64} pattern="(?:[a-zA-Z0-9_]|-){1,64}" required aria-describedby="room-help" /></label><button type="submit">Join room</button>
               </form>
               <p className="exploration-help" id="room-help">Use letters, numbers, dashes or underscores. Give friends the same room name or invite link.</p>
               <button type="button" className="button secondary" onClick={copyInvite}>Copy invite link</button><p className="exploration-feedback" role="status">{copyStatus}</p>
-              <h3>{serverStatus.connected ? pilots.length + ' pilot' + (pilots.length === 1 ? '' : 's') + ' in this room' : serverStatus.label + '…'}</h3>
-              <ul className="exploration-pilots">{pilots.map((pilot) => <li key={pilot.id}><span>{pilot.displayName}{pilot.id === selfId ? ' (you)' : ''}</span>{pilot.id !== selfId ? <button onClick={() => { onSelect({ key: 'pilot:' + pilot.id, label: pilot.displayName, kind: 'pilot waypoint', position: [...pilot.position], approachRadius: 4, description: 'Last shared location of this pilot. Select them again to update the waypoint.' }); setPanel(null); }}>Set waypoint · {distanceBetween(telemetry.position, pilot.position).toFixed(0)} u</button> : <small>Flying</small>}</li>)}</ul>
+              <h3>{serverStatus.connected ? populationLabel + ' in this room' : serverStatus.label + '…'}</h3>
+              <ul className="exploration-pilots">{pilots.map((pilot) => <li key={pilot.id}><span>{pilot.displayName}{pilot.id === selfId ? ' (you)' : ''}{serverStatus.transport === 'websocket' ? <small>{pilot.kills || 0} kills · {pilot.deaths || 0} losses{pilot.alive === false ? ' · respawning' : ''}</small> : null}</span>{pilot.id !== selfId ? <button onClick={() => { onSelect({ key: 'pilot:' + pilot.id, label: pilot.displayName, kind: 'pilot waypoint', position: [...pilot.position], approachRadius: 4, description: 'Last shared location of this pilot. Select them again to update the waypoint.' }); setPanel(null); }}>Set waypoint · {distanceBetween(telemetry.position, pilot.position).toFixed(0)} u</button> : <small>Flying</small>}</li>)}</ul>
               {!nearby.length ? <p className="exploration-help">The universe is open. Invite a friend to fly alongside you.</p> : null}
             </> : <p className="exploration-help">Your solo session is isolated from shared room traffic. Switch back to rejoin other pilots.</p>}
           </> : null}
@@ -104,6 +111,12 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
         {destination ? <span className="exploration-target"><small>{cruising ? 'Cruising to' : 'Waypoint'}</small><strong>{destination.label}</strong><small>{formatSpaceDistance(distance)} {bearing !== null ? '· ' + bearing + '° off nose' : ''}</small></span> : <span className="exploration-target"><small>Free flight</small><strong>Choose a destination to begin</strong></span>}
         {cruising ? <button type="button" onClick={onCancelCruise}>Cancel cruise</button> : <button type="button" onClick={() => toggle('explore')}>Destinations</button>}
       </div>
+      {serverStatus.transport === 'websocket' && combatSelf ? <div className="combat-status" aria-label="Ship combat status">
+        <label>Shield <meter min="0" max="60" value={combatSelf.shield} /> <span>{Math.ceil(combatSelf.shield)}</span></label>
+        <label>Hull <meter min="0" max="100" value={combatSelf.health} /> <span>{Math.ceil(combatSelf.health)}%</span></label>
+        {combatSelf.alive && combatSelf.invulnerableUntil > Date.now() ? <small>Spawn shield · firing ends protection</small> : null}
+        <small>{combatSelf.kills || 0} kills · {combatSelf.deaths || 0} losses</small>
+      </div> : null}
       {economy?.data ? <button className="ship-cargo-pill" onClick={() => toggle('shipyard')} aria-label="Open shipyard and cargo">{economy.data.wallet.cargo}/{economy.data.stats.capacity} ore <span>·</span> {economy.data.wallet.credits} cr</button> : null}
       <p className="exploration-notice" role="status">{notice}</p>
     </div>

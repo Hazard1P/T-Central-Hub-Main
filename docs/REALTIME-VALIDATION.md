@@ -1,0 +1,17 @@
+# Real-time validation evidence
+
+Verified in the managed development workspace on 22 October 2026. These checks exercise the implementation; they do not assert that `t-central.me` is connected to a production game host.
+
+| Check | Observed result |
+| --- | --- |
+| Clean install and production build | Locked dependency installation and Next.js production build passed; all 26 page routes and 52 API handler checks passed. |
+| Node test suite | 122 tests passed, including ticket expiry/signatures, fixed server time, forged position/time/damage rejection, cooldown, spawn protection, swept pulse hits, shields, destruction, credential rotation, Earth respawn, room isolation, service-wide capacity, one flight per identity, actual WebSocket clients and Origin/service authentication. |
+| Synthetic population | 128 loopback WebSocket clients; 129th rejected. During 30.04 seconds of movement/fire the simulation maintained 20.0 Hz. Each admitted client received 273–275 snapshots, including full roster updates. |
+| Crowded-scene traffic | 735.29 MiB wire traffic across all 128 clients during that run: roughly 25.7 MB/s total, or about 1.6 Mbit/s per client. This includes dense nearby pilots/projectiles and full rosters; budget server egress and phone data accordingly. Snapshots target 10 Hz; observed client delivery was about 9 Hz in this synthetic shared-process test. |
+| Two browser players | Independent guest browser contexts received shared movement, a server-confirmed kill/loss, five-second destruction respawn near Earth and subsequent exploration in the same room. No page errors. Desktop 1440×900 and touch/mobile 390×844 checked; final phone checks also covered 844×390 landscape with no instrument overlap or horizontal overflow. |
+| Account/economy bridge | Mocked Google upstream login produced a verified account identity. Actual website → game-service position reads → PostgreSQL-compatible PGlite transactional fixture completed mining, Earth delivery, credited rewards, duplicate receipt replay and private profile read. Forged positions/account IDs and cross-account reads were rejected. Real Supabase/Google credentials were not used. |
+| Deployment package | Minimal Node 24 Docker image built with locked server dependencies. Started as non-root; actual signed WebSocket admission and live snapshots passed, and `/healthz` returned WebSocket transport, 20 Hz / 10 Hz and capacity 128. |
+
+Reproduce the server checks with `node --test tests/*.test.mjs` and `REALTIME_TEST_SECONDS=30 node scripts/verify-realtime-population.mjs`. The population script starts its own local service and uses synthetic clients; it never targets a production endpoint. Browser/account checks used isolated local test fixtures outside the repository. No production secret or account was used, and test-only controls are absent from the application.
+
+Remaining deployment work: provision a persistent WebSocket host, configure TLS and exact allowed origins, set the shared server secret and website endpoints, apply Supabase migrations, configure provider/payment callbacks, and run long-duration load plus real network/device checks. The service owns up to 128 total pilots on one process. It does not distribute a room across hosts or persist live combat scores/positions across process restarts. Dedicated hosting capacity, browser frame rates, large-network latency and physical phone performance remain unverified.

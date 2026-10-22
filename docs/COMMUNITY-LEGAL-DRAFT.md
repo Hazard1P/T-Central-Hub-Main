@@ -210,7 +210,7 @@ Where a law requires a legal basis, the relevant basis depends on the processing
 
 ### 8. What is public and who receives information
 
-Visitors can read published board posts and their public author display information. People connected to the same multiplayer room can receive pilot identifiers, names, movement, signatures and weapon events needed for shared play. A room name alone is not an access control. Private account or seed data is distinct from shared presence, but neither label guarantees secrecy from authorized administration.
+Visitors can read published board posts and their public author display information. People connected to the same multiplayer room can receive pilot identifiers, names, movement, signatures, ship health/shields and session combat statistics/events needed for shared play. A room name alone is not an access control. Private account or seed data is distinct from shared presence, but neither label guarantees secrecy from authorized administration.
 
 Hosting and telemetry providers, configured database/storage providers such as Supabase, identity providers, PayPal and email/support providers process the information needed for their functions. Some act independently under their own notices. We may disclose relevant information to respond to valid legal process, protect safety, investigate fraud or enforce service rules, subject to applicable law. A business transfer would require appropriate notice and safeguards.
 

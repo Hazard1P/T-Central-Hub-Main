@@ -35,12 +35,13 @@ export default function SystemEntryClient() {
   const [launchPhase, setLaunchPhase] = useState('idle');
   const [launchError, setLaunchError] = useState('');
   const [initialSolarBody, setInitialSolarBody] = useState(null);
+  const { steamUser, lobbyMode, setLobbyMode, loading, sessionError } = useSteamSession();
   useEffect(() => {
+    if (loading || sessionError || launchPhase !== 'idle') return;
     const params = new URLSearchParams(window.location.search);
     const destination = params.get('destination');
-    if (destination?.startsWith('solar-') || params.get('region') === 'solar') handleEnter({ solarBody: resolveSolarBody(destination?.slice(6) || params.get('body')) || 'earth' });
-  }, []);
-  const { steamUser, lobbyMode, setLobbyMode } = useSteamSession();
+    if (destination?.startsWith('solar-') || params.get('region') === 'solar') handleEnter({ mode:'hub', solarBody:resolveSolarBody(destination?.slice(6) || params.get('body')) || 'earth' });
+  }, [loading, sessionError, launchPhase]);
 
   useEffect(() => {
     if (launchPhase !== 'launching') return undefined;

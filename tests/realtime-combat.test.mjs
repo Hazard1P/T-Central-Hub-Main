@@ -1,0 +1,298 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { WebSocket } from "ws";
+import {
+  CombatWorld,
+  SHIP_HEALTH,
+  SHIP_SHIELD,
+  SPAWN_PROTECTION_MS,
+  RESPAWN_MS,
+} from "../lib/realtime/combatWorld.js";
+import {
+  signFlightTicket,
+  verifyFlightTicket,
+} from "../lib/realtime/tickets.js";
+import { createRealtimeServer } from "../server/realtime.mjs";
+import { getSolarSpawn } from "../lib/universeFlight.js";
+const secret = "test-only-realtime-secret-with-32-characters";
+const origin = "http://localhost:3700";
+function fixture(t, capacity = 128) {
+  t.mock.timers.enable({ apis: ["Date"], now: 1792627200000 });
+  t.after(() => t.mock.timers.reset());
+  const world = new CombatWorld({ capacity });
+  const a = world.join("shared", { id: "pilot-a", displayName: "Pilot A" }),
+    b = world.join("shared", { id: "pilot-b" });
+  const room = world.rooms.get("shared"),
+    shooter = room.players.get(a.player.id),
+    target = room.players.get(b.player.id);
+  shooter.position = getSolarSpawn("pair");
+  target.position = shooter.position.map((v, i) => v + (i === 0 ? 35 : 0));
+  function advance(ms) {
+    for (let elapsed = 0; elapsed < ms; elapsed += 50) {
+      t.mock.timers.tick(50);
+      world.tick();
+    }
+  }
+  return { world, a, b, room, shooter, target, advance };
+}
+test("flight tickets are bound to trusted identity, room, audience and a 30-second expiry", () => {
+  const ticket = signFlightTicket(
+    { id: "google:verified" },
+    "shared",
+    secret,
+    1000,
+  );
+  assert.equal(
+    verifyFlightTicket(ticket, secret, 1001).identity.id,
+    "google:verified",
+  );
+  assert.throws(() => verifyFlightTicket(ticket, secret, 31000));
+  assert.throws(() => verifyFlightTicket(ticket + "x", secret, 1001));
+  assert.throws(() =>
+    verifyFlightTicket(
+      ticket,
+      "another-test-secret-at-least-32-characters",
+      1001,
+    ),
+  );
+  assert.throws(() => signFlightTicket({ id: "a" }, "shared", "short"));
+});
+test("the fixed server clock advances flight and ignores client position, elapsed time and damage claims", (t) => {
+  const { world, a, shooter, target, advance } = fixture(t);
+  const before = [...shooter.position];
+  assert(
+    world.input("shared", a.player.id, a.token, {
+      frameIndex: 1,
+      controlVector: [1, 0, 0],
+      direction: [1, 0, 0],
+      dt: 9999,
+      position: [0, 0, 0],
+      damage: 99999,
+    }),
+  );
+  advance(200);
+  assert(shooter.position[0] > before[0]);
+  assert(Math.hypot(...shooter.position) > 100000);
+  assert.equal(target.health, SHIP_HEALTH);
+  assert.equal(target.shield, SHIP_SHIELD);
+  assert.equal(
+    world.input("shared", a.player.id, "forged", {
+      frameIndex: 2,
+      controlVector: [1, 0, 0],
+      direction: [1, 0, 0],
+    }),
+    false,
+  );
+  assert.equal(
+    world.input("shared", a.player.id, a.token, {
+      frameIndex: 0,
+      controlVector: [1, 0, 0],
+      direction: [1, 0, 0],
+    }),
+    false,
+  );
+  const snapshot = world.state("shared", a.player.id, a.token);
+  assert(!JSON.stringify(snapshot.state).includes(a.token));
+});
+test("pulses use swept server collisions, cooldown, spawn protection, shields, destruction and Earth respawn", (t) => {
+  const { world, a, b, shooter, target, advance } = fixture(t);
+  assert(world.requestFire("shared", a.player.id, a.token, [1, 0, 0]).ok);
+  assert.equal(shooter.invulnerableUntil, Date.now());
+  assert.equal(
+    world.requestFire("shared", a.player.id, a.token, [1, 0, 0]).status,
+    429,
+  );
+  advance(800);
+  assert.equal(target.shield, 60, "protected pilots do not take damage");
+  advance(SPAWN_PROTECTION_MS);
+  for (let shot = 0; shot < 8; shot++) {
+    const aim = target.position.map((v, i) => v - shooter.position[i]);
+    assert(world.requestFire("shared", a.player.id, a.token, aim).ok);
+    advance(250);
+  }
+  advance(800);
+  assert.equal(target.alive, false);
+  assert.equal(target.health, 0);
+  assert.equal(shooter.kills, 1);
+  assert.equal(target.deaths, 1);
+  assert.notEqual(
+    target.token,
+    b.token,
+    "destroying a ship revokes its cargo-bound flight credential",
+  );
+  assert.equal(world.state("shared", b.player.id, b.token).status, 401);
+  const deathToken = target.token;
+  advance(RESPAWN_MS);
+  assert.equal(target.alive, true);
+  assert.equal(target.health, 100);
+  assert.equal(target.shield, 60);
+  assert.equal(target.revision, 1);
+  assert(
+    Math.hypot(
+      ...target.position.map((v, i) => v - getSolarSpawn(target.id)[i]),
+    ) < 2,
+  );
+  assert.equal(world.state("shared", target.id, deathToken).ok, true);
+});
+test("rooms isolate combat; the 128-player service limit applies across all room names", (t) => {
+  const { world, a, target, advance } = fixture(t, 128);
+  target.invulnerableUntil = 0;
+  const isolated = world.join("elsewhere", { id: "isolated" });
+  const other = world.rooms.get("elsewhere").players.get("isolated");
+  other.position = [...target.position];
+  other.invulnerableUntil = 0;
+  world.requestFire("shared", a.player.id, a.token, [1, 0, 0]);
+  advance(800);
+  assert.equal(other.shield, 60);
+  assert.equal(target.shield, 40);
+  for (let i = 3; i < 128; i++)
+    assert(world.join("shared", { id: "p" + i }).ok);
+  assert.equal(
+    world.state("shared", a.player.id, a.token).state.players.length,
+    127,
+  );
+  assert.equal(world.join("new-room", { id: "overflow" }).error, "SERVER_FULL");
+  assert.equal(world.join("shared", { id: a.player.id }).token, a.token);
+  world.disconnect("elsewhere", "isolated", isolated.token);
+  assert(world.join("new-room", { id: "next" }).ok);
+  advance(31000);
+  assert.equal(world.rooms.size, 0);
+});
+function nextPacket(socket, predicate, timeout = 3000) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      socket.off("message", message);
+      reject(Error("Timed out waiting for real-time packet"));
+    }, timeout);
+    function message(raw) {
+      const data = JSON.parse(raw.toString());
+      if (predicate(data)) {
+        clearTimeout(timer);
+        socket.off("message", message);
+        resolve(data);
+      }
+    }
+    socket.on("message", message);
+  });
+}
+async function openClient(address, identity) {
+  const socket = new WebSocket(`ws://127.0.0.1:${address.port}/flight`, {
+    origin,
+  });
+  const joined = nextPacket(
+    socket,
+    (p) => p.type === "joined" || p.type === "rejected",
+  );
+  await new Promise((resolve, reject) => {
+    socket.once("open", resolve);
+    socket.once("error", reject);
+  });
+  socket.send(
+    JSON.stringify({
+      type: "join",
+      ticket: signFlightTicket({ id: identity }, "live", secret),
+    }),
+  );
+  return { socket, joined: await joined };
+}
+test("real WebSocket clients share authoritative snapshots; admission, origins, tickets and service reads are enforced", async (t) => {
+  const app = createRealtimeServer({
+    secret,
+    origins: [origin],
+    capacity: 2,
+    port: 0,
+    host: "127.0.0.1",
+  });
+  const address = await app.listen();
+  t.after(() => app.close());
+  const { socket: a, joined: pa } = await openClient(address, "a"),
+    { socket: b } = await openClient(address, "b");
+  t.after(() => {
+    a.terminate();
+    b.terminate();
+  });
+  assert.equal(pa.transport, "websocket");
+  const full = await nextPacket(
+    a,
+    (p) => p.type === "state" && p.state.playerCount === 2,
+  );
+  assert.equal(full.state.tickRate, 20);
+  assert.equal(full.state.players.length, 2);
+  assert(!JSON.stringify(full.state).includes(pa.token));
+  const overflow = await openClient(address, "c");
+  assert.equal(overflow.joined.error, "ROOM_FULL");
+  overflow.socket.terminate();
+  const before = full.state.players.find((p) => p.id === "a");
+  a.send(
+    JSON.stringify({
+      type: "input",
+      revision: 0,
+      frameIndex: 10,
+      controlVector: [1, 0, 0],
+      direction: [1, 0, 0],
+      position: [0, 0, 0],
+    }),
+  );
+  const after = await nextPacket(
+    a,
+    (p) =>
+      p.type === "state" &&
+      p.state.players.some(
+        (pilot) => pilot.id === "a" && pilot.frameIndex === 10,
+      ),
+  );
+  assert(
+    after.state.players.find((p) => p.id === "a").position[0] >=
+      before.position[0],
+  );
+  const base = `http://127.0.0.1:${address.port}`;
+  assert.equal(
+    (await fetch(base + "/state", { method: "POST", body: "{}" })).status,
+    401,
+  );
+  assert.equal(
+    (
+      await fetch(base + "/state", {
+        method: "POST",
+        headers: { authorization: "Bearer " + secret },
+        body: JSON.stringify({ roomName: "live", id: "a", token: pa.token }),
+      })
+    ).status,
+    200,
+  );
+  await new Promise((resolve) => {
+    const bad = new WebSocket(`ws://127.0.0.1:${address.port}/flight`, {
+      origin: "https://untrusted.invalid",
+    });
+    bad.on("error", resolve);
+  });
+  await new Promise((resolve, reject) => {
+    const bad = new WebSocket(`ws://127.0.0.1:${address.port}/flight`, {
+      origin,
+    });
+    bad.on("open", () =>
+      bad.send(JSON.stringify({ type: "join", ticket: "forged" })),
+    );
+    bad.on("close", (code) => {
+      try {
+        assert.equal(code, 1008);
+        resolve();
+      } catch (e) {
+        reject(e);
+      }
+    });
+    bad.on("error", reject);
+  });
+});
+
+test("one verified identity owns one flight across rooms, and moving rooms frees the old slot", () => {
+  const world = new CombatWorld({ capacity: 1 });
+  const first = world.join("one", { id: "account" });
+  const next = world.join("two", { id: "account" });
+  assert(next.ok);
+  assert.notEqual(next.token, first.token);
+  assert.equal(world.state("one", "account", first.token).status, 401);
+  assert.equal(world.rooms.size, 1);
+  assert.equal(world.lobby("other").population.available, 0);
+  assert.equal(world.lobby("other").population.full, true);
+});

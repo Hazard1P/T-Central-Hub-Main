@@ -1,3 +1,4 @@
+import { hasRealtimeServer, realtimeCall, requiresRealtimeServer } from '@/lib/server/realtimeBridge';
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { applyAuthoritativeAction, pruneAuthoritativeRooms } from '@/lib/authoritativeMultiplayerStore';
@@ -149,6 +150,8 @@ export async function POST(request) {
   }
 
   const { roomName, id, token, action, requestedMode, captureSimulationEvent, accountAnchor, incomingTransfer, incomingState } = validation.value;
+
+  if (hasRealtimeServer() || requiresRealtimeServer()) { const result = await realtimeCall('action', {roomName, id, token, action}); return NextResponse.json(result, {status:result.status||200, headers:{'Cache-Control':'private, no-store'}}); }
 
   // Cosmetic pulse fire does not award progression or accept client-claimed hits.
   const progression = null;

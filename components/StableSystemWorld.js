@@ -21,6 +21,8 @@ import { SESSION_MODES } from '@/lib/sessionModeEngine';
 import { BlackHoleVisual, CinematicBloom, DeepSpaceScenery, InterceptorHull, PlanetSurface, StellarSurface } from '@/components/SimulationVisuals';
 import { getGraphicsProfile } from '@/lib/graphicsProfile';
 import TouchFlightPad from '@/components/TouchFlightPad';
+import FleetMarkers from '@/components/FleetMarkers';
+import { fleetVisibility } from '@/lib/multiplayerCapacity';
 import ExplorationHud from '@/components/ExplorationHud';
 import DestinationBearing from '@/components/DestinationBearing';
 import useSharedFlight from '@/components/useSharedFlight';
@@ -781,17 +783,18 @@ function RemotePilot({ pilot, isSelf = false }) {
   return (
     <group ref={groupRef} position={pilot?.position || [0, 0, 0]}>
       <group scale={.55}><InterceptorHull /></group>
-      <Html style={{ pointerEvents: 'none' }} zIndexRange={[30, 0]} position={[0, 0.68, 0]} center>
+      {pilot.showLabel !== false ? <Html style={{ pointerEvents: 'none' }} zIndexRange={[30, 0]} position={[0, 0.68, 0]} center>
         <div className="pilot-tag anchored-label-panel small">
           <strong>{pilot?.displayName || 'Pilot'}</strong>
           <span>Explorer</span>
         </div>
-      </Html>
+      </Html> : null}
     </group>
   );
 }
 
-function StableSceneContent({ simRuntimeClient, graph, displayNodes, onSelect, selectedKey, onAutoFocus, onTelemetryChange, onCombatAction, touchInput, deviceTier, graphicsProfile, authenticated = false, flightConfig = null, remotePilots = [], projectiles = [], presentationMode = true, multiplayerMode = false, simulationSeed = 'tcentral-main', simulationGravitySources = [], onSimulationFrame = null, correctionState = null, resetTick = 0, spawnTick = 0, sessionMode = SESSION_MODES.IDLE, ringAdjustments = null, navigationCommand, cruising, onManualControl, onArrival, destination, solarClock, weaponBus, pendingInputsRef }) {
+function StableSceneContent({ simRuntimeClient, graph, displayNodes, onSelect, selectedKey, onAutoFocus, onTelemetryChange, onCombatAction, touchInput, deviceTier, graphicsProfile, authenticated = false, flightConfig = null, remotePilots = [], projectiles = [], presentationMode = true, multiplayerMode = false, simulationSeed = 'tcentral-main', simulationGravitySources = [], onSimulationFrame = null, correctionState = null, resetTick = 0, spawnTick = 0, sessionMode = SESSION_MODES.IDLE, ringAdjustments = null, navigationCommand, cruising, onManualControl, onArrival, destination, solarClock, weaponBus, pendingInputsRef, pilotPosition }) {
+  const fleet = useMemo(() => fleetVisibility(remotePilots, pilotPosition || [0,0,0], graphicsProfile.segments <= 32), [remotePilots, pilotPosition, graphicsProfile.segments]);
   const epochSummary = useMemo(() => summarizeEpochRelativity(graph.epochAnchor), [graph]);
   const graphByKey = useMemo(() => Object.fromEntries(graph.nodes.map((node) => [node.key, node])), [graph]);
   const positions = useMemo(() => getNodePositionMap(graph), [graph]);
@@ -832,7 +835,8 @@ function StableSceneContent({ simRuntimeClient, graph, displayNodes, onSelect, s
 
       {graphicsProfile.bloom ? <CinematicBloom /> : null}
       <WeaponEffects bus={weaponBus} remote={projectiles} reducedMotion={!graphicsProfile.animate} />
-      {remotePilots.map((pilot) => (
+      <FleetMarkers pilots={fleet.markers} anchor={pilotPosition || [0,0,0]} />
+      {fleet.detailed.map((pilot) => (
         <RemotePilot key={pilot.id} pilot={pilot} isSelf={Boolean(pilot.isSelf)} />
       ))}
 
@@ -877,6 +881,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
     return isValidRoomName(requested) ? requested : process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main';
   });
   const activeRoom = roomName;
+  useEffect(() => { const url=new URL(window.location.href); url.searchParams.set('room',roomName); window.history.replaceState(null,'',url); },[roomName]);
   const [selected, setSelected] = useState(() => ({ key: 'solar-' + (initialSolarBody || 'earth') }));
   const [touchInput, setTouchInput] = useState({ x: 0, y: 0, z: 0, boost: 0 });
   const [flightConfig, setFlightConfig] = useState({ ...FLIGHT_PRESETS.freeFlight, inertialDampers: true });
@@ -918,7 +923,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
     }),
   ], [activeRoom, graph]);
   const cameraConfig = useMemo(() => ({ position: [0, 5, 4], fov: deviceTier.isMobile ? 58 : 52, near: .1, far: RENDER_DISTANCE }), [deviceTier.isMobile]);
-  const remotePilots = useMemo(() => (authoritativeState.players || []).filter((pilot) => pilot.id !== serverSession?.id), [authoritativeState.players, serverSession?.id]);
+  const remotePilots = useMemo(() => (authoritativeState.players || []).filter((pilot) => pilot.id !== serverSession?.id && pilot.alive !== false), [authoritativeState.players, serverSession?.id]);
 
   const handleTelemetry = useCallback((next) => {
     telemetryRef.current = next;
@@ -934,7 +939,9 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
     }
   }, []);
 
-  useSharedFlight({ lobbyMode, restartTick: spawnTick, roomName: activeRoom, identity, telemetryRef, inputsRef: predictionHistoryRef, simRuntimeClient, gravitySources: simulationGravitySources, onCorrection: setCorrectionState });
+  const handleCombatRespawn = useCallback(() => { setCruising(false); setNavigationCommand(null); setTouchInput({x:0,y:0,z:0,boost:0}); setSelected({key:'solar-earth'}); setNotice('Ship restored in Earth orbit. Carried ore was lost; saved credits and upgrades remain.'); }, []);
+  const combatSelf = authoritativeState.players?.find(pilot => pilot.id === serverSession?.id);
+  useSharedFlight({ lobbyMode, restartTick: spawnTick, roomName: activeRoom, identity, telemetryRef, inputsRef: predictionHistoryRef, simRuntimeClient, gravitySources: simulationGravitySources, onCorrection: setCorrectionState, onRespawn: handleCombatRespawn });
 
   async function respawn() {
     if (respawning) return;
@@ -1117,7 +1124,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
         <ExplorationHud telemetry={telemetry} destinations={destinations} destination={destination} onSelect={handleSelect}
           onNavigate={() => navigate('cruise')} onFace={() => navigate('face')} cruising={cruising} onCancelCruise={cancelCruise}
           visited={progress.visitedNodes} lobbyMode={lobbyMode} onModeChange={onModeChange} roomName={roomName} onRoomChange={setRoomName}
-          pilots={authoritativeState.players || []} selfId={serverSession?.id} serverStatus={serverStatus}
+          combatEvents={authoritativeState.events || []} pilots={authoritativeState.players || []} selfId={serverSession?.id} serverStatus={serverStatus}
           graphicsQuality={graphicsQuality} onGraphicsChange={setGraphicsQuality} dampers={flightConfig.inertialDampers}
           onDampersChange={() => setFlightConfig((current) => ({ ...current, inertialDampers: !current.inertialDampers }))}
           economy={economy} onMiningApproach={approachRock} onMiningWaypoint={() => flyTo(destinations.find(node => node.key === 'earth-mining-field'))} onEarthWaypoint={() => flyTo(destinations.find(node => node.key === 'solar-earth'))}
@@ -1125,6 +1132,8 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           onRecenter={() => setFlightResetTick((tick) => tick + 1)} notice={notice} onPanelChange={setPanelOpen} seedCount={universe?.prayerSeeds?.total || 0} />
       </div> : <button type="button" className="stable-show-hud-button" onClick={() => gameEngine.setHUDVisible(true)}>Show HUD · H</button>}
 
+      {serverStatus.connected && combatSelf?.alive === false ? <aside className="flight-connection-gate combat-respawn" role="status"><p className="eyebrow">Ship destroyed</p><h2>Returning to Earth…</h2><p>Respawn in {Math.max(0, Math.ceil((combatSelf.respawnAt - Date.now()) / 1000))}s. Carried ore is lost. Saved credits and upgrades remain.</p></aside> : null}
+      {lobbyMode === 'hub' && !serverStatus.connected ? <aside className="flight-connection-gate" role="status"><p className="eyebrow">Shared universe</p><h2>{serverStatus.label === 'Connecting' ? 'Joining your crew…' : serverStatus.label}</h2><p>{serverStatus.message || 'Waiting for the shared server before flight controls become active.'}</p>{serverStatus.population ? <p>{serverStatus.population.playerCount} / {serverStatus.population.capacity} pilots</p> : null}<div className="exploration-actions"><button onClick={() => setSpawnTick(tick=>tick+1)}>Retry now</button><a href="/">Back to hub</a></div></aside> : null}
       <div className="stable-world-canvas polished-canvas cinematic-polished-canvas sim-zone-center-canvas" aria-label="Explorable universe" inert={prayerOpen ? '' : undefined}>
         <Canvas camera={cameraConfig} dpr={graphicsProfile.dpr} gl={SIM_RENDERER_OPTIONS}>
           <UniverseFrame>
@@ -1132,18 +1141,18 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           <PrayerSeedRelic telemetryRef={telemetryRef} animate={graphicsProfile.animate} />
           <StableSceneContent simRuntimeClient={simRuntimeClient} graph={graph} displayNodes={displayNodes} onSelect={handleSelect}
             selectedKey={destination?.key} onTelemetryChange={handleTelemetry} touchInput={touchInput} deviceTier={deviceTier}
-            graphicsProfile={graphicsProfile} authenticated={Boolean(identity.authenticated)} flightConfig={{ ...flightConfig, inputBlocked: prayerOpen || panelOpen }} remotePilots={remotePilots}
+            graphicsProfile={graphicsProfile} authenticated={Boolean(identity.authenticated)} flightConfig={{ ...flightConfig, inputBlocked: prayerOpen || panelOpen || combatSelf?.alive === false || (lobbyMode === 'hub' && !serverStatus.connected) }} remotePilots={remotePilots}
             presentationMode multiplayerMode={lobbyMode === 'hub'} simulationSeed={activeRoom} simulationGravitySources={simulationGravitySources}
             resetTick={flightResetTick} spawnTick={spawnTick} onSimulationFrame={handleSimulationFrame} correctionState={correctionState}
             sessionMode={lobbyMode === 'hub' ? SESSION_MODES.MULTI_PLAYER : SESSION_MODES.SINGLE_PLAYER} ringAdjustments={authoritativeState.ringAdjustments}
-            pendingInputsRef={predictionHistoryRef}
+            pilotPosition={telemetry.position} pendingInputsRef={predictionHistoryRef}
             navigationCommand={navigationCommand} cruising={cruising} onManualControl={cancelCruise} onArrival={arrive} destination={destination} solarClock={solarClock} weaponBus={weapons.bus} onCombatAction={weapons.fire} projectiles={(authoritativeState.projectiles || []).filter((shot) => shot.ownerId !== serverSession?.id)} />
           </UniverseFrame>
         </Canvas>
       </div>
       {hudVisible && !prayerOpen && !panelOpen ? <div className="ship-reticle" aria-hidden="true"><i /><span>Pulse cannons</span></div> : null}
       <PrayerSeedEncounter key={identity.id} telemetry={telemetry} authenticated={Boolean(identity.authenticated)} onOpenChange={handlePrayerOpen} onBound={refresh} enabled={hudVisible && !panelOpen} />
-      {hudVisible && deviceTier.isMobile && !panelOpen && !prayerOpen ? <TouchFlightPad onInputChange={setTouchInput} /> : null}
+      {hudVisible && (lobbyMode !== 'hub' || serverStatus.connected) && deviceTier.isMobile && !panelOpen && !prayerOpen ? <TouchFlightPad onInputChange={setTouchInput} /> : null}
     </div>
   );
 }

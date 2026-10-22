@@ -114,3 +114,5 @@ On touch devices, hold a direction, Boost or Fire with separate fingers, and dra
 All active simulation destinations share one coordinate system and the selected multiplayer room. Solar System bodies are farther out in the same space; destination selection and arrival never change rooms or reset the ship. Cruise uses automatic deep-space thrust and slows near objects. The camera rebases its render origin for precision without changing authoritative positions. See [Solar System flight](docs/SOLAR-SYSTEM.md) for scale and astronomical fidelity.
 
 Celestial dimensions and Earth spawn/return behaviour are documented in [UNIVERSE-SCALE.md](docs/UNIVERSE-SCALE.md).
+
+Shared Play uses the dedicated 20 Hz WebSocket game service for flight, pulse combat and Earth respawns. Deploy it alongside the Next.js website using [real-time setup](SUPABASE_MULTIPLAYER_SETUP.md). See the [request integration record](docs/REQUEST-INTEGRATION.md) for implementation and deployment status.
