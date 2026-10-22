@@ -704,7 +704,7 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
       lastShot.current = state.clock.elapsedTime;
       const origin = groupRef.current.position.clone().add(new THREE.Vector3(0, .05, 1.8).applyQuaternion(lookQuat));
       const aim = camera.position.clone().add(worldOrigin.current).add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(160)).sub(origin).normalize();
-      onCombatAction?.({ origin: origin.toArray(), direction: aim.toArray(), inheritedVelocity: velocity.current.toArray() });
+      onCombatAction?.({ position: groupRef.current.position.toArray(), direction: aim.toArray(), inheritedVelocity: velocity.current.toArray() });
     }
 
     onTelemetryChange?.({
@@ -843,7 +843,7 @@ function StableSceneContent({ simRuntimeClient, graph, displayNodes, onSelect, s
       ))}
 
       {graphicsProfile.bloom ? <CinematicBloom /> : null}
-      <WeaponEffects bus={weaponBus} remote={projectiles} reducedMotion={!graphicsProfile.animate} />
+      <WeaponEffects bus={weaponBus} remote={projectiles} reducedMotion={!graphicsProfile.animate} getPhysicsTime={solarClock.getTime} />
       <FleetMarkers pilots={fleet.markers} anchor={pilotPosition || [0,0,0]} />
       {fleet.detailed.map((pilot) => (
         <RemotePilot key={pilot.id} pilot={pilot} isSelf={Boolean(pilot.isSelf)} />

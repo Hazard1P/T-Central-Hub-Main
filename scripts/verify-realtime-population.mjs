@@ -1,3 +1,4 @@
+import { PHYSICS_VERSION } from "../lib/physics/mechanics.js";
 // Synthetic loopback benchmark, never evidence of production or mobile capacity.
 import { performance } from "node:perf_hooks";
 import assert from "node:assert/strict";
@@ -36,6 +37,7 @@ try {
         socket.send(
           JSON.stringify({
             type: "join",
+            physicsVersion: PHYSICS_VERSION,
             ticket: signFlightTicket({ id: "pilot-" + i }, "benchmark", secret),
           }),
         ),

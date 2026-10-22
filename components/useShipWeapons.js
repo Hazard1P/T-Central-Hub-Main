@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { createPulseShot, PULSE_INTERVAL_MS } from '@/lib/shipWeapons';
+import { createShipPulse, PULSE_INTERVAL_MS } from '@/lib/shipWeapons';
 
 export default function useShipWeapons({ session, roomName, shared, onMineShot, onFireSound }) {
   const bus = useRef({ shots: [], impacts: [], lastFired: 0 });
@@ -13,7 +13,7 @@ export default function useShipWeapons({ session, roomName, shared, onMineShot, 
   const fire = useCallback((action) => {
     const now = performance.now();
     if (now - bus.current.lastFired < PULSE_INTERVAL_MS) return;
-    const shot = createPulseShot({ ...action, now, id: 'local-' + (++sequence.current), ownerId: session?.id });
+    const shot = createShipPulse({ ...action, now, id: 'local-' + (++sequence.current), ownerId: session?.id });
     if (!shot) return;
     bus.current.lastFired = now;
     onFireSound?.();

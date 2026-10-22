@@ -1,6 +1,7 @@
 import http from "node:http";
 import { pathToFileURL } from "node:url";
 import { WebSocketServer, WebSocket } from "ws";
+import { PHYSICS_VERSION } from "../lib/physics/mechanics.js";
 import {
   CombatWorld,
   TICK_MS,
@@ -55,6 +56,7 @@ export function createRealtimeServer({
         tickRate: 20,
         snapshotRate: 10,
         capacity: world.capacity,
+        physicsVersion: PHYSICS_VERSION,
       });
     if (!validServiceSecret(req.headers.authorization, secret))
       return reply(401, { ok: false, error: "SERVICE_AUTH_REQUIRED" });
@@ -142,8 +144,22 @@ export function createRealtimeServer({
         const message = JSON.parse(raw.toString());
         if (!socket.pilot) {
           if (message.type !== "join") throw Error("Join first");
-          const ticket = verifyFlightTicket(message.ticket, secret),
-            joined = world.join(ticket.room, ticket.identity);
+          const ticket = verifyFlightTicket(message.ticket, secret);
+          if (
+            ticket.physicsVersion !== PHYSICS_VERSION ||
+            message.physicsVersion !== PHYSICS_VERSION
+          ) {
+            send(socket, {
+              type: "rejected",
+              ok: false,
+              status: 409,
+              error: "PHYSICS_VERSION_MISMATCH",
+              physicsVersion: PHYSICS_VERSION,
+            });
+            socket.close(4003, "Matching flight version required");
+            return;
+          }
+          const joined = world.join(ticket.room, ticket.identity);
           if (!joined.ok) {
             send(socket, { type: "rejected", ...joined });
             socket.close(1008, joined.error);

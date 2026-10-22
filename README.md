@@ -116,3 +116,5 @@ All active simulation destinations share one coordinate system and the selected 
 Celestial dimensions and Earth spawn/return behaviour are documented in [UNIVERSE-SCALE.md](docs/UNIVERSE-SCALE.md).
 
 Shared Play uses the dedicated 20 Hz WebSocket game service for flight, pulse combat and Earth respawns. Deploy it alongside the Next.js website using [real-time setup](SUPABASE_MULTIPLAYER_SETUP.md). See the [request integration record](docs/REQUEST-INTEGRATION.md) for implementation and deployment status.
+
+Run `npm run verify:simulation` on Node 24 to test the shared flight/combat/mining code, verify API route exports and build the website. GitHub Actions runs this check for pull requests and main/development pushes. [Physics integration and limits](docs/PHYSICS-ENGINE.md) describes the shared collision rules, cannon geometry and required matching website/game-service versions.

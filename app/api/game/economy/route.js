@@ -28,9 +28,10 @@ export async function POST(request) {
     const player = state.state.players.find(entry => entry.id === owner);
     if (!player) return reply({ ok: false, error: 'Pilot session is unavailable.' }, 401);
     if(player.alive===false && body.action!=='state')return reply({ok:false,error:'Ship disabled. Wait for your Earth respawn.'},409);
-    const now = Date.now(), location = economyLocation(player, now);
+    const now = Date.now(), physicsUtcMs = Number.isFinite(state.state.physicsUtcMs) ? state.state.physicsUtcMs : now;
+    const location = economyLocation(player, physicsUtcMs);
     const command = { action: body.action, atEarth: location.atEarth, slow: location.slow };
-    if (body.action === 'mine') command.asteroid = miningTarget(player, { asteroid: body.asteroid, direction: body.direction }, now).id;
+    if (body.action === 'mine') command.asteroid = miningTarget(player, { asteroid: body.asteroid, direction: body.direction }, physicsUtcMs).id;
     if (body.action === 'upgrade') { command.upgrade = body.upgrade; command.expectedLevel = body.expectedLevel; }
     const result = await getShipEconomyStore().run({ owner, room: body.roomName, token: body.token, requestId: body.requestId, command, now });
     const available = location.rocks.filter(rock => !(result.rocks[rock.id]?.hp === 0 && result.rocks[rock.id].depleted_until > now)).map(rock => ({ ...rock, distance: Math.hypot(...rock.position.map((v,i) => v-player.position[i])) - rock.radius })).sort((a,b) => a.distance-b.distance);

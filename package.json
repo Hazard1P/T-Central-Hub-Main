@@ -9,6 +9,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test": "node --test tests/*.test.mjs",
+    "verify:simulation": "npm test && npm run verify:api && npm run build",
     "verify:api": "node scripts/verify-api-routes.mjs",
     "check:dyson-continuity": "node scripts/check-dyson-continuity.mjs",
     "release:notes": "node scripts/generate-dyson-release-notes.mjs",

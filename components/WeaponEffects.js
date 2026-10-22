@@ -4,23 +4,21 @@ import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useUniverseFrame } from '@/components/UniverseFrame';
-import { pulsePosition, segmentSphereHit } from '@/lib/shipWeapons';
+import { pulsePosition } from '@/lib/shipWeapons';
+import { firstSphereContact } from '@/lib/physics/collisions';
+import { getFlightSolids } from '@/lib/universeFlight';
 
-export default function WeaponEffects({ bus, remote = [], selfId, reducedMotion = false }) {
+export default function WeaponEffects({ bus, remote = [], selfId, reducedMotion = false, getPhysicsTime = Date.now }) {
   const { origin } = useUniverseFrame();
   const beams = useRef(null), sparks = useRef(null), remoteSamples = useRef(new Map());
   const dummy = useMemo(() => new THREE.Object3D(), []), forward = useMemo(() => new THREE.Vector3(0, 0, 1), []);
   useFrame(() => {
     const now = performance.now(), shots = bus.current.shots.filter((shot) => shot.expiresAt > now && !shot.hit);
+    const solids = getFlightSolids(getPhysicsTime());
+    const colliders = [...solids, ...(bus.current.colliders || [])];
     for (const shot of shots) {
       const position = pulsePosition(shot, now), previous = shot.previous || shot.origin;
-      let impact = null, closest = Infinity;
-      for (const rock of bus.current.colliders || []) {
-        const hit = segmentSphereHit(previous, position, rock.position, rock.radius);
-        if (!hit) continue;
-        const distance = Math.hypot(...hit.map((value, axis) => value - previous[axis]));
-        if (distance < closest) { closest = distance; impact = hit; }
-      }
+      const impact = firstSphereContact(previous, position, colliders)?.point;
       if (impact) { shot.hit = true; bus.current.impacts.push({ position: impact, createdAt: now }); }
       shot.previous = position;
     }
@@ -35,7 +33,8 @@ export default function WeaponEffects({ bus, remote = [], selfId, reducedMotion 
       const velocity = shot.velocity || [0, 0, 64];
       const direction = shot.direction || new THREE.Vector3(...velocity).normalize().toArray();
       const elapsed = Math.min(.35, (now - sample.receivedAt) / 1000);
-      visible.push({ position: shot.position.map((value, axis) => value + velocity[axis] * elapsed), direction });
+      const predicted = shot.position.map((value, axis) => value + velocity[axis] * elapsed);
+      if (!firstSphereContact(shot.position, predicted, solids)) visible.push({ position: predicted, direction });
     });
     remoteSamples.current = nextSamples;
     visible.slice(-72).forEach((shot, index) => {

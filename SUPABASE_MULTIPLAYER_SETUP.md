@@ -62,8 +62,7 @@ This is a single authoritative game-service process. Do not horizontally replica
 ## Verification
 
 ```bash
-node --test tests/*.test.mjs
-npm run build
+npm run verify:simulation
 node scripts/verify-realtime-population.mjs
 ```
 
@@ -75,4 +74,6 @@ The population script launches its own loopback service and synthetic clients, c
 
 ## Physics version
 
-The shared core is `universe-physics-1`. Deploy the website and service together; the worker owns the physics epoch and sends `physicsUtcMs` with snapshots for replay. Planetary gravity, vacuum coasting, swept surfaces, ship impulses and moving-target projectile checks are described in [the physics engine](docs/PHYSICS-ENGINE.md). No additional database migration is needed for the engine itself.
+The shared core is `universe-physics-2`. Deploy the website and service together; the worker owns the physics epoch and sends `physicsUtcMs` with snapshots for replay. Planetary gravity, vacuum coasting, swept surfaces, ship impulses and moving-target projectile checks are described in [the physics engine](docs/PHYSICS-ENGINE.md). No additional database migration is needed for the engine itself.
+
+The website's signed join ticket, browser join message, worker response and snapshots must advertise the same physics version. An incompatible release is rejected before creating or replacing a flight, with `PHYSICS_VERSION_MISMATCH` (WebSocket close code 4003). The browser stops automatic retries and shows a reload/deployment message. Confirm `/healthz` reports the expected `physicsVersion` when rolling out both services. Increment the shared version whenever integration or collision rules change; matching version strings are a deployment compatibility check, not a substitute for the server's authority over motion.

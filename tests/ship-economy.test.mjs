@@ -105,3 +105,12 @@ test('profile summaries expose saved upgrades without credentials or clearing ca
   assert.equal((await store.summary('steam:profile')).delivered,0);
  }finally{await rm(dir,{recursive:true,force:true})}
 });
+
+test('mining uses the shared first-contact solver and rejects an obstructed path', () => {
+  const now=1792537200000,rock=miningGeometry(now).rocks[0];
+  const player={position:rock.position.map((v,i)=>v+(i===0?50:0)),velocity:[0,0,0]};
+  const surface={key:'structure',position:rock.position.map((v,i)=>v+(i===0?25:0)),collisionRadius:5};
+  assert.throws(()=>miningTarget(player,{asteroid:rock.id},now,[surface]),/path blocked/);
+  assert.throws(()=>miningTarget(player,{direction:[-1,0,0]},now,[surface]),/path blocked/);
+  assert.equal(miningTarget(player,{direction:[-1,0,0]},now,[]).id,rock.id);
+});

@@ -1,7 +1,8 @@
+import { SHIP_CONTACT_RADIUS } from '../lib/physics/mechanics.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { getUniverseSolarState, constrainSolarFlight } from '../lib/universeFlight.js';
-import { createPulseShot, pulsePosition, normalizedAim, segmentSphereHit, PULSE_LIFETIME_MS } from '../lib/shipWeapons.js';
+import { createPulseShot, pulsePosition, normalizedAim, segmentSphereHit, PULSE_LIFETIME_MS, PULSE_MUZZLE_OFFSET } from '../lib/shipWeapons.js';
 import { createDebrisField } from '../lib/celestialDebris.js';
 import { joinAuthoritativeRoom, applyAuthoritativeAction, getAuthoritativeState } from '../lib/authoritativeMultiplayerStore.js';
 import { stepFrame } from '../lib/simCore/stepFrame.js';
@@ -10,7 +11,7 @@ test('physical Solar surfaces constrain the same global flight space while prese
   const utcMs=Date.UTC(2026,9,22),earth=getUniverseSolarState(utcMs).find(body=>body.id==='earth');
   const position=earth.position.map((v,i)=>v+(i===2?-10:0));
   const safe=constrainSolarFlight(position,[3,0,5],utcMs);
-  assert.ok(Math.abs(Math.hypot(...safe.position.map((v,i)=>v-earth.position[i]))-(earth.radius*1.02+2))<.0001);
+  assert.ok(Math.abs(Math.hypot(...safe.position.map((v,i)=>v-earth.position[i]))-(earth.radius*1.02+2+SHIP_CONTACT_RADIUS))<.0001);
   assert.deepEqual(safe.velocity,[3,0,0]);
   const result=stepFrame({utcMs,worldSeed:'same-universe',position,velocity:[0,0,8],dt:.1,controlVector:[0,0,1]});
   assert.ok(Math.hypot(...result.position.map((v,i)=>v-earth.position[i]))>=earth.radius*1.02+1.999);
@@ -38,7 +39,7 @@ test('shared firing uses authoritative origin, validates ownership, cooldown and
   assert.equal(applyAuthoritativeAction({ ...args, action: { type: 'fire', direction: [0,0,0] } }).status, 400);
   const fire = () => applyAuthoritativeAction({ ...args, action: { type: 'fire', origin: [159,119,159], direction: [0,0,2] } });
   const first = fire(); assert.equal(first.ok, true);
-  assert.deepEqual(first.state.projectiles[0].position, a.player.position.map(value => Number(value.toFixed(2))));
+  assert.deepEqual(first.state.projectiles[0].position, a.player.position.map((value,axis) => Number((value+(axis===2?PULSE_MUZZLE_OFFSET:0)).toFixed(2))));
   assert.equal(fire().status, 429);
   t.mock.timers.tick(250); const second = fire(); assert.equal(second.ok, true);
   assert.ok(second.state.projectiles[0].position[2] > a.player.position[2]);

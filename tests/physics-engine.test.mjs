@@ -13,6 +13,7 @@ import {
 } from "../lib/physics/mechanics.js";
 import {
   sweepSphere,
+  firstSphereContact,
   resolveStaticContacts,
   resolveBodyPairs,
 } from "../lib/physics/collisions.js";
@@ -65,10 +66,20 @@ test("physical Earth gravity and GEO orbital period are consistent in the univer
   const r = 42164.169624086106 / KM_PER_UNIT,
     period = 2 * Math.PI * Math.sqrt(r ** 3 / source.mu);
   near(period, 86164.0905, 1e-5);
-  near(schwarzschildRadius(solarMu(SOLAR_GM.sun))*KM_PER_UNIT, 2.95325008, 1e-7);
-  const frame=createPhysicsFrame({utcMs:now,gravitySources:[{key:'physical-body',massKg:5.9722e24,position:[0,0,0]}]});
-  const body=frame.sources.find(source=>source.key==='physical-body');
-  assert.equal(body.mu,muFromKilograms(5.9722e24));assert(body.physical);
+  near(
+    schwarzschildRadius(solarMu(SOLAR_GM.sun)) * KM_PER_UNIT,
+    2.95325008,
+    1e-7,
+  );
+  const frame = createPhysicsFrame({
+    utcMs: now,
+    gravitySources: [
+      { key: "physical-body", massKg: 5.9722e24, position: [0, 0, 0] },
+    ],
+  });
+  const body = frame.sources.find((source) => source.key === "physical-body");
+  assert.equal(body.mu, muFromKilograms(5.9722e24));
+  assert(body.physical);
 });
 test("RK4 preserves a circular orbit, specific energy and angular momentum over ten revolutions", () => {
   const sources = [
@@ -282,4 +293,97 @@ test("generated stellar masses drive their fields and stay consistent across sha
   near(star.mu, solarMu(SOLAR_GM.sun) * star.stellarProfile.massSolar);
   assert.equal(star.mu, other.mu);
   assert(star.physical);
+});
+
+test("sliding sweeps the remaining path against a second obstacle deterministically", () => {
+  const bodies = [
+    { key: "first", position: [0, 0, 0], collisionRadius: 1 },
+    { key: "second", position: [0.84, 1.88, 0], collisionRadius: 0.3 },
+  ];
+  const args = { from: [-3, 0, 0], position: [3, 2, 0], velocity: [60, 20, 0] };
+  const hit = resolveStaticContacts({ ...args, bodies });
+  assert(hit.contacts.some((c) => c.key === "first"));
+  assert(
+    hit.contacts.some((c) => c.key === "second"),
+    "slide must not tunnel through the second sphere",
+  );
+  assert.deepEqual(
+    resolveStaticContacts({ ...args, bodies: [...bodies].reverse() }),
+    hit,
+  );
+  for (const b of bodies)
+    assert(distance(hit.position, b.position) >= b.collisionRadius);
+});
+
+test("ships already touching do not cross through each other on the next fast step", () => {
+  const bodies = [
+    {
+      id: "a",
+      mass: 1,
+      radius: 1,
+      previousPosition: [-1, 0, 0],
+      position: [9, 0, 0],
+      velocity: [100, 0, 0],
+    },
+    {
+      id: "b",
+      mass: 1,
+      radius: 1,
+      previousPosition: [1, 0, 0],
+      position: [-9, 0, 0],
+      velocity: [-100, 0, 0],
+    },
+  ];
+  assert.equal(resolveBodyPairs(bodies, 0.1).length, 1);
+  assert(bodies[0].position[0] < bodies[1].position[0]);
+  near(bodies[0].velocity[0] + bodies[1].velocity[0], 0);
+  assert(distance(bodies[0].position, bodies[1].position) >= 2);
+});
+
+test("shared flight reserves the full ship contact radius at celestial surfaces", () => {
+  const frame = {
+    utcMs: now,
+    sources: [],
+    obstacles: [],
+    bodies: [{ key: "surface", position: [0, 0, 0], collisionRadius: 1 }],
+  };
+  const next = stepFrame({
+    position: [-5, 0, 0],
+    velocity: [20, 0, 0],
+    controlVector: [0, 0, 0],
+    dt: 0.2,
+    physicsFrame: frame,
+  });
+  assert(
+    next.position[0] <= -4.2,
+    "ship radius must use the same 3.2 units as multiplayer contacts",
+  );
+  near(next.velocity[0], 0);
+});
+
+test("deep-space sphere sweeps retain small target entry points over billion-unit segments", () => {
+  const hit = sweepSphere([-1e9, 0, 0], [1e9, 0, 0], [0, 0, 0], 1);
+  near(hit.point[0], -1, 1e-7);
+  assert.equal(sweepSphere([-1e9, 2, 0], [1e9, 2, 0], [0, 0, 0], 1), null);
+  const far = resolveStaticContacts({
+    from: [1e9 - 3, 0, 0],
+    position: [1e9 + 3, 0, 0],
+    velocity: [10, 0, 0],
+    bodies: [{ key: "distant", position: [1e9, 0, 0], collisionRadius: 1 }],
+  });
+  assert(far.position[0] < 1e9 - 1);
+  assert(
+    far.contacts.length <= 2,
+    "representable contact slop avoids repeated zero-time hits",
+  );
+});
+
+
+test('first contact follows surface entry and stable identity, rather than center distance or catalog order', () => {
+  const bodies=[{id:'small',position:[10,0,0],radius:1},{id:'large',position:[12,0,0],radius:5}];
+  const hit=firstSphereContact([0,0,0],[100,0,0],bodies);
+  assert.equal(hit.body.id,'large');near(hit.point[0],7);
+  assert.deepEqual(firstSphereContact([0,0,0],[100,0,0],[...bodies].reverse()),hit);
+  const tied=[{id:'z',position:[10,0,0],radius:1},{id:'a',position:[10,0,0],radius:1}];
+  assert.equal(firstSphereContact([0,0,0],[100,0,0],tied).body.id,'a');
 });

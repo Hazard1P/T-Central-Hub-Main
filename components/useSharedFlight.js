@@ -3,6 +3,7 @@
 import { MULTIPLAYER_POLL_MS } from "@/lib/multiplayerCapacity";
 import { useEffect } from "react";
 import { useMultiplayerSession } from "@/components/MultiplayerSessionProvider";
+import { PHYSICS_VERSION } from "@/lib/physics/mechanics";
 
 const emptyState = {
   players: [],
@@ -89,24 +90,29 @@ export default function useSharedFlight({
     function showIssue(issue) {
       const full = ["ROOM_FULL", "SERVER_FULL"].includes(issue.message);
       const setup = /SETUP_REQUIRED|UNAVAILABLE/.test(issue.message);
+      const mismatch = issue.message === "PHYSICS_VERSION_MISMATCH";
       setServerStatus({
         connected: false,
-        label: full
-          ? "Server full"
-          : setup
-            ? "Shared flight unavailable"
-            : issue.message === "FLIGHT_REPLACED"
-              ? "Flight open elsewhere"
-              : "Reconnecting",
+        label: mismatch
+          ? "Flight update needed"
+          : full
+            ? "Server full"
+            : setup
+              ? "Shared flight unavailable"
+              : issue.message === "FLIGHT_REPLACED"
+                ? "Flight open elsewhere"
+                : "Reconnecting",
         code: issue.message,
         population: issue.population,
-        message: full
-          ? "All available pilot slots are occupied. Retrying shortly."
-          : setup
-            ? "The real-time flight server is unavailable. Retry shortly or return to the hub."
-            : issue.message === "FLIGHT_REPLACED"
-              ? "This account joined from another connection. Choose Retry now to resume here."
-              : "Connection interrupted. Your flight will resume when the shared server responds.",
+        message: mismatch
+          ? "Reload this page to update flight. If this message remains, the website and game server need matching deployments."
+          : full
+            ? "All available pilot slots are occupied. Retrying shortly."
+            : setup
+              ? "The real-time flight server is unavailable. Retry shortly or return to the hub."
+              : issue.message === "FLIGHT_REPLACED"
+                ? "This account joined from another connection. Choose Retry now to resume here."
+                : "Connection interrupted. Your flight will resume when the shared server responds.",
         tick: 0,
       });
     }
@@ -172,12 +178,30 @@ export default function useSharedFlight({
         )
           connection.send(JSON.stringify(message));
       };
-      connection.onopen = () => send({ type: "join", ticket: data.ticket });
+      connection.onopen = () =>
+        send({
+          type: "join",
+          ticket: data.ticket,
+          physicsVersion: PHYSICS_VERSION,
+        });
       connection.onerror = () => {}; // close handles reconnects and preserves a single retry timer.
       connection.onmessage = (event) => {
         if (stopped || socket !== connection) return;
         try {
           const packet = JSON.parse(event.data);
+          const version =
+            packet.type === "state"
+              ? packet.state?.physicsVersion
+              : packet.physicsVersion;
+          if (
+            ["joined", "state"].includes(packet.type) &&
+            version !== PHYSICS_VERSION
+          ) {
+            issue = new Error("PHYSICS_VERSION_MISMATCH");
+            showIssue(issue);
+            connection.close(4003, "Matching flight version required");
+            return;
+          }
           if (packet.type === "rejected") {
             issue = Object.assign(new Error(packet.error), {
               population: packet.population,
@@ -256,12 +280,13 @@ export default function useSharedFlight({
         pendingPrediction = null;
         session = null;
         setSession(null);
+        setAuthoritativeState(emptyState);
         inputsRef.current = [];
         const replaced = event.code === 4002;
         showIssue(
           issue || new Error(replaced ? "FLIGHT_REPLACED" : "CONNECTION_LOST"),
         );
-        if (!replaced)
+        if (!replaced && issue?.message !== "PHYSICS_VERSION_MISMATCH")
           timer = window.setTimeout(
             tick,
             issue ? 5000 : Math.min(10000, 1000 * 2 ** Math.min(failures++, 3)),
@@ -278,6 +303,8 @@ export default function useSharedFlight({
           });
           if (stopped) return;
           if (response.ok && data.ok && data.transport === "websocket") {
+            if (data.physicsVersion !== PHYSICS_VERSION)
+              throw new Error("PHYSICS_VERSION_MISMATCH");
             openRealtime(data);
             return;
           }
@@ -368,6 +395,7 @@ export default function useSharedFlight({
         if (stopped) return;
         failures += 1;
         showIssue(issue);
+        if (issue.message === "PHYSICS_VERSION_MISMATCH") return;
       }
       // One in-flight request, independent of render rate. Slow connections back off.
       if (!stopped)

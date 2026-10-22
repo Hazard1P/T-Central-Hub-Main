@@ -1,3 +1,6 @@
+import { createHmac } from "node:crypto";
+import { createShipPulse } from "../lib/shipWeapons.js";
+import { PHYSICS_VERSION } from "../lib/physics/mechanics.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { WebSocket } from "ws";
@@ -46,6 +49,10 @@ test("flight tickets are bound to trusted identity, room, audience and a 30-seco
     verifyFlightTicket(ticket, secret, 1001).identity.id,
     "google:verified",
   );
+  assert.equal(
+    verifyFlightTicket(ticket, secret, 1001).physicsVersion,
+    PHYSICS_VERSION,
+  );
   assert.throws(() => verifyFlightTicket(ticket, secret, 31000));
   assert.throws(() => verifyFlightTicket(ticket + "x", secret, 1001));
   assert.throws(() =>
@@ -73,8 +80,8 @@ test("the fixed server clock advances flight and ignores client position, elapse
       repairState: "repairing",
       utcMs: 0,
       mass: 0,
-      force: [999999,999999,999999],
-      gravitySources: [{position:[0,0,0],mu:999999999999}],
+      force: [999999, 999999, 999999],
+      gravitySources: [{ position: [0, 0, 0], mu: 999999999999 }],
     }),
   );
   advance(200);
@@ -102,25 +109,56 @@ test("the fixed server clock advances flight and ignores client position, elapse
   );
   const snapshot = world.state("shared", a.player.id, a.token);
   assert(!JSON.stringify(snapshot.state).includes(a.token));
-  assert.equal(typeof snapshot.state.players.find(p => p.id === a.player.id).repairState, 'string');
-  assert.equal('repairState' in snapshot.state.players.find(p => p.id === target.id), false);
-  assert.equal('shieldReadyAt' in world.state('shared',a.player.id,a.token,{compact:true}).state.players.find(p => p.id === target.id), false);
+  assert.equal(
+    typeof snapshot.state.players.find((p) => p.id === a.player.id).repairState,
+    "string",
+  );
+  assert.equal(
+    "repairState" in snapshot.state.players.find((p) => p.id === target.id),
+    false,
+  );
+  assert.equal(
+    "shieldReadyAt" in
+      world
+        .state("shared", a.player.id, a.token, { compact: true })
+        .state.players.find((p) => p.id === target.id),
+    false,
+  );
 });
 test("live server repairs at Earth, interrupts recovery on fire, and reports shield versus hull hits", (t) => {
-  const {world, a, room, shooter, target, advance}=fixture(t);
-  shooter.health=40;shooter.shield=0;shooter.invulnerableUntil=0;
-  shooter.lastDamage=Date.now();
-  advance(4900);assert.equal(shooter.health,40);assert.equal(shooter.shield,0);
-  advance(200);assert(shooter.health>40);assert(shooter.shield>0);
-  const repaired=shooter.health;
-  assert(world.requestFire('shared',a.player.id,a.token,[-1,0,0]).ok);
-  advance(1000);assert.equal(shooter.health,repaired);
-  assert.equal(world.state('shared',a.player.id,a.token).state.players.find(p=>p.id===a.player.id).repairState,'combat-lock');
-  target.shield=10;world.damage(room,target,shooter,Date.now());
-  const hit=room.events.at(-1);assert.equal(hit.shieldDamage,10);assert.equal(hit.hullDamage,10);assert.equal(hit.shieldBroken,true);
-  assert.equal(target.health,90);assert.equal(target.shield,0);
-  advance(4950);assert.equal(target.health,90);
-  advance(100);assert(target.health>90);
+  const { world, a, room, shooter, target, advance } = fixture(t);
+  shooter.health = 40;
+  shooter.shield = 0;
+  shooter.invulnerableUntil = 0;
+  shooter.lastDamage = Date.now();
+  advance(4900);
+  assert.equal(shooter.health, 40);
+  assert.equal(shooter.shield, 0);
+  advance(200);
+  assert(shooter.health > 40);
+  assert(shooter.shield > 0);
+  const repaired = shooter.health;
+  assert(world.requestFire("shared", a.player.id, a.token, [-1, 0, 0]).ok);
+  advance(1000);
+  assert.equal(shooter.health, repaired);
+  assert.equal(
+    world
+      .state("shared", a.player.id, a.token)
+      .state.players.find((p) => p.id === a.player.id).repairState,
+    "combat-lock",
+  );
+  target.shield = 10;
+  world.damage(room, target, shooter, Date.now());
+  const hit = room.events.at(-1);
+  assert.equal(hit.shieldDamage, 10);
+  assert.equal(hit.hullDamage, 10);
+  assert.equal(hit.shieldBroken, true);
+  assert.equal(target.health, 90);
+  assert.equal(target.shield, 0);
+  advance(4950);
+  assert.equal(target.health, 90);
+  advance(100);
+  assert(target.health > 90);
 });
 test("pulses use swept server collisions, cooldown, spawn protection, shields, destruction and Earth respawn", (t) => {
   const { world, a, b, shooter, target, advance } = fixture(t);
@@ -203,7 +241,7 @@ function nextPacket(socket, predicate, timeout = 3000) {
     socket.on("message", message);
   });
 }
-async function openClient(address, identity) {
+async function openClient(address, identity, options = {}) {
   const socket = new WebSocket(`ws://127.0.0.1:${address.port}/flight`, {
     origin,
   });
@@ -218,7 +256,11 @@ async function openClient(address, identity) {
   socket.send(
     JSON.stringify({
       type: "join",
-      ticket: signFlightTicket({ id: identity }, "live", secret),
+      physicsVersion: Object.hasOwn(options, "physicsVersion")
+        ? options.physicsVersion
+        : PHYSICS_VERSION,
+      ticket:
+        options.ticket || signFlightTicket({ id: identity }, "live", secret),
     }),
   );
   return { socket, joined: await joined };
@@ -299,7 +341,13 @@ test("real WebSocket clients share authoritative snapshots; admission, origins, 
       origin,
     });
     bad.on("open", () =>
-      bad.send(JSON.stringify({ type: "join", ticket: "forged" })),
+      bad.send(
+        JSON.stringify({
+          type: "join",
+          physicsVersion: PHYSICS_VERSION,
+          ticket: "forged",
+        }),
+      ),
     );
     bad.on("close", (code) => {
       try {
@@ -326,45 +374,134 @@ test("one verified identity owns one flight across rooms, and moving rooms frees
 });
 
 test("authoritative ship contacts stop high-speed crossing with mass-weighted impulses", (t) => {
-  const {world,a,b,shooter,target,room,advance}=fixture(t);
-  shooter.position=[-20,0,18];target.position=[20,0,18];
-  shooter.velocity=[2000,0,0];target.velocity=[-2000,0,0];
-  shooter.lastInput=target.lastInput=Date.now();
+  const { world, a, b, shooter, target, room, advance } = fixture(t);
+  shooter.position = [-20, 0, 18];
+  target.position = [20, 0, 18];
+  shooter.velocity = [2000, 0, 0];
+  target.velocity = [-2000, 0, 0];
+  shooter.lastInput = target.lastInput = Date.now();
   advance(50);
-  assert(shooter.position[0]<target.position[0]);
-  assert(shooter.velocity[0]<0&&target.velocity[0]>0);
-  assert(Math.hypot(...shooter.position.map((v,i)=>v-target.position[i]))>=6.4);
-  assert(room.events.some(event=>event.type==='collision'));
-  assert.equal(shooter.health,100);assert.equal(target.health,100);
-  const state=world.state('shared',a.player.id,a.token).state;
-  assert.equal(state.physicsVersion,'universe-physics-1');
-  assert.equal(state.physicsUtcMs,Date.now());
-  assert(!JSON.stringify(state).includes('previousPosition'));
-  assert(world.state('shared',b.player.id,b.token).ok);
+  assert(shooter.position[0] < target.position[0]);
+  assert(shooter.velocity[0] < 0 && target.velocity[0] > 0);
+  assert(
+    Math.hypot(...shooter.position.map((v, i) => v - target.position[i])) >=
+      6.4,
+  );
+  assert(room.events.some((event) => event.type === "collision"));
+  assert.equal(shooter.health, 100);
+  assert.equal(target.health, 100);
+  const state = world.state("shared", a.player.id, a.token).state;
+  assert.equal(state.physicsVersion, PHYSICS_VERSION);
+  assert.equal(state.physicsUtcMs, Date.now());
+  assert(!JSON.stringify(state).includes("previousPosition"));
+  assert(world.state("shared", b.player.id, b.token).ok);
 });
 
 test("pulse sweeps hit a moving ship even when it crosses entirely between server snapshots", (t) => {
-  const {world,a,shooter,target,advance}=fixture(t);
-  shooter.position=[0,0,18];target.position=[20,-450,18];
-  shooter.velocity=[0,0,0];target.velocity=[0,2000,0];
-  shooter.lastInput=target.lastInput=Date.now();target.invulnerableUntil=0;
-  assert(world.requestFire('shared',a.player.id,a.token,[1,0,0]).ok);
+  const { world, a, shooter, target, advance } = fixture(t);
+  shooter.position = [0, 0, 18];
+  target.position = [20, -450, 18];
+  shooter.velocity = [0, 0, 0];
+  target.velocity = [0, 2000, 0];
+  shooter.lastInput = target.lastInput = Date.now();
+  target.invulnerableUntil = 0;
+  assert(world.requestFire("shared", a.player.id, a.token, [1, 0, 0]).ok);
   advance(250);
-  assert.equal(target.shield,40);
+  assert.equal(target.shield, 40);
 });
 
-test('shared snapshot caches are immutable, contain no flight token and refresh on same-tick state changes', t=>{
- const {world,a,room,shooter,target}=fixture(t);
- const first=world.state('shared',a.player.id,a.token).state.players.find(p=>p.id===a.player.id);
- const repeated=world.state('shared',a.player.id,a.token).state.players.find(p=>p.id===a.player.id);
- assert.equal(first,repeated);assert(Object.isFrozen(first.position));
- assert.throws(()=>{first.position[0]=0},TypeError);
- world.damage(room,shooter,target,Date.now());
- const changed=world.state('shared',a.player.id,a.token).state.players.find(p=>p.id===a.player.id);
- assert.notEqual(changed,first);assert.equal(changed.shield,40);
- assert(!JSON.stringify(changed).includes(a.token));
- world.requestFire('shared',shooter.id,shooter.token,[0,0,1]);
- const shot=world.state('shared',a.player.id,a.token).state.projectiles[0];
- assert(Object.isFrozen(shot.position));
- assert.equal(shot,world.state('shared',a.player.id,a.token).state.projectiles[0]);
+test("shared snapshot caches are immutable, contain no flight token and refresh on same-tick state changes", (t) => {
+  const { world, a, room, shooter, target } = fixture(t);
+  const first = world
+    .state("shared", a.player.id, a.token)
+    .state.players.find((p) => p.id === a.player.id);
+  const repeated = world
+    .state("shared", a.player.id, a.token)
+    .state.players.find((p) => p.id === a.player.id);
+  assert.equal(first, repeated);
+  assert(Object.isFrozen(first.position));
+  assert.throws(() => {
+    first.position[0] = 0;
+  }, TypeError);
+  world.damage(room, shooter, target, Date.now());
+  const changed = world
+    .state("shared", a.player.id, a.token)
+    .state.players.find((p) => p.id === a.player.id);
+  assert.notEqual(changed, first);
+  assert.equal(changed.shield, 40);
+  assert(!JSON.stringify(changed).includes(a.token));
+  world.requestFire("shared", shooter.id, shooter.token, [0, 0, 1]);
+  const shot = world.state("shared", a.player.id, a.token).state.projectiles[0];
+  assert(Object.isFrozen(shot.position));
+  assert.equal(
+    shot,
+    world.state("shared", a.player.id, a.token).state.projectiles[0],
+  );
+});
+
+test("server cannon and prediction share muzzle, lifetime and inherited velocity", (t) => {
+  const { world, a, room, shooter } = fixture(t);
+  shooter.velocity = [100, 20, -10];
+  const aim = [1, 2, 3];
+  const predicted = createShipPulse({
+    position: shooter.position,
+    direction: aim,
+    inheritedVelocity: shooter.velocity,
+    now: Date.now(),
+    id: "prediction",
+  });
+  assert(world.requestFire("shared", a.player.id, a.token, aim).ok);
+  const authoritative = room.shots[0];
+  for (const key of [
+    "origin",
+    "velocity",
+    "direction",
+    "createdAt",
+    "expiresAt",
+  ])
+    assert.deepEqual(authoritative[key], predicted[key]);
+  assert.deepEqual(authoritative.position, predicted.origin);
+});
+
+test("physics mismatch rejects old clients and signed old website tickets before creating or replacing a flight", async (t) => {
+  const app = createRealtimeServer({
+    secret,
+    origins: [origin],
+    port: 0,
+    host: "127.0.0.1",
+  });
+  const address = await app.listen();
+  t.after(() => app.close());
+  const original = await openClient(address, "versioned");
+  t.after(() => original.socket.terminate());
+  assert.equal(original.joined.physicsVersion, PHYSICS_VERSION);
+  const payload = JSON.parse(
+    Buffer.from(
+      signFlightTicket({ id: "versioned" }, "live", secret).split(".")[0],
+      "base64url",
+    ).toString(),
+  );
+  payload.physicsVersion = "universe-physics-1";
+  const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const oldTicket =
+    body + "." + createHmac("sha256", secret).update(body).digest("base64url");
+  for (const options of [
+    { physicsVersion: undefined },
+    { physicsVersion: "universe-physics-1" },
+    { ticket: oldTicket },
+  ]) {
+    const rejected = await openClient(address, "versioned", options);
+    assert.equal(rejected.joined.error, "PHYSICS_VERSION_MISMATCH");
+    assert.equal(rejected.joined.physicsVersion, PHYSICS_VERSION);
+    rejected.socket.terminate();
+    assert.equal(
+      app.world.find("live", "versioned", original.joined.token)?.token,
+      original.joined.token,
+    );
+    assert.equal(app.world.rooms.get("live").players.size, 1);
+  }
+  const health = await (
+    await fetch(`http://127.0.0.1:${address.port}/healthz`)
+  ).json();
+  assert.equal(health.physicsVersion, PHYSICS_VERSION);
 });
