@@ -1,23 +1,85 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSteamSession } from '@/components/SteamSessionProvider';
-import ContributionHistory from '@/components/ContributionHistory';
-import { loadPayPalSdk } from '@/lib/paypalSdk';
-import { SUPPORT_FOCUS, moneyToMinor, currencyDigits } from '@/lib/accountPayments';
-import { SUPPORT_RECEIPT_MAX_AGE_DAYS } from '@/lib/supportSessionConfig';
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSteamSession } from "@/components/SteamSessionProvider";
+import ContributionHistory from "@/components/ContributionHistory";
+import { SupportLinkIcon, SupportNoteIcon } from "@/components/SupportIcons";
+import { loadPayPalSdk } from "@/lib/paypalSdk";
+import {
+  SUPPORT_FOCUS,
+  moneyToMinor,
+  currencyDigits,
+} from "@/lib/accountPayments";
+import { SUPPORT_RECEIPT_MAX_AGE_DAYS } from "@/lib/supportSessionConfig";
 
-function LoginCallout({ currentPath = '/donate', config }) {
+function LoginCallout({ currentPath = "/donate", config }) {
   return (
-    <div className="content-card donate-note-box">
-      <strong>Want an account-linked receipt?</strong>
-      <p>Sign in with Steam or Google so your contribution can be recorded against your account. Automatic account tracking requires a signed-in account. Contact support to review an older external receipt.</p>
-      {config?.steam ? <a className="button primary" href={`/api/auth/steam/login?redirectTo=${encodeURIComponent(currentPath)}`}>
-        Continue with Steam
-      </a> : null}
-      {config?.google ? <a className="button secondary" href={`/api/auth/google/login?redirectTo=${encodeURIComponent(currentPath)}`}>Continue with Google</a> : null}
-      {!config ? <p>Checking sign-in availability…</p> : !config.steam && !config.google ? <p>Account sign-in is currently unavailable. The direct PayPal link below remains an option.</p> : null}
-    </div>
+    <section
+      className="donation-account-card"
+      aria-labelledby="account-support-title"
+    >
+      <div className="donation-route-top">
+        <span className="donation-route-label">Account-linked support</span>
+        <span className="donation-route-icon" aria-hidden="true">
+          <SupportLinkIcon />
+        </span>
+      </div>
+      <h2 id="account-support-title">
+        Keep your support
+        <br />
+        connected to you.
+      </h2>
+      <p>
+        Sign in with Steam or Google to keep verified contributions in your
+        private account history.
+      </p>
+      <ol className="donation-steps">
+        <li>
+          <span>1</span>Sign in
+        </li>
+        <li>
+          <span>2</span>Choose an amount
+        </li>
+        <li>
+          <span>3</span>Confirm with PayPal
+        </li>
+      </ol>
+      <div className="donation-signin-actions">
+        {config?.steam ? (
+          <a
+            className="button primary"
+            href={`/api/auth/steam/login?redirectTo=${encodeURIComponent(currentPath)}`}
+          >
+            Continue with Steam
+          </a>
+        ) : null}
+        {config?.google ? (
+          <a
+            className="button secondary"
+            href={`/api/auth/google/login?redirectTo=${encodeURIComponent(currentPath)}`}
+          >
+            Continue with Google
+          </a>
+        ) : null}
+      </div>
+      {!config ? (
+        <p className="donation-availability" role="status">
+          Checking sign-in availability…
+        </p>
+      ) : !config.steam && !config.google ? (
+        <p className="donation-availability">
+          Account sign-in is currently unavailable. You can still use the direct
+          PayPal option.
+        </p>
+      ) : null}
+      <div className="donation-record-note">
+        <SupportNoteIcon />
+        <p>
+          One account, a private record of your support. External receipts can
+          be reviewed through <a href="/contact">our contact page</a>.
+        </p>
+      </div>
+    </section>
   );
 }
 
@@ -227,48 +289,247 @@ export default function DonateSupportClient() {
     };
   }, [config, accountKey, amount, focus, refresh, availableMode, sdkRetry]);
 
-  if (loading) return <p role="status">Checking your account…</p>;
+  if (loading)
+    return (
+      <section
+        className="donation-account-card donation-loading"
+        aria-busy="true"
+      >
+        <p className="eyebrow">Account-linked support</p>
+        <h2>Finding your account…</h2>
+        <p role="status">Checking your sign-in and support options.</p>
+      </section>
+    );
   if (!accountUser) {
     return <LoginCallout currentPath="/donate" config={authConfig} />;
   }
 
   return (
     <>
-    <section className="content-card support-checkout" aria-labelledby="support-checkout-title">
-      <p className="eyebrow">Account-linked support</p>{config?.environment === 'sandbox' ? <p className="legal-draft-note">Sandbox checkout: test payments only. These do not count as live support or paid benefits.</p> : null}<h2 id="support-checkout-title">Choose how you’d like to help</h2>
-      <p>Signed in as {accountUser.personaname || accountUser.name || 'Community Pilot'} through {steamUser ? 'Steam' : 'Google'}. Contributions support the whole project; suggested amounts are not purchases of a specific item.</p>
-      <div className="support-mode-switcher" aria-label="Contribution frequency">
-        <button type="button" className={`support-mode-button ${availableMode === 'donation' ? 'active' : ''}`} aria-pressed={availableMode === 'donation'} onClick={() => setCheckoutMode('donation')}>One-time contribution</button>
-        <button type="button" className={`support-mode-button ${availableMode === 'subscription' ? 'active' : ''}`} aria-pressed={availableMode === 'subscription'} onClick={() => setCheckoutMode('subscription')} disabled={!config?.subscriptionEnabled || !steamUser}>Monthly support</button>
-      </div>
-      {availableMode === 'donation' ? <>
-        <div className="support-amounts" aria-label="Suggested contribution amounts">{['5.00', '15.00', '30.00'].map((value) => <button key={value} type="button" className={`button ${amount === value ? 'primary' : 'secondary'}`} aria-pressed={amount === value} onClick={() => setAmount(value)}>{Number(value)} {config?.currency || 'USD'}</button>)}</div>
-        <label className="donation-field"><span>Your amount ({config?.currency || 'USD'})</span><input value={amount} onChange={(event) => setAmount(event.target.value)} inputMode="decimal" type="number" min={amountStep} max="10000" step={amountStep} aria-describedby="support-amount-help" /></label>
-        <label className="donation-field"><span>Area you’d like to support</span><select value={focus} onChange={(event) => setFocus(event.target.value)}>{Object.entries(SUPPORT_FOCUS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
-        <p className="muted">This records your preference. Contributions remain available across project needs.</p>
-        <p className="muted" id="support-amount-help">Choose any amount from 0.01 to 10,000. Review the currency and final total in PayPal before approving.</p>
-        {!validAmount ? <p role="alert">Enter a valid contribution amount before continuing.</p> : null}
-      </> : <div className="donate-note-box"><strong>{config.monthlyPlan.amount} {config.monthlyPlan.currency} per month</strong><p>Renews monthly until cancelled. Cancel through PayPal or the account controls below. Review the full billing terms in PayPal before approval.</p></div>}
-      {!config ? <p className="muted">Checking account-linked checkout availability…</p> : !config.configured ? <p className="muted">Account-linked checkout is currently unavailable. Please return later or contact support; no payment has been submitted.</p> : null}
-      {!steamUser ? <p className="muted">Monthly subscription management currently requires Steam. Your Google account can keep one-time contributions.</p> : null}
-      {config && !config.subscriptionEnabled ? <p className="muted">Monthly support is currently unavailable. One-time support remains an option.</p> : null}
-      {config?.configured ? <div className="paypal-live-shell">
-        <div ref={orderContainerRef} hidden={availableMode !== 'donation' || !validAmount} />
-        <div ref={subscriptionContainerRef} hidden={availableMode !== 'subscription'} />
-      </div> : null}
-      {config?.configured && sdkStatus === 'loading' ? <p role="status">Loading secure PayPal checkout…</p> : null}
-      {config?.configured && sdkStatus === 'error' ? <button className="button secondary" type="button" onClick={() => { setStatus(''); setSdkRetry(value => value + 1); }}>Retry PayPal checkout</button> : null}
-      {status ? <p className="support-link-status" role="status">{status}</p> : null}
-      <details className="support-account-details"><summary>Receipts and subscription management</summary>
-        <p>Payment history is stored against your verified account and remains available across devices.</p><p>{linkedSupportReceipt ? 'A verified support receipt is linked to this Steam account.' : 'No verified receipt is linked yet.'}</p>
-        {paypalReference ? <p className="directory-address">Reference: {paypalReference}</p> : null}
-        <p className="muted">Verified receipt cookies remain on this device for up to {SUPPORT_RECEIPT_MAX_AGE_DAYS} days. Account-linked server records may be retained separately.</p>
-        {activeSubscriptionIdentifier ? <p className="directory-address">Subscription: {activeSubscriptionIdentifier}</p> : null}
-        <button type="button" className="button secondary" disabled={!canCancelSubscription || cancellingSubscription} onClick={cancelSubscription}>{cancellingSubscription ? 'Cancelling…' : 'Cancel PayPal subscription'}</button>
-        <p className="muted">Cancellation stops future billing once confirmed. For completed contributions, <a href="/contact">request billing or refund help</a>. Stopping play or clearing browser storage does not cancel recurring billing.</p>
-      </details>
-    </section>
-    <ContributionHistory key={`${steamUser ? 'steam:' + steamUser.steamid : 'google:' + googleUser.sub}:${historyRevision}`} />
+      <section
+        className="donation-account-card support-checkout"
+        aria-labelledby="support-checkout-title"
+      >
+        <div className="donation-route-top">
+          <span className="donation-route-label">Account-linked support</span>
+          <span className="donation-route-icon" aria-hidden="true">
+            <SupportLinkIcon />
+          </span>
+        </div>
+        {config?.environment === "sandbox" ? (
+          <p className="legal-draft-note">
+            Sandbox checkout: test payments only. These do not count as live
+            support or paid benefits.
+          </p>
+        ) : null}
+        <h2 id="support-checkout-title">Choose your contribution</h2>
+        <p className="donation-signed-in">
+          Signed in as{" "}
+          {accountUser.personaname || accountUser.name || "Community Pilot"}{" "}
+          through {steamUser ? "Steam" : "Google"}. Your verified contributions
+          stay with this account.
+        </p>
+        <div
+          className="support-mode-switcher"
+          aria-label="Contribution frequency"
+        >
+          <button
+            type="button"
+            className={`support-mode-button ${availableMode === "donation" ? "active" : ""}`}
+            aria-pressed={availableMode === "donation"}
+            onClick={() => setCheckoutMode("donation")}
+          >
+            Give once
+          </button>
+          <button
+            type="button"
+            className={`support-mode-button ${availableMode === "subscription" ? "active" : ""}`}
+            aria-pressed={availableMode === "subscription"}
+            onClick={() => setCheckoutMode("subscription")}
+            disabled={!config?.subscriptionEnabled || !steamUser}
+          >
+            Monthly support
+          </button>
+        </div>
+        {availableMode === "donation" ? (
+          <>
+            <div
+              className="support-amounts"
+              aria-label="Suggested contribution amounts"
+            >
+              {["5.00", "10.00", "25.00", "50.00"].map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={`button ${amount === value ? "primary" : "secondary"}`}
+                  aria-label={`Select ${Number(value)} ${config?.currency || "USD"}`}
+                  aria-pressed={amount === value}
+                  onClick={() => setAmount(value)}
+                >
+                  <strong>{Number(value)}</strong>
+                  <small>{config?.currency || "USD"}</small>
+                </button>
+              ))}
+            </div>
+            <div className="donation-checkout-fields">
+              <label className="donation-field">
+                <span>Your amount ({config?.currency || "USD"})</span>
+                <input
+                  value={amount}
+                  onChange={(event) => setAmount(event.target.value)}
+                  inputMode="decimal"
+                  type="number"
+                  min={amountStep}
+                  max="10000"
+                  step={amountStep}
+                  aria-describedby="support-amount-help"
+                />
+              </label>
+              <label className="donation-field">
+                <span>Area you’d like to support</span>
+                <select
+                  value={focus}
+                  onChange={(event) => setFocus(event.target.value)}
+                >
+                  {Object.entries(SUPPORT_FOCUS).map(([key, label]) => (
+                    <option key={key} value={key}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <p className="muted">
+              Your chosen area is recorded as a preference. Contributions
+              support the whole project.
+            </p>
+            <p className="muted" id="support-amount-help">
+              Choose any amount from {amountStep} to 10,000. Review the currency
+              and final total in PayPal before approving.
+            </p>
+            {!validAmount ? (
+              <p role="alert">
+                Enter a valid contribution amount before continuing.
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <div className="donate-note-box">
+            <strong>
+              {config.monthlyPlan.amount} {config.monthlyPlan.currency} per
+              month
+            </strong>
+            <p>
+              Renews monthly until cancelled. Cancel through PayPal or the
+              account controls below. Review the full billing terms in PayPal
+              before approval.
+            </p>
+          </div>
+        )}
+        {!config ? (
+          <p className="muted">
+            Checking account-linked checkout availability…
+          </p>
+        ) : !config.configured ? (
+          <p className="muted">
+            Account-linked checkout is currently unavailable. Please return
+            later or contact support; no payment has been submitted.
+          </p>
+        ) : null}
+        {!steamUser ? (
+          <p className="muted">
+            Monthly subscription management currently requires Steam. Your
+            Google account can keep one-time contributions.
+          </p>
+        ) : null}
+        {config && !config.subscriptionEnabled ? (
+          <p className="muted">
+            Monthly support is currently unavailable. One-time support remains
+            an option.
+          </p>
+        ) : null}
+        {config?.configured ? (
+          <div className="paypal-live-shell">
+            <div
+              ref={orderContainerRef}
+              hidden={availableMode !== "donation" || !validAmount}
+            />
+            <div
+              ref={subscriptionContainerRef}
+              hidden={availableMode !== "subscription"}
+            />
+          </div>
+        ) : null}
+        {config?.configured && sdkStatus === "loading" ? (
+          <p role="status">Loading secure PayPal checkout…</p>
+        ) : null}
+        {config?.configured && sdkStatus === "error" ? (
+          <button
+            className="button secondary"
+            type="button"
+            onClick={() => {
+              setStatus("");
+              setSdkRetry((value) => value + 1);
+            }}
+          >
+            Retry PayPal checkout
+          </button>
+        ) : null}
+        {status ? (
+          <p className="support-link-status" role="status">
+            {status}
+          </p>
+        ) : null}
+        <details className="support-account-details">
+          <summary>Receipts and subscription management</summary>
+          <p>
+            Payment history is stored against your verified account and remains
+            available across devices.
+          </p>
+          <p>
+            {linkedSupportReceipt
+              ? `A verified support receipt is linked to this ${steamUser ? "Steam" : "Google"} account.`
+              : "No verified receipt is linked yet."}
+          </p>
+          {paypalReference ? (
+            <p className="directory-address">Reference: {paypalReference}</p>
+          ) : null}
+          <p className="muted">
+            Verified receipt cookies remain on this device for up to{" "}
+            {SUPPORT_RECEIPT_MAX_AGE_DAYS} days. Account-linked server records
+            may be retained separately.
+          </p>
+          {activeSubscriptionIdentifier ? (
+            <p className="directory-address">
+              Subscription: {activeSubscriptionIdentifier}
+            </p>
+          ) : null}
+          <button
+            type="button"
+            className="button secondary"
+            disabled={!canCancelSubscription || cancellingSubscription}
+            onClick={cancelSubscription}
+          >
+            {cancellingSubscription
+              ? "Cancelling…"
+              : "Cancel PayPal subscription"}
+          </button>
+          <p className="muted">
+            Cancellation stops future billing once confirmed. For completed
+            contributions, <a href="/contact">request billing or refund help</a>
+            . Stopping play or clearing browser storage does not cancel
+            recurring billing.
+          </p>
+        </details>
+        <details className="donation-history">
+          <summary>
+            Your contribution history <span>Private account records</span>
+          </summary>
+          <ContributionHistory
+            key={`${steamUser ? "steam:" + steamUser.steamid : "google:" + googleUser.sub}:${historyRevision}`}
+          />
+        </details>
+      </section>
     </>
   );
 }
