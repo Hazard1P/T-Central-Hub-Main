@@ -36,6 +36,12 @@ Pulses appear immediately in solo/shared flight. Shared shots are accepted only 
 
 Phone controls support simultaneous captured pointers. Releasing or cancelling one finger leaves other held controls active. Opening a panel, hiding controls, switching sessions or losing focus clears held flight inputs. Phone Auto quality bounds pixel ratio and debris density and disables bloom. Browser emulation validates interaction/layout, but physical iOS Safari and Android device performance still needs a device check.
 
+## Sound
+
+Ship firing plays a short synthesized pulse synchronized with local shots. A layered, low-frequency universe hum runs quietly during active flight. Settings → Sound offers separate firing-effects and hum sliders plus mute; defaults are 45% effects and 3% hum. Preferences stay on this device under `tcentral_audio_v1` and are independent of account or payment records.
+
+The Web Audio graph starts after a tap/key press, pauses when the tab is hidden or shared flight disconnects, and closes on leaving the simulation. Zero hum disables the hum completely; mute suspends audio processing. Pulse voices are bounded and released after each shot. No audio downloads or third-party sound licenses are required. Browsers without Web Audio keep flight available and disable sound controls. Phone browser emulation is checked; physical iOS/Android audio routing still needs device validation.
+
 ## Distributed cosmic map
 
 `lib/cosmicLayout.js` supplies static star, black hole and Dyson coordinates, shared by rendering, waypoints and gravity. Most cosmic anchors are ten times farther from spawn than the original layout; the Sun has its own distant global center. Solar body positions come from `lib/universeFlight.js` and live ephemerides. The nearby fictional worlds and account-bound Prayer Seed encounter retain their locations. The camera may change its rendering origin, but the ship's global position and multiplayer room remain unchanged.

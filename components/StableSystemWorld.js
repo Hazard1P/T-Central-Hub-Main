@@ -34,6 +34,7 @@ import PrayerSeedRelic from '@/components/PrayerSeedRelic';
 import PrayerSeedEncounter from '@/components/PrayerSeedEncounter';
 import useShipControls from '@/components/useShipControls';
 import useShipWeapons from '@/components/useShipWeapons';
+import useShipAudio from '@/components/useShipAudio';
 import useShipEconomy from '@/components/useShipEconomy';
 import MiningField from '@/components/MiningField';
 import { miningGeometry } from '@/lib/shipEconomy';
@@ -965,7 +966,8 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   }
 
   const economy = useShipEconomy({ session: serverSession, roomName: activeRoom, shared: lobbyMode === 'hub' });
-  const weapons = useShipWeapons({ session: serverSession, roomName: activeRoom, shared: lobbyMode === 'hub', onMineShot: economy.mineShot });
+  const sound = useShipAudio({ enabled: lobbyMode !== 'hub' || serverStatus.connected });
+  const weapons = useShipWeapons({ session: serverSession, roomName: activeRoom, shared: lobbyMode === 'hub', onMineShot: economy.mineShot, onFireSound: sound.fire });
 
   const progressIdentityKey = identity.id + ':' + identity.kind + ':' + Boolean(identity.authenticated);
   const [progress, setProgress] = useState(defaultProgressState());
@@ -1125,7 +1127,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           onNavigate={() => navigate('cruise')} onFace={() => navigate('face')} cruising={cruising} onCancelCruise={cancelCruise}
           visited={progress.visitedNodes} lobbyMode={lobbyMode} onModeChange={onModeChange} roomName={roomName} onRoomChange={setRoomName}
           combatEvents={authoritativeState.events || []} pilots={authoritativeState.players || []} selfId={serverSession?.id} serverStatus={serverStatus}
-          graphicsQuality={graphicsQuality} onGraphicsChange={setGraphicsQuality} dampers={flightConfig.inertialDampers}
+          sound={sound} graphicsQuality={graphicsQuality} onGraphicsChange={setGraphicsQuality} dampers={flightConfig.inertialDampers}
           onDampersChange={() => setFlightConfig((current) => ({ ...current, inertialDampers: !current.inertialDampers }))}
           economy={economy} onMiningApproach={approachRock} onMiningWaypoint={() => flyTo(destinations.find(node => node.key === 'earth-mining-field'))} onEarthWaypoint={() => flyTo(destinations.find(node => node.key === 'solar-earth'))}
           onRespawn={respawn} respawning={respawning}

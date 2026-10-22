@@ -178,7 +178,7 @@ We associate provider identifiers with account profiles, login events and progre
 
 The simulation processes room/session identifiers, display names, authentication status, ship positions and velocities, directional inputs, weapon events, nearby destinations, quantum/flight signatures, discovery records and progression or in-game credit values. The server uses input and timing records to validate play and resist replay or impersonation.
 
-Browser storage may keep local progress, presence snapshots, panel settings and graphics preferences. Account-linked progression and event ledgers may be stored server-side when durable storage is configured. A game identifier or hash remains personal information when it can be linked back to an account.
+Browser storage may keep local progress, presence snapshots, panel settings and graphics/sound preferences. Account-linked progression and event ledgers may be stored server-side when durable storage is configured. A game identifier or hash remains personal information when it can be linked back to an account.
 
 ### 4. Optional private seed text and intelligence profiles
 
@@ -220,7 +220,7 @@ The implemented service does not offer a personal-data marketplace or an adverti
 
 Steam and Google sign-in use encrypted HttpOnly session cookies with a seven-day configured lifetime, subject to sign-out and browser behavior. Temporary authentication/redirect cookies support sign-in; Google state cookies are configured for ten minutes. The guest pilot cookie is a session cookie without an explicit persistent expiry; browser session restoration can affect how long it remains.
 
-Local storage includes the document-review acknowledgement and revision, visual quality, panel preferences, local progression and presence-related values. It normally remains until cleared by you or the application and is not protected like an HttpOnly cookie. Shared devices can expose locally stored information to other people using the same browser profile.
+Local storage includes the document-review acknowledgement and revision, visual quality, sound settings, panel preferences, local progression and presence-related values. It normally remains until cleared by you or the application and is not protected like an HttpOnly cookie. Shared devices can expose locally stored information to other people using the same browser profile.
 
 You can clear site storage, block cookies and sign out through the browser or supported account controls. This may reset preferences or guest progress and prevent sign-in features. It does not automatically erase server records or cancel PayPal billing.
 

@@ -8,7 +8,7 @@ import { isInteractiveTarget } from '@/lib/flightInput';
 import { formatSpaceDistance } from '@/lib/universeSpace';
 import { gameEngine } from '@/lib/gameEngine';
 
-export default function ExplorationHud({ telemetry, destinations, destination, onSelect, onNavigate, onFace, cruising, onCancelCruise, visited, lobbyMode, onModeChange, roomName, onRoomChange, pilots, selfId, serverStatus, graphicsQuality, onGraphicsChange, dampers, onDampersChange, onRecenter, onRespawn, respawning, notice, onPanelChange, seedCount = 0, economy, onMiningWaypoint, onEarthWaypoint, onMiningApproach, combatEvents = [] }) {
+export default function ExplorationHud({ telemetry, destinations, destination, onSelect, onNavigate, onFace, cruising, onCancelCruise, visited, lobbyMode, onModeChange, roomName, onRoomChange, pilots, selfId, serverStatus, graphicsQuality, onGraphicsChange, dampers, onDampersChange, onRecenter, onRespawn, respawning, notice, onPanelChange, seedCount = 0, economy, onMiningWaypoint, onEarthWaypoint, onMiningApproach, combatEvents = [], sound }) {
   const [panel, setPanel] = useState(null);
   const [filter, setFilter] = useState('');
   const [roomDraft, setRoomDraft] = useState(roomName);
@@ -96,6 +96,13 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
           {panel === 'shipyard' && economy ? <ShipyardPanel economy={economy} onMiningWaypoint={() => { onMiningWaypoint(); setPanel(null); }} onEarthWaypoint={() => { onEarthWaypoint(); setPanel(null); }} onMiningApproach={(id) => { onMiningApproach(id); setPanel(null); }} /> : null}
           {panel === 'settings' ? <>
             <label className="exploration-setting">Visual quality<select value={graphicsQuality} onChange={(event) => onGraphicsChange(event.target.value)}><option value="auto">Auto</option><option value="high">High</option><option value="performance">Performance</option></select></label>
+            {sound ? <fieldset className="exploration-audio" disabled={!sound.supported} aria-describedby="ship-audio-help">
+              <legend>Sound</legend>
+              <label className="exploration-check"><input type="checkbox" checked={sound.settings.muted} onChange={(event) => sound.change({ muted: event.target.checked })} />Mute all sound</label>
+              <label className="exploration-volume" htmlFor="ship-effects-volume"><span>Firing effects <output>{Math.round(sound.settings.effects * 100)}%</output></span><input id="ship-effects-volume" type="range" min="0" max="100" step="1" value={Math.round(sound.settings.effects * 100)} disabled={sound.settings.muted} onChange={(event) => sound.change({ effects: Number(event.target.value) / 100 })} /></label>
+              <label className="exploration-volume" htmlFor="ship-hum-volume"><span>Universe hum <output>{Math.round(sound.settings.hum * 100)}%</output></span><input id="ship-hum-volume" type="range" min="0" max="100" step="1" value={Math.round(sound.settings.hum * 100)} disabled={sound.settings.muted} onChange={(event) => sound.change({ hum: Number(event.target.value) / 100 })} /></label>
+              <p className="exploration-help" id="ship-audio-help">{sound.supported ? 'The hum starts very quietly. Sound begins after a tap or key press and pauses in background tabs. Your choices are saved on this device.' : 'Sound is unavailable in this browser. Flight controls still work.'}</p>
+            </fieldset> : null}
             <label className="exploration-check"><input type="checkbox" checked={dampers} onChange={onDampersChange} />Brake automatically when thrust is released</label>
             <div className="exploration-actions"><button className="button secondary" onClick={onRecenter}>Recenter view</button><button className="button secondary" onClick={onRespawn} disabled={respawning}>{respawning ? 'Returning…' : economy?.data?.wallet?.cargo ? 'Return to Earth · discard cargo' : 'Return to Earth'}</button></div>
             <p className="exploration-help">Emergency return discards carried ore. Credits and installed upgrades remain saved.</p>
