@@ -1,4 +1,5 @@
 'use client';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -19,7 +20,7 @@ export default function SystemLauncher({ onEnter }) {
     if (status) setAuthMessage(status === 'linked' ? 'Account connected. Ready for launch.' : 'Sign-in did not finish. Please try again.');
     const roomName = room || process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main';
     let active = true;
-    const checkLobby = () => fetch('/api/multiplayer/lobby?room=' + encodeURIComponent(roomName), { cache:'no-store', signal:AbortSignal.timeout(6000) }).then(r => r.json()).then(data => { if (active) setLobby(data); }).catch(() => { if (active) setLobby({ok:false}); });
+    const checkLobby = () => fetchWithTimeout('/api/multiplayer/lobby?room=' + encodeURIComponent(roomName), { cache:'no-store' }, 6000).then(r => r.json()).then(data => { if (active) setLobby(data); }).catch(() => { if (active) setLobby({ok:false}); });
     checkLobby();
     const timer = window.setInterval(checkLobby,10000);
     fetch('/api/auth/config', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(setConfig).catch(() => {});
@@ -44,7 +45,7 @@ export default function SystemLauncher({ onEnter }) {
           </section>
           <aside className="launch-account" aria-labelledby="launch-account-title">
             <span className="entry-panel-kicker">Your pilot</span>
-            <h2 id="launch-account-title">{loading ? 'Checking session…' : user ? (steamUser?.personaname || googleUser?.name || 'Pilot') : 'Ready, explorer?'}</h2>
+            <h2 id="launch-account-title">{loading ? 'Checking session…' : user ? (steamUser?.personaname || googleUser?.gamertag || 'Pilot') : 'Ready, explorer?'}</h2>
             <p>{user ? `Connected with ${steamUser ? 'Steam' : 'Google'}. Your account stays with you across flights.` : 'Guest flights are open. Sign in to keep account progress with your pilot.'}</p>
             {sessionError ? <p role="alert">{sessionError} <button onClick={refresh} type="button">Retry</button></p> : null}
             {authMessage ? <p role="status">{authMessage}</p> : null}

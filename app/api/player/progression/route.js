@@ -1,3 +1,4 @@
+import { resolveAccountUsername } from '@/lib/server/accountUsernameStore';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { buildAccountSnapshot, defaultProgressState, isOlderProgressSnapshot, normalizeProgressState } from '@/lib/accountProgression';
@@ -27,12 +28,12 @@ function resolveIdentity(rawIdentity = null, authContext = null) {
   };
 }
 
-function resolveAuthenticatedSession() {
-  return resolveGameAuthContext(cookies());
+async function resolveAuthenticatedSession() {
+  return resolveAccountUsername(resolveGameAuthContext(cookies()));
 }
 
 export async function GET(request) {
-  const authContext = resolveAuthenticatedSession();
+  const authContext = await resolveAuthenticatedSession();
   const { searchParams } = new URL(request.url);
   const rawIdentity = {
     id: searchParams.get('id'),
@@ -50,7 +51,7 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const authContext = resolveAuthenticatedSession();
+  const authContext = await resolveAuthenticatedSession();
   const body = await request.json().catch(() => null);
   const identity = resolveIdentity(body?.identity, authContext);
   const snapshot = buildAccountSnapshot({ identity, steamUser: authContext.steamUser, progress: normalizeProgressState(body?.progress), savedAt: body?.savedAt });

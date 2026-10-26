@@ -1,4 +1,6 @@
 'use client';
+import { createRequestId } from '@/lib/requestId';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { MINING_COOLDOWN } from '@/lib/shipEconomy';
 
@@ -26,9 +28,9 @@ export default function useShipEconomy({ session, roomName, shared }) {
     busy.current = key;
     if (action !== 'state') setPending(true);
     try {
-      const response = await fetch('/api/game/economy', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(8000),
-        body: JSON.stringify({ ...fields, action, roomName, id: session.id, token: session.token, requestId: crypto.randomUUID() }),
+      const response = await fetchWithTimeout('/api/game/economy', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...fields, action, roomName, id: session.id, token: session.token, requestId: createRequestId() }),
       });
       const data = await response.json();
       if (current.current !== key) return;

@@ -1,4 +1,5 @@
 'use client';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { createPresenceSnapshot, reducePresenceSnapshots, resolveMultiplayerIdentity } from '@/lib/multiplayerSyncEngine';
@@ -40,7 +41,7 @@ export function SteamSessionProvider({ children }) {
   const refresh = useCallback(async () => {
     const generation = ++refreshGeneration.current;
     const read = async (url) => {
-      const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(10000) });
+      const response = await fetchWithTimeout(url, { cache: 'no-store' }, 10000);
       if (!response.ok) throw new Error('Session request failed');
       return response.json();
     };

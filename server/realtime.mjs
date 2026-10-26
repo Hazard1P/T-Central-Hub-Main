@@ -78,6 +78,8 @@ export function createRealtimeServer({
         { roomName, id, token } = body;
       let result;
       if (url.pathname === "/state") result = world.state(roomName, id, token);
+      else if (url.pathname === "/identity")
+        result = world.updateIdentity(id, body.displayName);
       else if (url.pathname === "/disconnect") {
         result = world.disconnect(roomName, id, token);
         if (result.ok)

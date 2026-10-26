@@ -1,6 +1,9 @@
 'use client';
 
 
+import useSimulationViewport from '@/components/useSimulationViewport';
+import AdaptiveSimulationResolution from '@/components/AdaptiveSimulationResolution';
+import { simulationPixelRatio } from '@/lib/simulationDisplay';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Html, Sparkles, Stars } from '@react-three/drei';
 import * as THREE from 'three';
@@ -56,28 +59,6 @@ const FLIGHT_PRESETS = Object.freeze({
   freeFlight: { thrustScale: 1.45, inertialDampers: false, chaseZoom: 1.24, routeAssist: false, mouseLook: true, sixAxis: true }
 });
 
-function useDeviceTier() {
-  const [tier, setTier] = useState({ isMobile: false, dpr: [1, 1.6], stars: 7600, sparkles: 220, meteors: 18 });
-
-  useEffect(() => {
-    const update = () => {
-      const isMobile = window.matchMedia('(max-width: 820px), (pointer: coarse)').matches;
-      setTier({
-        isMobile,
-        reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-        dpr: isMobile ? [1, 1.2] : [1, 1.6],
-        stars: isMobile ? 3600 : 7600,
-        sparkles: isMobile ? 120 : 220,
-        meteors: isMobile ? 8 : 18,
-      });
-    };
-    update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
-  }, []);
-
-  return tier;
-}
 
 function RouteBeam({ from, to, color = '#67dfff', arc = 1.8, opacity = 0.18, radius = 0.04 }) {
   const points = useMemo(() => {
@@ -880,14 +861,16 @@ function StableSceneContent({ simRuntimeClient, graph, displayNodes, onSelect, s
 
 export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null, onSelectionChange = null, onModeChange, initialSolarBody = null }) {
   const solarClock = useSolarClock();
-  const deviceTier = useDeviceTier();
+  const deviceTier = useSimulationViewport();
   const [graphicsQuality, setGraphicsQuality] = useState(() => {
     try { const saved = window.localStorage.getItem('tcentral_visual_quality'); return ['auto', 'high', 'performance'].includes(saved) ? saved : 'auto'; } catch { return 'auto'; }
   });
   useEffect(() => { try { window.localStorage.setItem('tcentral_visual_quality', graphicsQuality); } catch {} }, [graphicsQuality]);
-  const graphicsProfile = useMemo(() => getGraphicsProfile(graphicsQuality, deviceTier), [graphicsQuality, deviceTier]);
+  const graphicsProfile = useMemo(() => getGraphicsProfile(graphicsQuality, { isMobile: deviceTier.isMobile, reducedMotion: deviceTier.reducedMotion }), [graphicsQuality, deviceTier.isMobile, deviceTier.reducedMotion]);
+  const [renderDpr, setRenderDpr] = useState(() => simulationPixelRatio({ ...deviceTier, quality: graphicsQuality }));
+  const displayDpr = Math.min(renderDpr, simulationPixelRatio({ ...deviceTier, quality: graphicsQuality }));
   const { googleUser, refresh, universe } = useSteamSession();
-  const identity = useMemo(() => resolveMultiplayerIdentity(steamUser, googleUser), [steamUser?.steamid, steamUser?.personaname, googleUser?.sub, googleUser?.name]);
+  const identity = useMemo(() => resolveMultiplayerIdentity(steamUser, googleUser), [steamUser?.steamid, steamUser?.personaname, googleUser?.sub, googleUser?.gamertag]);
   const [roomName, setRoomName] = useState(() => {
     const requested = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('room') : '';
     return isValidRoomName(requested) ? requested : process.env.NEXT_PUBLIC_MULTIPLAYER_ROOM || 'tcentral-main';
@@ -1132,7 +1115,10 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
 
 
   return (
-    <div className="stable-system-page polished-shell cinematic-system-page exploration-world">
+    <div className="stable-system-page polished-shell cinematic-system-page exploration-world" style={{
+      '--simulation-width': `${deviceTier.width}px`, '--simulation-height': `${deviceTier.height}px`,
+      '--simulation-left': `${deviceTier.left}px`, '--simulation-top': `${deviceTier.top}px`,
+    }}>
       {hudVisible ? <div className="stable-system-hud" inert={prayerOpen ? '' : undefined}>
         <ExplorationHud telemetry={telemetry} destinations={destinations} destination={destination} onSelect={handleSelect}
           onNavigate={() => navigate('cruise')} onFace={() => navigate('face')} cruising={cruising} onCancelCruise={cancelCruise}
@@ -1148,7 +1134,8 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       {serverStatus.connected && combatSelf?.alive === false ? <aside className="flight-connection-gate combat-respawn" role="status"><p className="eyebrow">Ship destroyed</p><h2>Returning to Earth…</h2><p>Respawn in {Math.max(0, Math.ceil((combatSelf.respawnAt - Date.now()) / 1000))}s. Carried ore is lost. Saved credits and upgrades remain.</p></aside> : null}
       {lobbyMode === 'hub' && !serverStatus.connected ? <aside className="flight-connection-gate" role="status"><p className="eyebrow">Shared universe</p><h2>{serverStatus.label === 'Connecting' ? 'Joining your crew…' : serverStatus.label}</h2><p>{serverStatus.message || 'Waiting for the shared server before flight controls become active.'}</p>{serverStatus.population ? <p>{serverStatus.population.playerCount} / {serverStatus.population.capacity} pilots</p> : null}<div className="exploration-actions"><button onClick={() => setSpawnTick(tick=>tick+1)}>Retry now</button><a href="/">Back to hub</a></div></aside> : null}
       <div className="stable-world-canvas polished-canvas cinematic-polished-canvas sim-zone-center-canvas" aria-label="Explorable universe" inert={prayerOpen ? '' : undefined}>
-        <Canvas camera={cameraConfig} dpr={graphicsProfile.dpr} gl={SIM_RENDERER_OPTIONS}>
+        <Canvas camera={cameraConfig} dpr={displayDpr} gl={SIM_RENDERER_OPTIONS}>
+          <AdaptiveSimulationResolution quality={graphicsQuality} viewport={deviceTier} onDprChange={setRenderDpr} />
           <UniverseFrame>
           <MiningField profile={graphicsProfile} utcMs={solarClock.utcMs} rocks={economy.data?.rocks} />
           <PrayerSeedRelic telemetryRef={telemetryRef} animate={graphicsProfile.animate} />

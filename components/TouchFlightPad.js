@@ -54,9 +54,13 @@ export default function TouchFlightPad({ onInputChange }) {
     const clear = () => { held.current.clear(); publish(); };
     const visibility = () => { if (document.hidden) clear(); };
     window.addEventListener('blur', clear);
+    window.addEventListener('orientationchange', clear);
+    window.addEventListener('pagehide', clear);
     document.addEventListener('visibilitychange', visibility);
     return () => {
       window.removeEventListener('blur', clear);
+      window.removeEventListener('orientationchange', clear);
+      window.removeEventListener('pagehide', clear);
       document.removeEventListener('visibilitychange', visibility);
       held.current.clear();
       onInputChange(resolveHeldFlightAxes(held.current));

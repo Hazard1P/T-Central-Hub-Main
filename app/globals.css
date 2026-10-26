@@ -7519,6 +7519,15 @@ body:has(.system-entry-screen.phase-in_sim) .global-footer { display: none; }
 .flight-physics-readout dd { margin:0; color:#baf5df; font-variant-numeric:tabular-nums; }
 .touch-flight-pad .touch-flight-brake { color:#baf5df; border-color:#baf5df66; min-height:44px; }
 .touch-flight-pad .touch-flight-brake.is-held { background:#285444; }
+
+.username-card { padding: clamp(1rem, 3vw, 1.75rem); border: 1px solid var(--line); border-radius: 18px; background: rgba(7,17,30,.94); }
+.username-card form { max-width: 34rem; display: grid; gap: .7rem; margin-top: 1.25rem; }
+.username-card input { width: 100%; min-width: 0; padding: .8rem; border: 1px solid #9cc0da66; border-radius: 10px; background: #0c2033; color: #e5f0fa; font: inherit; font-size: 16px; }
+.username-card :is(input,button) { min-height: 44px; }
+.username-card button { justify-self: start; }
+.username-card strong { overflow-wrap: anywhere; }
+.username-card p { line-height: 1.65; }
+.username-error { color: #ffb3a2; }
 .combat-status[data-critical="true"] { border-color:#ff956f99; }
 .combat-status[data-critical="true"] label:last-of-type { color:#ffb192; }
 .shipyard-systems { display:grid; gap:8px; padding:16px; margin-block:16px; border:1px solid #83ebff33; border-radius:10px; background:#07152288; font-size:12px; }
@@ -7693,3 +7702,16 @@ body:has(.system-entry-screen.phase-in_sim) .global-footer { display: none; }
 
 .donation-note-icon { flex-shrink:0; margin-top:3px; }
 .donation-faq a svg { vertical-align:middle; width:12px; margin-left:3px; }
+
+/* Size the complete play surface to the browser's visible area, including mobile
+   toolbar/keyboard changes. The transform anchors fixed HUD children here too. */
+.stable-system-page.exploration-world { position: fixed; min-height: 0; min-width: 0; max-width: none; padding: 0; inset: auto; left: var(--simulation-left, 0px); top: var(--simulation-top, 0px); width: var(--simulation-width, 100vw); height: var(--simulation-height, 100dvh); overflow: hidden; transform: translateZ(0); }
+.exploration-world .stable-world-canvas { inset: 0; width: 100%; height: 100%; min-height: 0; }
+.exploration-world .exploration-panel { max-height: calc(var(--simulation-height, 100dvh) - 140px - env(safe-area-inset-top)); }
+.exploration-world nav[aria-label="Flight tools"] { max-width: 100%; flex-wrap: wrap; }
+body:has(.system-entry-screen.phase-in_sim) { overscroll-behavior: none; }
+@media (orientation: landscape) and (max-height: 600px) {
+  .exploration-world .exploration-panel { max-height: calc(var(--simulation-height, 100dvh) - 90px - env(safe-area-inset-top)); }
+}
+/* Provider names and chosen tags may be long; keep account headings readable on phones. */
+#launch-account-title, #home-account-title, .steam-login-meta strong, .exploration-pilots li > span { overflow-wrap: anywhere; min-width: 0; }

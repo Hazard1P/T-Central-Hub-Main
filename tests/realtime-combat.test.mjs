@@ -524,3 +524,23 @@ test("the authoritative service brakes smoothly when a fast ship enters a precis
     PHYSICS_VERSION,
   );
 });
+
+test('a verified new username refreshes the existing flight without resetting its token or progress', t=>{
+  const {world,a,shooter}=fixture(t);shooter.kills=3;
+  const position=[...shooter.position];
+  world.state('shared',a.player.id,a.token);
+  const joined=world.join('shared',{id:a.player.id,displayName:'Updated_Tag'});
+  assert.equal(joined.player.displayName,'Updated_Tag');assert.equal(joined.token,a.token);
+  assert.deepEqual(joined.player.position,position.map(v=>Number(v.toFixed(4))));
+  assert.equal(joined.player.kills,3);
+});
+
+test('trusted account metadata updates keep active flight credentials and movement intact',t=>{
+  const {world}=fixture(t);const joined=world.join('shared',{id:'google:rename',displayName:'Before'});
+  const player=world.find('shared','google:rename',joined.token);const position=[...player.position];player.kills=4;
+  world.state('shared',player.id,player.token);
+  assert.equal(world.updateIdentity(player.id,'After').updated,1);
+  const after=world.state('shared',player.id,joined.token).state.players.find(p=>p.id===player.id);
+  assert.equal(after.displayName,'After');assert.equal(after.kills,4);assert.deepEqual(after.position,position.map(v=>Number(v.toFixed(4))));
+  assert.equal(world.updateIdentity('guest-forged','Spoof').ok,false);
+});

@@ -1,3 +1,4 @@
+import { resolveAccountUsername } from '@/lib/server/accountUsernameStore';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { summarizeCsisDysonState } from '@/lib/csisDysonSphereEngine';
@@ -30,7 +31,7 @@ export async function GET(request) {
   startDysonRingIntegrityService();
 
   const cookieStore = cookies();
-  const authContext = resolveGameAuthContext(cookieStore);
+  const authContext = await resolveAccountUsername(resolveGameAuthContext(cookieStore));
 
   const { searchParams } = new URL(request.url);
   const lobbyMode = resolveLobbyMode(searchParams.get('lobbyMode'));

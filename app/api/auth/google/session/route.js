@@ -1,10 +1,11 @@
+import { resolveAccountUsername } from '@/lib/server/accountUsernameStore';
 export const dynamic = 'force-dynamic';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { resolveGameAuthContext } from '@/lib/auth/resolveGameAuthContext';
 
 export async function GET() {
-  const authContext = resolveGameAuthContext(cookies());
+  const authContext = await resolveAccountUsername(resolveGameAuthContext(cookies()));
 
   return NextResponse.json({
     authenticated: authContext.provider === 'google',

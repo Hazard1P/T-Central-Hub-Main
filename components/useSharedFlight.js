@@ -1,7 +1,7 @@
 "use client";
 
 import { MULTIPLAYER_POLL_MS } from "@/lib/multiplayerCapacity";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useMultiplayerSession } from "@/components/MultiplayerSessionProvider";
 import { PHYSICS_VERSION } from "@/lib/physics/mechanics";
 
@@ -42,6 +42,9 @@ export default function useSharedFlight({
 }) {
   const { setSession, setAuthoritativeState, setServerStatus } =
     useMultiplayerSession();
+  const identityRef = useRef(identity);
+  identityRef.current = identity;
+  const identityId = identity?.id;
 
   useEffect(() => {
     let stopped = false;
@@ -297,7 +300,7 @@ export default function useSharedFlight({
       try {
         if (!session) {
           const { response, data } = await post("connect", {
-            identity,
+            identity: identityRef.current,
             roomName,
             mode: "multi_player",
           });
@@ -429,7 +432,7 @@ export default function useSharedFlight({
     lobbyMode,
     restartTick,
     roomName,
-    identity,
+    identityId,
     telemetryRef,
     inputsRef,
     simRuntimeClient,

@@ -1,3 +1,4 @@
+import { resolveAccountUsername } from '@/lib/server/accountUsernameStore';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { resolveGameAuthContext } from '@/lib/auth/resolveGameAuthContext';
@@ -18,7 +19,7 @@ export async function GET() {
 }
 
 export async function POST(request) {
-  const auth = resolveGameAuthContext(cookies());
+  const auth = await resolveAccountUsername(resolveGameAuthContext(cookies()));
   const body = await request.json().catch(() => null);
   const builtPost = buildHubPostRecord({ body, auth });
 

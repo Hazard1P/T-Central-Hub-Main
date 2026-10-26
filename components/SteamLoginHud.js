@@ -37,7 +37,7 @@ export default function SteamLoginHud() {
               </>
             ) : (
               <>
-                <strong>{googleUser?.name || 'Welcome, explorer'}</strong>
+                <strong>{googleUser?.gamertag || 'Welcome, explorer'}</strong>
                 <small>{googleUser ? 'Signed in with Google' : 'Play as a guest or sign in'}</small>
                 <small className="steam-subtle">Sign in to keep your account connected</small>
               </>

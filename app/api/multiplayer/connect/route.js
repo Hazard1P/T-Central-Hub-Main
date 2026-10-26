@@ -1,3 +1,4 @@
+import { resolveAccountUsername } from '@/lib/server/accountUsernameStore';
 import { hasRealtimeServer, realtimeTicket, requiresRealtimeServer } from '@/lib/server/realtimeBridge';
 import { allowsMemoryMultiplayer } from '@/lib/multiplayerCapacity';
 import { isSameOriginPaymentRequest } from '@/lib/paymentRequest';
@@ -48,7 +49,7 @@ function resolveIdentity(body = {}, authContext, guestSession) {
   if (authContext?.authenticated && scopedAccountId) {
     return {
       id: scopedAccountId,
-      displayName: sanitizeDisplayName(authContext.displayName, 'Pilot'),
+      displayName: String(authContext.displayName || 'Pilot').replace(/[\x00-\x1f\x7f]/g, '').slice(0, 160),
       identityKind: authContext.identityKind || authContext.provider || 'member',
       authenticated: true,
       steamUser: authContext.steamUser,
@@ -144,7 +145,7 @@ export async function POST(request) {
   }
 
   const cookieStore = cookies();
-  const authContext = resolveGameAuthContext(cookieStore);
+  const authContext = await resolveAccountUsername(resolveGameAuthContext(cookieStore));
   const guestSession = authContext.authenticated ? null : resolveGuestPilotSession(cookieStore.get('tcentral_guest_pilot')?.value);
   const identity = resolveIdentity(body, authContext, guestSession);
   if (hasRealtimeServer()) return sessionResponse(realtimeTicket(identity,roomName),guestSession);

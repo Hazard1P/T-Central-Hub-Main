@@ -1,4 +1,5 @@
 'use client';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { solarClockTime, solarDate, SOLAR_TIME_MIN, SOLAR_TIME_MAX } from '@/lib/solarSystem';
@@ -14,7 +15,7 @@ export default function useSolarClock() {
     async function sync() {
       const start = Date.now();
       try {
-        const response = await fetch('/api/astronomy/time', { cache: 'no-store', signal: AbortSignal.any([controller.signal, AbortSignal.timeout(8000)]) });
+        const response = await fetchWithTimeout('/api/astronomy/time', { cache: 'no-store', signal: controller.signal }, 8000);
         const data = await response.json();
         if (!response.ok || !Number.isFinite(data.unixMs)) throw new Error('clock');
         if (active) { offset.current = data.unixMs - (start + Date.now()) / 2; setDisplay((current) => ({ ...current, source: 'Server UTC' })); }

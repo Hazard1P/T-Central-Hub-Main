@@ -1,3 +1,4 @@
+import { defaultGoogleUsername } from '@/lib/server/usernameDefaults';
 export const dynamic = 'force-dynamic';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
@@ -99,7 +100,7 @@ export async function GET(request) {
       await ensurePlayerAccountForLogin({
         provider: 'google',
         accountId: user.sub,
-        displayName: user.name || user.email || 'Google Pilot',
+        displayName: defaultGoogleUsername(user.sub),
         metadata: {
           source: 'google_oauth_callback',
           email: user.email || null,

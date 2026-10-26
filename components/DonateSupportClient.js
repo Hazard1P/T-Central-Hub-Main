@@ -117,7 +117,7 @@ export default function DonateSupportClient() {
 
   }, []);
 
-  useEffect(() => { requestId.current = crypto.randomUUID(); }, [amount, focus, checkoutMode, steamUser?.steamid, googleUser?.sub]);
+  useEffect(() => { requestId.current = createRequestId(); }, [amount, focus, checkoutMode, steamUser?.steamid, googleUser?.sub]);
 
   const availableMode = useMemo(() => {
     if (checkoutMode === 'subscription' && (!config?.subscriptionEnabled || !steamUser)) return 'donation';
@@ -222,12 +222,12 @@ export default function DonateSupportClient() {
                   setStatus(payload?.error || 'Subscription verification failed');
                   return;
                 }
-                requestId.current = crypto.randomUUID();
+                requestId.current = createRequestId();
                 setHistoryRevision((value) => value + 1);
                 setStatus('Monthly support linked to your Steam account. Payments appear in history once verified.');
                 refresh();
               },
-              onCancel: () => { requestId.current = crypto.randomUUID(); setStatus('Subscription checkout cancelled.'); },
+              onCancel: () => { requestId.current = createRequestId(); setStatus('Subscription checkout cancelled.'); },
               onError: (error) => setStatus(error?.message || 'PayPal subscription error'),
             }
           : {
@@ -259,12 +259,12 @@ export default function DonateSupportClient() {
                   return;
                 }
                 if (payload.pending || payload.capture?.status !== 'COMPLETED') { setStatus('Your payment is awaiting confirmation. Check your account history before making another contribution.'); return; }
-                requestId.current = crypto.randomUUID();
+                requestId.current = createRequestId();
                 setHistoryRevision((value) => value + 1);
                 setStatus(`Donation confirmed for ${payload?.capture?.amount || amount} ${payload?.capture?.currency || config.currency}.`);
                 refresh();
               },
-              onCancel: () => { requestId.current = crypto.randomUUID(); setStatus('Donation checkout cancelled.'); },
+              onCancel: () => { requestId.current = createRequestId(); setStatus('Donation checkout cancelled.'); },
               onError: (error) => setStatus(error?.message || 'PayPal checkout error'),
             };
 

@@ -34,7 +34,7 @@ test('hub post records can be authored by Steam sessions', () => {
 test('hub post records can be authored by Google sessions', () => {
   const result = buildHubPostRecord({
     body: { topic: 'Feature idea', category: 'Feature idea', message: 'Add a build-night RSVP thread.' },
-    auth: { googleUser: { sub: 'google-123', name: 'Google Tester', email: 'tester@example.test', email_verified: true } },
+    auth: { googleUser: { sub: 'google-123', name: 'Private Legal Name', gamertag: 'Google_Tester', email: 'tester@example.test', email_verified: true } },
     now: new Date('2026-06-08T00:00:00.000Z'),
     reference: 'HB-GOOGLE',
   });
@@ -43,7 +43,7 @@ test('hub post records can be authored by Google sessions', () => {
   assert.equal(result.record.reference, 'HB-GOOGLE');
   assert.equal(result.record.author.provider, 'google');
   assert.equal(result.record.author.accountId, 'google-123');
-  assert.equal(result.record.author.displayName, 'Google Tester');
+  assert.equal(result.record.author.displayName, 'Google_Tester');
   assert.equal(result.record.author.emailVerified, true);
 });
 
@@ -60,7 +60,7 @@ test('hub post records require an authenticated Steam or Google identity', () =>
 test('public posts omit authentication identifiers, email and unrecognized stored fields', () => {
   const { record } = buildHubPostRecord({
     body: { topic: 'Public topic', message: 'Public message' },
-    auth: { googleUser: { sub: 'private-sub', name: 'Pilot', email: 'private@example.test', email_verified: true } },
+    auth: { googleUser: { sub: 'private-sub', name: 'Private Legal Name', gamertag: 'Pilot', email: 'private@example.test', email_verified: true } },
   });
   record.author.futurePrivateField = 'private-token';
   record.privateModeratorNotes = 'private-notes';

@@ -1,4 +1,5 @@
 'use client';
+import { createRequestId } from '@/lib/requestId';
 
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -42,7 +43,7 @@ export default function PrayerSeedEncounter({ telemetry, authenticated, onOpenCh
     event.preventDefault();
     if (saving || !body.trim() || !near) return;
     // Retain the same payload on a failed/ambiguous network response so retries cannot duplicate a seed.
-    if (!pending.current) pending.current = { requestId: crypto.randomUUID(), body: body.trim(), position: [...telemetry.position], flightSignature: telemetry.quantum?.signature || 'flight-unresolved' };
+    if (!pending.current) pending.current = { requestId: createRequestId(), body: body.trim(), position: [...telemetry.position], flightSignature: telemetry.quantum?.signature || 'flight-unresolved' };
     setSaving(true); setStatus('Binding your seed…');
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 12000);

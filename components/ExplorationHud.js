@@ -98,7 +98,8 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
           </> : null}
           {panel === 'shipyard' && economy ? <ShipyardPanel economy={economy} ship={combatSelf} onMiningWaypoint={() => { onMiningWaypoint(); setPanel(null); }} onEarthWaypoint={() => { onEarthWaypoint(); setPanel(null); }} onMiningApproach={(id) => { onMiningApproach(id); setPanel(null); }} /> : null}
           {panel === 'settings' ? <>
-            <label className="exploration-setting">Visual quality<select value={graphicsQuality} onChange={(event) => onGraphicsChange(event.target.value)}><option value="auto">Auto</option><option value="high">High</option><option value="performance">Performance</option></select></label>
+            <label className="exploration-setting">Visual quality<select value={graphicsQuality} onChange={(event) => onGraphicsChange(event.target.value)}><option value="auto">Auto · adapts to your screen</option><option value="high">High</option><option value="performance">Performance</option></select></label>
+            <p className="exploration-help">Auto adjusts resolution as your screen or rendering performance changes. Touch flight works in portrait and landscape.</p>
             {sound ? <fieldset className="exploration-audio" disabled={!sound.supported} aria-describedby="ship-audio-help">
               <legend>Sound</legend>
               <label className="exploration-check"><input type="checkbox" checked={sound.settings.muted} onChange={(event) => sound.change({ muted: event.target.checked })} />Mute all sound</label>
