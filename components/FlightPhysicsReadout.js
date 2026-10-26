@@ -8,6 +8,16 @@ export default function FlightPhysicsReadout({ telemetry }) {
       <summary>Flight physics</summary>
       <dl>
         <div>
+          <dt>Travel assist</dt>
+          <dd>{telemetry.travelMode || "Precision"}</dd>
+        </div>
+        <div>
+          <dt>Approach speed target</dt>
+          <dd>
+            {Math.round(telemetry.speedLimit || 20).toLocaleString("en-US")} u/s
+          </dd>
+        </div>
+        <div>
           <dt>Gravity</dt>
           <dd>{(gravity * KM_PER_UNIT * 1000).toPrecision(3)} m/s²</dd>
         </div>
@@ -26,9 +36,11 @@ export default function FlightPhysicsReadout({ telemetry }) {
         </div>
       </dl>
       <p className="exploration-help">
-        With automatic braking off, your ship coasts without vacuum drag. Press
-        X or use Brake to slow down. Planetary gravity uses physical units;
-        deep-space thrust and speed limits remain assisted for travel.
+        Precision, Transit and Deep space assist blend as clearance changes.
+        Acceleration eases near the speed target; approach braking slows the
+        ship gradually. With automatic braking off, it coasts within that
+        target. Press X or hold Brake to stop. Planetary gravity uses physical
+        units.
       </p>
     </details>
   );

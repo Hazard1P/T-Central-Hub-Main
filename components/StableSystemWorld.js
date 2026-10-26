@@ -14,6 +14,7 @@ import { buildGravitySourcesFromSeed } from '@/lib/simCore/stepFrame';
 import { createQuantumState, summarizeQuantumState, evolveQuantumState } from '@/lib/quantumFieldEngine';
 import { createSimulationRuntimeClient } from '@/lib/simRuntime/client';
 import { SIM_RUNTIME_STATUS } from '@/lib/simRuntime/contracts';
+import { FLIGHT_TUNING } from '@/lib/flightTuning';
 import { useMultiplayerSession } from '@/components/MultiplayerSessionProvider';
 import { resolveMultiplayerIdentity } from '@/lib/multiplayerSyncEngine';
 import { buildAccountSnapshot, defaultProgressState, getAccountStorageKey, normalizeProgressState } from '@/lib/accountProgression';
@@ -586,7 +587,7 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
 
     const boostActive = Boolean(keys.current.ControlLeft || keys.current.ControlRight || (touchInput.boost || 0) > 0.5);
     const fireActive = !flightConfig?.inputBlocked && Boolean(firing.current || keys.current.KeyV || touchInput.fire);
-    const thrustScale = (flightConfig?.thrustScale || 1) * (boostActive ? 1.75 : 1);
+    const thrustScale = (flightConfig?.thrustScale || 1) * (boostActive ? FLIGHT_TUNING.maxControl : 1);
     const targetRoll = (keys.current.KeyA || keys.current.ArrowLeft ? 0.32 : 0) + (keys.current.KeyD || keys.current.ArrowRight ? -0.32 : 0);
     roll.current += (targetRoll - roll.current) * 0.08;
     const lookQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch.current, yaw.current, roll.current, 'YXZ'));
@@ -711,6 +712,8 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
       speed: Number(speed.toFixed(2)),
       gravity: Number(gravityMagnitude.toFixed(2)),
       gravityAcceleration: gravityMagnitude,
+      travelMode: stepped.physics?.travel?.mode,
+      speedLimit: stepped.physics?.travel?.speedLimit,
       horizonFactor: Number(horizonFactor.toFixed(2)),
       nearest: nearest?.key || null,
       nearestDistance: Number((nearest?.distance || 0).toFixed(2)),

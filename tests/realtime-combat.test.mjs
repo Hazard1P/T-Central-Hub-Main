@@ -16,7 +16,7 @@ import {
   verifyFlightTicket,
 } from "../lib/realtime/tickets.js";
 import { createRealtimeServer } from "../server/realtime.mjs";
-import { getSolarSpawn } from "../lib/universeFlight.js";
+import { getSolarSpawn, getEarthMiningField } from "../lib/universeFlight.js";
 const secret = "test-only-realtime-secret-with-32-characters";
 const origin = "http://localhost:3700";
 function fixture(t, capacity = 128) {
@@ -504,4 +504,23 @@ test("physics mismatch rejects old clients and signed old website tickets before
     await fetch(`http://127.0.0.1:${address.port}/healthz`)
   ).json();
   assert.equal(health.physicsVersion, PHYSICS_VERSION);
+});
+
+test("the authoritative service brakes smoothly when a fast ship enters a precision region", (t) => {
+  const { world, a, shooter, advance } = fixture(t);
+  shooter.position = [...getEarthMiningField(Date.now()).center];
+  shooter.velocity = [0, 0, 1000];
+  shooter.lastInput = 0;
+  const previous = [...shooter.position];
+  advance(50);
+  assert(
+    Math.hypot(...shooter.velocity) > 800 &&
+      Math.hypot(...shooter.velocity) < 1000,
+  );
+  assert(Math.hypot(...shooter.position.map((v, i) => v - previous[i])) > 30);
+  assert.equal(shooter.health, SHIP_HEALTH);
+  assert.equal(
+    world.state("shared", a.player.id, a.token).state.physicsVersion,
+    PHYSICS_VERSION,
+  );
 });

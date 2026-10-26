@@ -7,7 +7,7 @@ import FlightPhysicsReadout from './FlightPhysicsReadout';
 import { useEffect, useRef, useState } from 'react';
 import { distanceBetween, isValidRoomName } from '@/lib/exploration';
 import { isInteractiveTarget } from '@/lib/flightInput';
-import { formatSpaceDistance } from '@/lib/universeSpace';
+import { formatSpaceDistance, formatFlightSpeed } from '@/lib/universeSpace';
 import { gameEngine } from '@/lib/gameEngine';
 
 export default function ExplorationHud({ telemetry, destinations, destination, onSelect, onNavigate, onFace, cruising, onCancelCruise, visited, lobbyMode, onModeChange, roomName, onRoomChange, pilots, selfId, serverStatus, graphicsQuality, onGraphicsChange, dampers, onDampersChange, onRecenter, onRespawn, respawning, notice, onPanelChange, seedCount = 0, economy, onMiningWaypoint, onEarthWaypoint, onMiningApproach, combatEvents = [], sound }) {
@@ -69,7 +69,7 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
         <section className="exploration-panel" id="exploration-panel" aria-labelledby="exploration-panel-title" ref={panelRef} tabIndex={-1}>
           <div className="exploration-panel-heading"><div><p className="eyebrow">Flight tools</p><h2 id="exploration-panel-title">{panel === 'explore' ? 'Find your next horizon.' : panel === 'crew' ? 'Explore together.' : panel === 'shipyard' ? 'Your ship & cargo' : 'Your flight setup.'}</h2></div><button type="button" aria-label="Close flight panel" onClick={() => setPanel(null)}>×</button></div>
           {panel === 'explore' ? <>
-            <p className="exploration-help">Every destination is in this universe. Cruise flies continuously, using faster deep-space thrust far from objects; steering returns control to you.</p>
+            <p className="exploration-help">Every destination is in this universe. Cruise flies continuously, building speed in open space and braking ahead of arrival; steering returns control to you.</p>
             <label className="exploration-search">Find a destination<input type="search" value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Planet, station, blackhole…" /></label>
             <div className="exploration-destinations">
               {visibleDestinations.map((node) => <button key={node.key} className={node.key === destination?.key ? 'selected' : ''} onClick={() => onSelect(node)} aria-pressed={node.key === destination?.key}>
@@ -110,7 +110,7 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
             <FlightPhysicsReadout telemetry={telemetry} />
             <div className="exploration-actions"><button className="button secondary" onClick={onRecenter}>Recenter view</button><button className="button secondary" onClick={onRespawn} disabled={respawning}>{respawning ? 'Returning…' : economy?.data?.wallet?.cargo ? 'Return to Earth · discard cargo' : 'Return to Earth'}</button></div>
             <p className="exploration-help">Emergency return discards carried ore. Credits and installed upgrades remain saved.</p>
-            <div className="exploration-controls"><h3>Flight controls</h3><p>W / S forward and back · A / D strafe<br />Space / R rise · Shift / F descend<br />Ctrl boost · X brake<br />Move mouse to steer · Click / V fire · Esc release mouse · M destinations · H hide HUD</p><p>Deep-space assist increases thrust in open space and slows near objects. No region changes or ship resets occur during travel.</p><p>On touch screens, use the flight pad and drag the open scene to look around.</p></div>
+            <div className="exploration-controls"><h3>Flight controls</h3><p>W / S forward and back · A / D strafe<br />Space / R rise · Shift / F descend<br />Ctrl boost · X brake<br />Move mouse to steer · Click / V fire · Esc release mouse · M destinations · H hide HUD</p><p>Precision, Transit and Deep space assist blend automatically. Boost builds speed faster; approach braking and X/Brake retain stopping power when leaving fast travel.</p><p>On touch screens, use the flight pad and drag the open scene to look around.</p></div>
             <Link className="exploration-account-link" href="/">Account and sign-in on the homepage</Link>
             {seedCount > 0 ? <Link className="exploration-account-link" href="/profile">Your Prayer Seed collection · {seedCount}</Link> : null}
           </> : null}
@@ -118,7 +118,7 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
       ) : null}
 
       <div className="exploration-flight-strip" aria-label="Flight telemetry">
-        <span><small>Speed</small><strong>{telemetry.speed.toFixed(1)} <small>u/s</small></strong></span>
+        <span><small>Speed</small><strong>{formatFlightSpeed(telemetry.speed)} <small>u/s</small></strong><small>{telemetry.travelMode || 'Precision'}</small></span>
         {destination ? <span className="exploration-target"><small>{cruising ? 'Cruising to' : 'Waypoint'}</small><strong>{destination.label}</strong><small>{formatSpaceDistance(distance)} {bearing !== null ? '· ' + bearing + '° off nose' : ''}</small></span> : <span className="exploration-target"><small>Free flight</small><strong>Choose a destination to begin</strong></span>}
         {cruising ? <button type="button" onClick={onCancelCruise}>Cancel cruise</button> : <button type="button" onClick={() => toggle('explore')}>Destinations</button>}
       </div>
