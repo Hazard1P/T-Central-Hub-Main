@@ -7715,3 +7715,77 @@ body:has(.system-entry-screen.phase-in_sim) { overscroll-behavior: none; }
 }
 /* Provider names and chosen tags may be long; keep account headings readable on phones. */
 #launch-account-title, #home-account-title, .steam-login-meta strong, .exploration-pilots li > span { overflow-wrap: anywhere; min-width: 0; }
+
+/* Private moderation tools use the same readable cards and touch targets as the hub. */
+.moderation-dashboard { display: grid; gap: 1.5rem; min-width: 0; }
+.moderation-dashboard code, .moderation-account-key { overflow-wrap: anywhere; word-break: break-word; }
+.moderation-toolbar, .moderation-search { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
+.moderation-dashboard label { display: grid; gap: .4rem; }
+.moderation-dashboard input:not([type="checkbox"]), .moderation-dashboard select, .moderation-dashboard textarea { width: 100%; min-height: 44px; font: inherit; font-size: 16px; color: #f1f6ff; background: #101c30; border: 1px solid #54617a; border-radius: .65rem; padding: .65rem; box-sizing: border-box; }
+.moderation-dashboard button, .moderation-dashboard summary { min-height: 44px; cursor: pointer; }
+.moderation-dashboard button:disabled { opacity: .5; cursor: not-allowed; }
+.moderation-dashboard summary { padding: .65rem 0; }
+.moderation-action-form { display: grid; gap: .85rem; margin: .8rem 0; }
+.moderation-action-form .moderation-confirm { display: flex; align-items: center; gap: .75rem; min-height: 44px; }
+.moderation-confirm input { width: 22px; height: 22px; flex-shrink: 0; }
+.moderation-report header, .moderation-accounts li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .75rem; align-items: center; }
+.moderation-report h3 { margin: 0; }
+.moderation-report dt { font-weight: 700; margin-top: .75rem; }
+.moderation-report dd { margin: .25rem 0 0; overflow-wrap: anywhere; }
+.moderation-report dd code, .moderation-accounts code { display: block; }
+.moderation-evidence { white-space: pre-wrap; }
+.moderation-accounts { padding: 0; list-style: none; display: grid; gap: .75rem; }
+.moderation-history { padding-left: 1.25rem; }
+.moderation-history li { margin-bottom: 1.25rem; overflow-wrap: anywhere; }
+.moderation-history p { margin: .35rem 0; }
+.pilot-report-link { display: inline-block; min-height: 44px; padding: .65rem; font-size: .8rem; }
+@media (max-width: 600px) { .moderation-toolbar > *, .moderation-search > * { width: 100%; } }
+
+.community-directory { grid-column: 1 / -1; min-width: 0; }
+.community-section-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.community-section { border: 1px solid rgba(145,176,214,.22); border-radius: 1rem; padding: 1.1rem; min-width: 0; }
+.community-section h3 { margin: 0 0 .45rem; }
+.community-section > p { color: #b7c5d9; }
+.community-section ul { list-style: none; padding: 0; margin: .8rem 0 0; display: grid; gap: .5rem; }
+.community-section a { display: grid; gap: .3rem; min-height: 44px; padding: .8rem; border: 1px solid transparent; border-radius: .7rem; text-decoration: none; overflow-wrap: anywhere; }
+.community-section a:hover, .community-section a:focus-visible, .community-section a.is-active { border-color: #a4dc92; background: rgba(157,217,145,.08); }
+.community-section a span { color: #bdcce0; font-size: .9rem; }
+.community-section a small { color: #a4dc92; }
+.community-placement { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .9rem; min-width: 0; border: 1px solid rgba(145,176,214,.3); border-radius: .8rem; padding: 1rem; }
+.community-placement legend { padding: 0 .5rem; }
+.community-placement p { grid-column: 1 / -1; margin: 0; }
+.hub-form-grid select, .community-feed-tools select { font-size: 16px; min-width: 0; min-height: 44px; }
+@media (max-width: 700px) { .community-section-grid, .community-placement { grid-template-columns: minmax(0,1fr); } }
+
+.community-chat-card { grid-column: 1 / -1; }
+.live-community-chat { min-width: 0; }
+.chat-heading, .chat-message-heading, .chat-compose-actions { display: flex; justify-content: space-between; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.chat-heading h2 { margin: .25rem 0; }
+.chat-status { font-size: .85rem; color: #bac7da; }
+.chat-status.is-live { color: #a4dc92; }
+.chat-messages { list-style: none; margin: 1rem 0; padding: .8rem; height: 320px; max-height: 45dvh; overflow-y: auto; overscroll-behavior: contain; background: rgba(4,12,24,.65); border: 1px solid #384862; border-radius: .8rem; }
+.chat-messages li { padding: .7rem 0; border-bottom: 1px solid rgba(145,176,214,.15); overflow-wrap: anywhere; }
+.chat-message-heading time { font-size: .78rem; color: #acbad0; }
+.chat-messages p { margin: .4rem 0; white-space: pre-wrap; }
+.chat-report-link { display: inline-flex; align-items: center; min-height: 44px; font-size: .8rem; }
+.chat-compose label { display: grid; gap: .5rem; }
+.chat-compose textarea { width: 100%; min-height: 76px; padding: .75rem; border: 1px solid #54617a; border-radius: .65rem; background: #101c30; color: #f1f6ff; font: inherit; font-size: 16px; resize: vertical; box-sizing: border-box; }
+.chat-compose textarea:disabled { opacity: .65; }
+.chat-compose-actions { margin-top: .65rem; }
+.chat-compose-actions button { min-height: 44px; }
+.live-community-chat button:disabled { opacity: .5; cursor: not-allowed; }
+.live-community-chat.is-compact .chat-heading > div { display: none; }
+.live-community-chat.is-compact .chat-messages { height: 220px; max-height: 35dvh; }
+@media (max-width: 600px) { .chat-compose-actions button { width: 100%; } .chat-heading { align-items: flex-start; } }
+
+.flight-plan-intro { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(220px,1fr); align-items: center; gap: 2rem; }
+.flight-plan-intro h2 { font-size: clamp(1.5rem,3vw,2.25rem); line-height: 1.2; }
+.flight-plan-orbit { color: #91c4d5; min-width: 0; text-align: center; }
+.flight-plan-orbit svg { display: block; width: 100%; max-width: 360px; margin: auto; }
+.flight-plan-orbit p { font-size: .85rem; line-height: 1.8; color: #d8e6f2; }
+.flight-plan-orbit span { color: #a8d78b; margin-inline: .25rem; }
+.flight-plan-stage { color: #b6e697; font-size: .8rem; letter-spacing: .04em; }
+.flight-plan-priorities { margin-top: 1.25rem; }
+.flight-plan-priorities h3 { font-size: 1.25rem; }
+.flight-plan-invitation { border-color: rgba(182,230,151,.35); }
+@media (max-width: 700px) { .flight-plan-intro { grid-template-columns: minmax(0,1fr); gap: 1rem; } .flight-plan-orbit svg { max-width: 260px; } }

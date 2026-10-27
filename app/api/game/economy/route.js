@@ -1,3 +1,5 @@
+import { moderation } from '@/lib/server/moderationStore';
+import { banDenial } from '@/lib/moderation';
 import { hasRealtimeServer, realtimeCall, requiresRealtimeServer } from '@/lib/server/realtimeBridge';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
@@ -21,6 +23,8 @@ export async function POST(request) {
   const guest = auth.authenticated ? null : resolveGuestPilotSession(cookieStore.get('tcentral_guest_pilot')?.value);
   const owner = auth.authenticated ? auth.provider + ':' + auth.accountId : guest.id;
   if (body.id !== owner || guest?.setCookie) return reply({ ok: false, error: 'Your account changed. Rejoin the shared flight.' }, 401);
+  const access = banDenial(await moderation().access([owner]), owner);
+  if (!access.ok) return reply(access, access.status);
   try {
     const args = { roomName: body.roomName, id: owner, token: body.token };
     const state = hasRealtimeServer() ? await realtimeCall('state',args) : hasDurableMultiplayer() ? await getDurableState(args) : getAuthoritativeState(args);

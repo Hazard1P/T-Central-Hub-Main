@@ -1,3 +1,4 @@
+import { resolveModerationAdmin } from '@/lib/auth/resolveModerationAdmin';
 import UsernameSettings from '@/components/UsernameSettings';
 import { resolveAccountUsername } from '@/lib/server/accountUsernameStore';
 import Link from 'next/link';
@@ -13,8 +14,10 @@ export const metadata = { title: 'Your account', description: 'Your private acco
 
 export default async function ProfilePage() {
   const auth = await resolveAccountUsername(resolveGameAuthContext(cookies()));
+  const ownerContext = resolveModerationAdmin();
+  const moderator = ownerContext.authorized;
   return <PageShell eyebrow="Your space" title="Your account." text={auth.authenticated ? `Welcome, ${auth.displayName || 'explorer'}. Your discoveries follow your account.` : 'Sign in to keep your discoveries across visits.'}>
-    {auth.authenticated ? <><UsernameSettings key={`username:${auth.provider}:${auth.accountId}`} ownerKey={`${auth.provider}:${auth.accountId}`} provider={auth.provider} /><ShipProgress key={`ship:${auth.provider}:${auth.accountId}`} ownerKey={`${auth.provider}:${auth.accountId}`} /><PrayerSeedCollection key={`${auth.provider}:${auth.accountId}`} provider={auth.provider} /><ContributionHistory key={`payments:${auth.provider}:${auth.accountId}`} /></> : <div className="seed-profile-card"><h2>Continue your journey</h2><div className="exploration-actions"><a className="button primary" href="/api/auth/steam/login?redirectTo=/profile">Continue with Steam</a><a className="button secondary" href="/api/auth/google/login?redirectTo=/profile">Continue with Google</a></div></div>}
+    {auth.authenticated ? <><section className="seed-profile-card"><h2>Account identity</h2>{ownerContext.owner ? <p className="eyebrow">Verified site owner</p> : null}<p>Your stable account ID stays the same when your gamertag changes.</p><code className="moderation-account-key">{`${auth.provider}:${auth.accountId}`}</code>{moderator ? <p><Link className="button secondary" href="/admin/moderation">Open moderation dashboard</Link></p> : null}</section><UsernameSettings key={`username:${auth.provider}:${auth.accountId}`} ownerKey={`${auth.provider}:${auth.accountId}`} provider={auth.provider} /><ShipProgress key={`ship:${auth.provider}:${auth.accountId}`} ownerKey={`${auth.provider}:${auth.accountId}`} /><PrayerSeedCollection key={`${auth.provider}:${auth.accountId}`} provider={auth.provider} /><ContributionHistory key={`payments:${auth.provider}:${auth.accountId}`} /></> : <div className="seed-profile-card"><h2>Continue your journey</h2><div className="exploration-actions"><a className="button primary" href="/api/auth/steam/login?redirectTo=/profile">Continue with Steam</a><a className="button secondary" href="/api/auth/google/login?redirectTo=/profile">Continue with Google</a></div></div>}
     <Link className="button secondary" href="/system">Return to the universe</Link>
   </PageShell>;
 }

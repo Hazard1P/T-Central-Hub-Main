@@ -7,7 +7,7 @@ RUN --mount=type=secret,id=proxy_ca \
     if [ -f /run/secrets/proxy_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/proxy_ca; fi; \
     npm ci --omit=dev --strict-ssl=true && npm cache clean --force
 COPY --chown=node:node lib ./lib
-COPY --chown=node:node server/realtime.mjs ./server/realtime.mjs
+COPY --chown=node:node server/realtime.mjs server/communityChat.mjs ./server/
 ENV NODE_ENV=production PORT=8080
 USER node
 EXPOSE 8080

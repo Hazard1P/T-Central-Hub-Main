@@ -1,3 +1,5 @@
+import { moderation } from '@/lib/server/moderationStore';
+import { banDenial } from '@/lib/moderation';
 import { hasRealtimeServer, realtimeCall, requiresRealtimeServer } from '@/lib/server/realtimeBridge';
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
@@ -99,6 +101,11 @@ export async function GET(request) {
   const roomName = searchParams.get('roomName') || undefined;
   const tokenResolution = resolveRequestToken(request, searchParams);
   if (hasRealtimeServer() || requiresRealtimeServer()) { const result = await realtimeCall('state', {roomName, id:searchParams.get('id'), token:tokenResolution.token}); return NextResponse.json(result, {status:result.status||200, headers:{'Cache-Control':'private, no-store'}}); }
+  const preflight = hasDurableMultiplayer() ? await getDurableState({roomName,id:searchParams.get('id'),token:tokenResolution.token}) : getAuthoritativeState({roomName,id:searchParams.get('id'),token:tokenResolution.token});
+  if (preflight.ok) {
+    const access = banDenial(await moderation().access([searchParams.get('id')]), searchParams.get('id'));
+    if (!access.ok) return NextResponse.json(access,{status:access.status,headers:{'Cache-Control':'private, no-store'}});
+  }
   const requestedMode = resolveRequestedMode(
     { mode: searchParams.get('mode'), lobbyMode: searchParams.get('lobbyMode') },
     getSessionModeSnapshot(roomName).mode || SESSION_MODES.MULTI_PLAYER
@@ -177,6 +184,11 @@ export async function POST(request) {
   const body = await request.json().catch(() => ({}));
   const roomName = body?.roomName;
   if (hasRealtimeServer() || requiresRealtimeServer()) { const result = await realtimeCall('state', {roomName, id:body?.id, token:body?.token}); return NextResponse.json(result, {status:result.status||200, headers:{'Cache-Control':'private, no-store'}}); }
+  const preflight = hasDurableMultiplayer() ? await getDurableState({roomName,id:body?.id,token:body?.token}) : getAuthoritativeState({roomName,id:body?.id,token:body?.token});
+  if (preflight.ok) {
+    const access = banDenial(await moderation().access([body?.id]), body?.id);
+    if (!access.ok) return NextResponse.json(access,{status:access.status,headers:{'Cache-Control':'private, no-store'}});
+  }
   const requestedMode = resolveRequestedMode(body, getSessionModeSnapshot(roomName).mode || SESSION_MODES.MULTI_PLAYER);
   const incomingTransfer = extractIncomingTransfer(body?.modeBridgeTransfer);
   const incomingState = rehydrateModeBridgeState(body?.modeBridgeState || incomingTransfer?.state);

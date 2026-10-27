@@ -19,7 +19,9 @@
     "ci:continuity": "npm run check:dyson-continuity && npm run release:notes",
     "release:entropy-pdf": "node scripts/generate-entropy-frontpage-pdf.mjs",
     "drill:continuity": "node scripts/run-continuity-drill.mjs",
-    "server:realtime": "node server/realtime.mjs"
+    "server:realtime": "node server/realtime.mjs",
+    "verify:moderation-db": "node scripts/verify-moderation-db.mjs",
+    "verify:community-db": "node scripts/verify-community-db.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^9.121.4",

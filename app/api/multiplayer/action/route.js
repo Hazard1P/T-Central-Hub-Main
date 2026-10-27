@@ -1,8 +1,10 @@
+import { moderation } from '@/lib/server/moderationStore';
+import { banDenial } from '@/lib/moderation';
 import { hasRealtimeServer, realtimeCall, requiresRealtimeServer } from '@/lib/server/realtimeBridge';
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
-import { applyAuthoritativeAction, pruneAuthoritativeRooms } from '@/lib/authoritativeMultiplayerStore';
-import { applyDurableAction, hasDurableMultiplayer } from '@/lib/durableMultiplayerStore';
+import { getAuthoritativeState, applyAuthoritativeAction, pruneAuthoritativeRooms } from '@/lib/authoritativeMultiplayerStore';
+import { getDurableState, applyDurableAction, hasDurableMultiplayer } from '@/lib/durableMultiplayerStore';
 import { SESSION_MODES, buildRingAdjustmentOutputs, getSessionModeSnapshot, normalizeSessionMode, transitionSessionMode } from '@/lib/sessionModeEngine';
 import { createModeBridgeTransfer, rehydrateModeBridgeState, validateModeBridgeTransfer } from '@/lib/persistence/modeBridgeState';
 import { trackServerEvent } from '@/lib/server/vercelTelemetry';
@@ -152,6 +154,12 @@ export async function POST(request) {
   const { roomName, id, token, action, requestedMode, captureSimulationEvent, accountAnchor, incomingTransfer, incomingState } = validation.value;
 
   if (hasRealtimeServer() || requiresRealtimeServer()) { const result = await realtimeCall('action', {roomName, id, token, action}); return NextResponse.json(result, {status:result.status||200, headers:{'Cache-Control':'private, no-store'}}); }
+
+  const preflight = hasDurableMultiplayer() ? await getDurableState({roomName,id,token}) : getAuthoritativeState({roomName,id,token});
+  if (preflight.ok) {
+    const access = banDenial(await moderation().access([id]), id);
+    if (!access.ok) return NextResponse.json(access,{status:access.status,headers:{'Cache-Control':'private, no-store'}});
+  }
 
   // Cosmetic pulse fire does not award progression or accept client-claimed hits.
   const progression = null;

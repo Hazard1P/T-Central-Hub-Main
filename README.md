@@ -37,13 +37,18 @@ Copy `.env.example` to `.env.local` for development, or configure the same value
 
 ### Optional admin hardening
 - `DYSON_ADMIN_PROVIDER` can be set to `steam` or `google` when the configured `DYSON_ADMIN_ACCOUNT_ID` should only be accepted from one auth provider.
-- Only one admin account ID is supported by design; add more only if a future requirement calls for it.
+- The legacy Dyson editor uses its own single-account configuration. Player moderation uses the separate provider-qualified `MODERATION_ADMIN_ACCOUNTS` allowlist.
+
+### Player moderation
+
+See [Player moderation setup](docs/PLAYER-MODERATION.md) for the private report queue, temporary/permanent account bans, revocation and audit history. Bind `SITE_OWNER_ACCOUNT` to the owner's stable account ID from `/profile` (and use `MODERATION_ADMIN_ACCOUNTS` for additional moderators); apply the moderation migration and give both website and game worker the server-only Supabase service role.
 
 ### Required for durable contact/report storage in production
 - `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` (contact forms)
+- `SUPABASE_SERVICE_ROLE_KEY` (private reports/moderation; website and game worker)
 
-Without Supabase, contact/report JSON persistence is available for local development only and is intentionally blocked for production so the app does not pretend data is durably stored when it is not.
+Contact JSON persistence is available for local development only and is intentionally blocked for production so the app does not pretend data is durably stored when it is not. Player reports and bans require durable Supabase storage and fail closed when unavailable.
 
 
 ## Supported Node versions
@@ -122,3 +127,7 @@ Run `npm run verify:simulation` on Node 24 to test the shared flight/combat/mini
 Balanced flight now brings outer destinations 20% closer while preserving the large real Solar System. Precision, Transit and Deep space assistance blend automatically, with eased acceleration and braking ahead of arrival. Deploy matching physics-v3 website and game-service versions; see [universe scale](docs/UNIVERSE-SCALE.md).
 
 Google players can choose an account gamertag in Profile and change it after a minimum of 30 days; Steam accounts use their verified Steam persona. Apply the [username migration and setup](docs/ACCOUNT-USERNAMES.md) for durable editing. Phone play now follows the visible viewport and adjusts Auto render resolution as performance changes, including rotation and browser-toolbar changes.
+
+### Flight plan, forum and live chat
+
+`/our-flight-plan` explains the project's direction and is linked from the main navigation, footer and About page. The community board offers four sections and 13 subsections, with server-filtered feeds, persisted headings/subheadings and cross-tab refresh. Apply `20261027_forum_sections.sql` after the existing hub-post migrations. Live chat uses the persistent game worker, the chat/moderation migrations and a separate `/chat` WebSocket upgrade route; see [moderation and chat setup](docs/PLAYER-MODERATION.md).

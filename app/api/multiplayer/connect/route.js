@@ -1,3 +1,5 @@
+import { moderation } from '@/lib/server/moderationStore';
+import { banDenial } from '@/lib/moderation';
 import { resolveAccountUsername } from '@/lib/server/accountUsernameStore';
 import { hasRealtimeServer, realtimeTicket, requiresRealtimeServer } from '@/lib/server/realtimeBridge';
 import { allowsMemoryMultiplayer } from '@/lib/multiplayerCapacity';
@@ -148,6 +150,8 @@ export async function POST(request) {
   const authContext = await resolveAccountUsername(resolveGameAuthContext(cookieStore));
   const guestSession = authContext.authenticated ? null : resolveGuestPilotSession(cookieStore.get('tcentral_guest_pilot')?.value);
   const identity = resolveIdentity(body, authContext, guestSession);
+  const access = banDenial(await moderation().access([identity.id]), identity.id);
+  if (!access.ok) return sessionResponse(access, guestSession, access.status);
   if (hasRealtimeServer()) return sessionResponse(realtimeTicket(identity,roomName),guestSession);
   const responseAuthContext = toApiAuthContext(authContext);
   const requestedMode = resolveRequestedMode(body);

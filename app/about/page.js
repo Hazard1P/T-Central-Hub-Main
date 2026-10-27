@@ -6,6 +6,7 @@ export const metadata = { title: 'About' };
 export default function AboutPage() {
   return (
     <PageShell eyebrow="About the hub" title="One community. More ways to play." text="T-Central brings Arma 3 and Rust server routes together with an interactive space universe and a shared community hub.">
+      <p><Link className="button secondary" href="/our-flight-plan">Read our Flight plan</Link></p>
       <div className="card-grid two">
         <article className="content-card">
           <h2>Find your server</h2>

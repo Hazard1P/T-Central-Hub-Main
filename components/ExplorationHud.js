@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import LiveCommunityChat from './LiveCommunityChat';
 import ShipyardPanel from './ShipyardPanel';
 import ShipSystemsReadout from './ShipSystemsReadout';
 import FlightPhysicsReadout from './FlightPhysicsReadout';
@@ -60,14 +61,15 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
         <Link href="/" className="exploration-home" aria-label="Leave simulation for homepage">T<span> / </span>C</Link>
         <span className="exploration-connection"><i className={serverStatus.connected && lobbyMode === 'hub' ? 'live' : ''} />{modeLabel}<small>{lobbyMode === 'hub' && serverStatus.connected ? populationLabel + (serverStatus.transport === 'websocket' ? ' · real-time' : '') : lobbyMode === 'hub' ? 'Waiting for shared server' : 'Free flight'}</small></span>
         <nav aria-label="Flight tools">
-          {[['explore', 'Explore'], ['shipyard', 'Shipyard'], ['crew', 'Pilots'], ['settings', 'Settings']].map(([key, label]) => <button key={key} type="button" aria-expanded={panel === key} aria-controls="exploration-panel" onClick={() => toggle(key)}>{label}</button>)}
+          {[['explore', 'Explore'], ['shipyard', 'Shipyard'], ['crew', 'Pilots'], ['chat', 'Chat'], ['settings', 'Settings']].map(([key, label]) => <button key={key} type="button" aria-expanded={panel === key} aria-controls="exploration-panel" onClick={() => toggle(key)}>{label}</button>)}
           <button type="button" onClick={() => gameEngine.setHUDVisible(false)} aria-label="Hide HUD">Hide<span className="exploration-key"> H</span></button>
         </nav>
       </header>
 
       {panel ? (
         <section className="exploration-panel" id="exploration-panel" aria-labelledby="exploration-panel-title" ref={panelRef} tabIndex={-1}>
-          <div className="exploration-panel-heading"><div><p className="eyebrow">Flight tools</p><h2 id="exploration-panel-title">{panel === 'explore' ? 'Find your next horizon.' : panel === 'crew' ? 'Explore together.' : panel === 'shipyard' ? 'Your ship & cargo' : 'Your flight setup.'}</h2></div><button type="button" aria-label="Close flight panel" onClick={() => setPanel(null)}>×</button></div>
+          <div className="exploration-panel-heading"><div><p className="eyebrow">Flight tools</p><h2 id="exploration-panel-title">{panel === 'explore' ? 'Find your next horizon.' : panel === 'crew' ? 'Explore together.' : panel === 'shipyard' ? 'Your ship & cargo' : panel === 'chat' ? 'Community chat' : 'Your flight setup.'}</h2></div><button type="button" aria-label="Close flight panel" onClick={() => setPanel(null)}>×</button></div>
+          {panel === 'chat' ? <LiveCommunityChat compact /> : null}
           {panel === 'explore' ? <>
             <p className="exploration-help">Every destination is in this universe. Cruise flies continuously, building speed in open space and braking ahead of arrival; steering returns control to you.</p>
             <label className="exploration-search">Find a destination<input type="search" value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Planet, station, blackhole…" /></label>
@@ -92,7 +94,7 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
               <p className="exploration-help" id="room-help">Use letters, numbers, dashes or underscores. Give friends the same room name or invite link.</p>
               <button type="button" className="button secondary" onClick={copyInvite}>Copy invite link</button><p className="exploration-feedback" role="status">{copyStatus}</p>
               <h3>{serverStatus.connected ? populationLabel + ' in this room' : serverStatus.label + '…'}</h3>
-              <ul className="exploration-pilots">{pilots.map((pilot) => <li key={pilot.id}><span>{pilot.displayName}{pilot.id === selfId ? ' (you)' : ''}{serverStatus.transport === 'websocket' ? <small>{pilot.kills || 0} kills · {pilot.deaths || 0} losses{pilot.alive === false ? ' · respawning' : ''}</small> : null}</span>{pilot.id !== selfId ? <button onClick={() => { onSelect({ key: 'pilot:' + pilot.id, label: pilot.displayName, kind: 'pilot waypoint', position: [...pilot.position], approachRadius: 4, description: 'Last shared location of this pilot. Select them again to update the waypoint.' }); setPanel(null); }}>Set waypoint · {distanceBetween(telemetry.position, pilot.position).toFixed(0)} u</button> : <small>Flying</small>}</li>)}</ul>
+              <ul className="exploration-pilots">{pilots.map((pilot) => <li key={pilot.id}><span>{pilot.displayName}{pilot.id !== selfId ? <Link className="pilot-report-link" href={'/report-player?player=' + encodeURIComponent(pilot.displayName) + (/^(google:|steam:)/.test(pilot.id) ? '&account=' + encodeURIComponent(pilot.id) : '')} target="_blank" rel="noopener noreferrer">Report player</Link> : null}{pilot.id === selfId ? ' (you)' : ''}{serverStatus.transport === 'websocket' ? <small>{pilot.kills || 0} kills · {pilot.deaths || 0} losses{pilot.alive === false ? ' · respawning' : ''}</small> : null}</span>{pilot.id !== selfId ? <button onClick={() => { onSelect({ key: 'pilot:' + pilot.id, label: pilot.displayName, kind: 'pilot waypoint', position: [...pilot.position], approachRadius: 4, description: 'Last shared location of this pilot. Select them again to update the waypoint.' }); setPanel(null); }}>Set waypoint · {distanceBetween(telemetry.position, pilot.position).toFixed(0)} u</button> : <small>Flying</small>}</li>)}</ul>
               {!nearby.length ? <p className="exploration-help">The universe is open. Invite a friend to fly alongside you.</p> : null}
             </> : <p className="exploration-help">Your solo session is isolated from shared room traffic. Switch back to rejoin other pilots.</p>}
           </> : null}

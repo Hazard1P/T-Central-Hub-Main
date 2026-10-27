@@ -1,73 +1,57 @@
-import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { decryptJson } from '@/lib/security';
-import { persistPlayerReport } from '@/lib/serverPersistence';
+import { createHash } from "node:crypto";
+import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { resolveGameAuthContext } from "@/lib/auth/resolveGameAuthContext";
+import { resolveAccountUsername } from "@/lib/server/accountUsernameStore";
+import { moderation } from "@/lib/server/moderationStore";
+import { REPORT_REASONS } from "@/lib/moderation";
+import { isSameOriginPaymentRequest } from "@/lib/paymentRequest";
 
-async function getReporter() {
-  const cookieStore = cookies();
-  const raw = cookieStore.get('steam_session')?.value;
-  try {
-    return raw ? decryptJson(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
+export const dynamic = "force-dynamic";
+const reply = (body, status = 200) =>
+  NextResponse.json(body, {
+    status,
+    headers: { "Cache-Control": "private, no-store" },
+  });
 export async function GET() {
-  return NextResponse.json({
+  const auth = await resolveAccountUsername(resolveGameAuthContext(cookies()));
+  return reply({
     ok: true,
+    reporterName: auth.displayName || "Guest reporter",
+    authenticated: auth.authenticated,
     publicMeta: {
-      allowedReasons: [
-        'Cheating or unfair advantage',
-        'Griefing or sabotage',
-        'Harassment or abuse',
-        'Bug or exploit misuse',
-        'Impersonation or false identity',
-        'Other rule violation',
-      ],
+      allowedReasons: REPORT_REASONS,
       reportColumns: [
-        'Reported player',
-        'Server or location',
-        'Reason',
-        'Evidence or notes',
+        "Reported player",
+        "Server or location",
+        "Reason",
+        "Evidence or notes",
       ],
     },
   });
 }
-
 export async function POST(request) {
+  if (!isSameOriginPaymentRequest(request))
+    return reply({ ok: false, error: "Same-origin requests required." }, 403);
   const body = await request.json().catch(() => null);
-  if (!body?.reportedPlayer || !body?.reason || !body?.evidence) {
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+  const auth = await resolveAccountUsername(resolveGameAuthContext(cookies()));
+  const reporter = auth.authenticated
+    ? {
+        accountKey: `${auth.provider}:${auth.accountId}`,
+        displayName: auth.displayName,
+      }
+    : null;
+  const address =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const rateKey =
+    reporter?.accountKey ||
+    "guest:" + createHash("sha256").update(address).digest("hex");
+  try {
+    return reply(await moderation().submit(body, reporter, rateKey), 201);
+  } catch (error) {
+    return reply(
+      { ok: false, error: error.message, code: error.code },
+      error.status || 503,
+    );
   }
-
-  const user = await getReporter();
-  const reference = `TC-${Date.now().toString(36).toUpperCase()}`;
-  const report = {
-    reference,
-    reporter: user
-      ? { steamid: user.steamid, personaname: user.personaname || null }
-      : null,
-    reportedPlayer: String(body.reportedPlayer).trim().slice(0, 120),
-    server: String(body.server || 'T-Central Hub').trim().slice(0, 120),
-    reason: String(body.reason).trim().slice(0, 500),
-    evidence: String(body.evidence).trim().slice(0, 5000),
-    createdAt: new Date().toISOString(),
-    source: 'report-player',
-  };
-
-  const persistence = await persistPlayerReport(report);
-  if (!persistence.ok) {
-    return NextResponse.json({
-      ok: false,
-      error: 'Durable report storage is not configured.',
-      code: 'REPORT_STORAGE_UNAVAILABLE',
-    }, { status: 503 });
-  }
-
-  return NextResponse.json({
-    ok: true,
-    reference,
-    storage: persistence.storage,
-  });
 }

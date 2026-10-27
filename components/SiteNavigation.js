@@ -12,6 +12,7 @@ const links = [
   ['/hub-form', 'Community'],
   ['/information', 'Guide'],
   ['/status', 'Status'],
+  ['/our-flight-plan', 'Our Flight plan'],
   ['/about', 'About'],
   ['/contact', 'Contact'],
 ];

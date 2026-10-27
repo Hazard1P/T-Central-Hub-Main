@@ -1,3 +1,8 @@
+import { createCommunityChat } from "./communityChat.mjs";
+import { createCommunityChatRepository } from "../lib/server/communityChatRepository.js";
+import { getSupabaseAdmin } from "../lib/server/supabaseAdmin.js";
+import { createModerationRepository } from "../lib/server/moderationRepository.js";
+import { banDenial, ACCOUNT_KEY_PATTERN } from "../lib/moderation.js";
 import http from "node:http";
 import { pathToFileURL } from "node:url";
 import { WebSocketServer, WebSocket } from "ws";
@@ -18,6 +23,9 @@ export function createRealtimeServer({
   port = 8080,
   host = "0.0.0.0",
   world = new CombatWorld({ capacity }),
+  checkAccess = createModerationRepository(getSupabaseAdmin()).access,
+  moderationIntervalMs = 5000,
+  chatStore = createCommunityChatRepository(getSupabaseAdmin()),
 } = {}) {
   if (typeof secret !== "string" || secret.length < 32)
     throw Error("REALTIME_SERVER_SECRET must contain at least 32 characters.");
@@ -34,6 +42,37 @@ export function createRealtimeServer({
     else if (socket.bufferedAmount >= 1_000_000)
       socket.close(1013, "Connection too slow");
   };
+  const accessFor = async (ids) => {
+    try {
+      return await checkAccess(ids);
+    } catch {
+      return { ok: false, error: "MODERATION_UNAVAILABLE" };
+    }
+  };
+  const removeDenied = (id, denial) => {
+    for (const [roomName, room] of world.rooms) {
+      const pilot = room.players.get(id);
+      if (pilot) world.disconnect(roomName, id, pilot.token);
+    }
+    for (const socket of clients.values())
+      if (socket.pilot?.id === id) {
+        send(socket, { type: "rejected", ...denial });
+        socket.close(4004, denial.error);
+      }
+  };
+  async function enforceAccounts(ids) {
+    const accounts = [
+      ...new Set(ids.filter((id) => ACCOUNT_KEY_PATTERN.test(id))),
+    ];
+    if (!accounts.length) return { ok: true };
+    const result = await accessFor(accounts);
+    chat.applyAccess(accounts, result);
+    for (const id of accounts) {
+      const denial = banDenial(result, id);
+      if (!denial.ok) removeDenied(id, denial);
+    }
+    return result;
+  }
   const server = http.createServer(async (req, res) => {
     const reply = (status, body) => {
       res.writeHead(status, {
@@ -77,10 +116,30 @@ export function createRealtimeServer({
       const body = JSON.parse(text),
         { roomName, id, token } = body;
       let result;
-      if (url.pathname === "/state") result = world.state(roomName, id, token);
-      else if (url.pathname === "/identity")
+      if (url.pathname === "/chat-moderation") {
+        await chat.refreshHistory();
+        return reply(200, { ok: true });
+      } else if (url.pathname === "/moderation") {
+        if (!ACCOUNT_KEY_PATTERN.test(id))
+          return reply(400, { ok: false, error: "INVALID_ACCOUNT" });
+        result = await enforceAccounts([id]);
+      } else if (["/state", "/action"].includes(url.pathname)) {
+        // Validate the existing session before looking up an account's ban status.
+        const state = world.state(roomName, id, token);
+        if (!state.ok) return reply(state.status || 401, state);
+        const denial = banDenial(await accessFor([id]), id);
+        if (!denial.ok) {
+          removeDenied(id, denial);
+          return reply(denial.status, denial);
+        }
+        result =
+          url.pathname === "/state"
+            ? state
+            : world.requestFire(roomName, id, token, body.action?.direction);
+      } else if (url.pathname === "/identity") {
         result = world.updateIdentity(id, body.displayName);
-      else if (url.pathname === "/disconnect") {
+        if (result.ok) chat.updateIdentity(id, body.displayName);
+      } else if (url.pathname === "/disconnect") {
         result = world.disconnect(roomName, id, token);
         if (result.ok)
           for (const socket of clients.values())
@@ -99,6 +158,13 @@ export function createRealtimeServer({
     maxPayload: 4096,
     perMessageDeflate: false,
   });
+  const chat = createCommunityChat({
+    secret,
+    origins,
+    checkAccess: accessFor,
+    store: chatStore,
+    intervalMs: moderationIntervalMs,
+  });
   server.on("upgrade", (req, socket, head) => {
     let pathname;
     try {
@@ -107,6 +173,7 @@ export function createRealtimeServer({
       socket.destroy();
       return;
     }
+    if (pathname === "/chat") return chat.handleUpgrade(req, socket, head);
     if (
       pathname !== "/flight" ||
       !origins.includes(req.headers.origin) ||
@@ -133,7 +200,7 @@ export function createRealtimeServer({
       socket.alive = true;
       if (socket.pilot) world.touch(socket.pilot.room, socket.pilot.id);
     });
-    socket.on("message", (raw) => {
+    socket.on("message", async (raw) => {
       if (Date.now() - socket.windowStart >= 1000) {
         socket.windowStart = Date.now();
         socket.messageCount = 0;
@@ -145,7 +212,9 @@ export function createRealtimeServer({
       try {
         const message = JSON.parse(raw.toString());
         if (!socket.pilot) {
+          if (socket.joining) return;
           if (message.type !== "join") throw Error("Join first");
+          socket.joining = true;
           const ticket = verifyFlightTicket(message.ticket, secret);
           if (
             ticket.physicsVersion !== PHYSICS_VERSION ||
@@ -159,6 +228,16 @@ export function createRealtimeServer({
               physicsVersion: PHYSICS_VERSION,
             });
             socket.close(4003, "Matching flight version required");
+            return;
+          }
+          const denial = banDenial(
+            await accessFor([ticket.identity.id]),
+            ticket.identity.id,
+          );
+          if (socket.readyState !== WebSocket.OPEN) return;
+          if (!denial.ok) {
+            send(socket, { type: "rejected", ...denial });
+            socket.close(4004, denial.error);
             return;
           }
           const joined = world.join(ticket.room, ticket.identity);
@@ -209,6 +288,21 @@ export function createRealtimeServer({
       }
     });
   });
+  let moderationRunning = false;
+  const moderationTimer = setInterval(
+    async () => {
+      if (moderationRunning) return;
+      moderationRunning = true;
+      try {
+        await enforceAccounts(
+          [...world.rooms.values()].flatMap((room) => [...room.players.keys()]),
+        );
+      } finally {
+        moderationRunning = false;
+      }
+    },
+    Math.max(100, moderationIntervalMs),
+  );
   const tick = setInterval(() => world.tick(), TICK_MS);
   let rosterTick = 0;
   const snapshots = setInterval(() => {
@@ -250,10 +344,12 @@ export function createRealtimeServer({
         });
       }),
     close: async () => {
+      clearInterval(moderationTimer);
       clearInterval(tick);
       clearInterval(snapshots);
       clearInterval(heartbeat);
       for (const socket of clients.values()) socket.terminate();
+      await chat.close();
       await new Promise((resolve) => sockets.close(resolve));
       await new Promise((resolve) => server.close(resolve));
     },

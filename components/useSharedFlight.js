@@ -91,31 +91,36 @@ export default function useSharedFlight({
     }
 
     function showIssue(issue) {
+      const banned = issue.message === "ACCOUNT_BANNED";
       const full = ["ROOM_FULL", "SERVER_FULL"].includes(issue.message);
       const setup = /SETUP_REQUIRED|UNAVAILABLE/.test(issue.message);
       const mismatch = issue.message === "PHYSICS_VERSION_MISMATCH";
       setServerStatus({
         connected: false,
-        label: mismatch
-          ? "Flight update needed"
-          : full
-            ? "Server full"
-            : setup
-              ? "Shared flight unavailable"
-              : issue.message === "FLIGHT_REPLACED"
-                ? "Flight open elsewhere"
-                : "Reconnecting",
+        label: banned
+          ? "Account suspended"
+          : mismatch
+            ? "Flight update needed"
+            : full
+              ? "Server full"
+              : setup
+                ? "Shared flight unavailable"
+                : issue.message === "FLIGHT_REPLACED"
+                  ? "Flight open elsewhere"
+                  : "Reconnecting",
         code: issue.message,
         population: issue.population,
-        message: mismatch
-          ? "Reload this page to update flight. If this message remains, the website and game server need matching deployments."
-          : full
-            ? "All available pilot slots are occupied. Retrying shortly."
-            : setup
-              ? "The real-time flight server is unavailable. Retry shortly or return to the hub."
-              : issue.message === "FLIGHT_REPLACED"
-                ? "This account joined from another connection. Choose Retry now to resume here."
-                : "Connection interrupted. Your flight will resume when the shared server responds.",
+        message: banned
+          ? `${issue.reason || "This account is suspended from shared play."}${issue.expiresAt ? " Until " + new Date(issue.expiresAt).toLocaleString() + "." : " This suspension has no end date."} Contact support to appeal.`
+          : mismatch
+            ? "Reload this page to update flight. If this message remains, the website and game server need matching deployments."
+            : full
+              ? "All available pilot slots are occupied. Retrying shortly."
+              : setup
+                ? "The real-time flight server is unavailable. Retry shortly or return to the hub."
+                : issue.message === "FLIGHT_REPLACED"
+                  ? "This account joined from another connection. Choose Retry now to resume here."
+                  : "Connection interrupted. Your flight will resume when the shared server responds.",
         tick: 0,
       });
     }
@@ -208,6 +213,8 @@ export default function useSharedFlight({
           if (packet.type === "rejected") {
             issue = Object.assign(new Error(packet.error), {
               population: packet.population,
+              reason: packet.reason,
+              expiresAt: packet.expiresAt,
             });
             showIssue(issue);
             return;
@@ -289,7 +296,12 @@ export default function useSharedFlight({
         showIssue(
           issue || new Error(replaced ? "FLIGHT_REPLACED" : "CONNECTION_LOST"),
         );
-        if (!replaced && issue?.message !== "PHYSICS_VERSION_MISMATCH")
+        if (
+          !replaced &&
+          !["PHYSICS_VERSION_MISMATCH", "ACCOUNT_BANNED"].includes(
+            issue?.message,
+          )
+        )
           timer = window.setTimeout(
             tick,
             issue ? 5000 : Math.min(10000, 1000 * 2 ** Math.min(failures++, 3)),
@@ -314,6 +326,8 @@ export default function useSharedFlight({
           if (!response.ok || !data.ok || !data.token || !data.player?.id) {
             const issue = new Error(data.error || "JOIN_FAILED");
             issue.population = data.population;
+            issue.reason = data.reason;
+            issue.expiresAt = data.expiresAt;
             throw issue;
           }
           session = {
@@ -398,7 +412,10 @@ export default function useSharedFlight({
         if (stopped) return;
         failures += 1;
         showIssue(issue);
-        if (issue.message === "PHYSICS_VERSION_MISMATCH") return;
+        if (
+          ["PHYSICS_VERSION_MISMATCH", "ACCOUNT_BANNED"].includes(issue.message)
+        )
+          return;
       }
       // One in-flight request, independent of render rate. Slow connections back off.
       if (!stopped)

@@ -29,6 +29,7 @@ for (const route of routes) {
   assert.equal((html.match(/<h1(?:\s|>)/g) || []).length, 1, `${route}: expected one main heading`);
   if (new URL(response.url).pathname !== '/system') assert.match(html, /aria-label="Main navigation"/, `${route}: shared navigation missing`);
   if (route === '/admin/support') assert.match(html, /Authorized account required/, `${route}: support administration guard missing`);
+  else if (route === '/admin/moderation') { assert.match(html, /Administrator access required/, `${route}: moderation guard missing`); assert.doesNotMatch(html, /Recent moderation history/, `${route}: private dashboard leaked`); }
   else if (route.startsWith('/admin/')) assert.match(html, /Sign in before opening Dyson administration/, `${route}: guest authentication guard missing`);
   console.log(`PASS ${route}`);
 }
