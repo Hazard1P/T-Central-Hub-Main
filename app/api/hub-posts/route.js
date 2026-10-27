@@ -1,3 +1,4 @@
+import { readJsonBounded } from "@/lib/server/requestSecurity";
 import { communityBoard } from "@/lib/communitySections";
 import { isSameOriginPaymentRequest } from "@/lib/paymentRequest";
 import { resolveAccountUsername } from "@/lib/server/accountUsernameStore";
@@ -53,8 +54,10 @@ export async function POST(request) {
       { ok: false, error: "Same-origin requests required." },
       { status: 403 },
     );
-  const auth = await resolveAccountUsername(resolveGameAuthContext(cookies()));
-  const body = await request.json().catch(() => null);
+  const auth = await resolveAccountUsername(
+    resolveGameAuthContext(await cookies()),
+  );
+  const body = await readJsonBounded(request).catch(() => null);
   const builtPost = buildHubPostRecord({ body, auth });
 
   if (builtPost.error === "AUTH_REQUIRED") {

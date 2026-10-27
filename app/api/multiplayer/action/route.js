@@ -1,39 +1,69 @@
-import { moderation } from '@/lib/server/moderationStore';
-import { banDenial } from '@/lib/moderation';
-import { hasRealtimeServer, realtimeCall, requiresRealtimeServer } from '@/lib/server/realtimeBridge';
-export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
-import { getAuthoritativeState, applyAuthoritativeAction, pruneAuthoritativeRooms } from '@/lib/authoritativeMultiplayerStore';
-import { getDurableState, applyDurableAction, hasDurableMultiplayer } from '@/lib/durableMultiplayerStore';
-import { SESSION_MODES, buildRingAdjustmentOutputs, getSessionModeSnapshot, normalizeSessionMode, transitionSessionMode } from '@/lib/sessionModeEngine';
-import { createModeBridgeTransfer, rehydrateModeBridgeState, validateModeBridgeTransfer } from '@/lib/persistence/modeBridgeState';
-import { trackServerEvent } from '@/lib/server/vercelTelemetry';
-import { attachRing1Continuity } from '@/lib/ring1Continuity';
-import { runRing1Reconciliation } from '@/lib/integrations/synapticsSecondsMeterAdapter';
+import { readJsonBounded } from "@/lib/server/requestSecurity";
+import { moderation } from "@/lib/server/moderationStore";
+import { banDenial } from "@/lib/moderation";
+import {
+  hasRealtimeServer,
+  realtimeCall,
+  requiresRealtimeServer,
+} from "@/lib/server/realtimeBridge";
+export const dynamic = "force-dynamic";
+import { NextResponse } from "next/server";
+import {
+  getAuthoritativeState,
+  applyAuthoritativeAction,
+  pruneAuthoritativeRooms,
+} from "@/lib/authoritativeMultiplayerStore";
+import {
+  getDurableState,
+  applyDurableAction,
+  hasDurableMultiplayer,
+} from "@/lib/durableMultiplayerStore";
+import {
+  SESSION_MODES,
+  buildRingAdjustmentOutputs,
+  getSessionModeSnapshot,
+  normalizeSessionMode,
+  transitionSessionMode,
+} from "@/lib/sessionModeEngine";
+import {
+  createModeBridgeTransfer,
+  rehydrateModeBridgeState,
+  validateModeBridgeTransfer,
+} from "@/lib/persistence/modeBridgeState";
+import { trackServerEvent } from "@/lib/server/vercelTelemetry";
+import { attachRing1Continuity } from "@/lib/ring1Continuity";
+import { runRing1Reconciliation } from "@/lib/integrations/synapticsSecondsMeterAdapter";
 
 const ROOM_NAME_PATTERN = /^[a-zA-Z0-9_-]{1,64}$/;
-const ACTION_TYPE_WHITELIST = new Set(['fire']);
+const ACTION_TYPE_WHITELIST = new Set(["fire"]);
 const SUPPORTED_SESSION_MODES = new Set(Object.values(SESSION_MODES));
 
 function sanitizeRoomName(value) {
-  const roomName = String(value ?? '').trim();
+  const roomName = String(value ?? "").trim();
   if (!ROOM_NAME_PATTERN.test(roomName)) return null;
   return roomName;
 }
 
 function validateRequiredString(value) {
-  return typeof value === 'string' && value.trim().length > 0;
+  return typeof value === "string" && value.trim().length > 0;
 }
 
-function resolveRequestedMode(body = {}, fallback = SESSION_MODES.MULTI_PLAYER) {
+function resolveRequestedMode(
+  body = {},
+  fallback = SESSION_MODES.MULTI_PLAYER,
+) {
   const modeInput = body?.mode ?? body?.lobbyMode;
-  if (modeInput === undefined || modeInput === null || modeInput === '') {
+  if (modeInput === undefined || modeInput === null || modeInput === "") {
     return { ok: true, mode: fallback };
   }
 
   const normalizedMode = normalizeSessionMode(modeInput, null);
   if (!normalizedMode || !SUPPORTED_SESSION_MODES.has(normalizedMode)) {
-    return { ok: false, field: body?.mode !== undefined ? 'mode' : 'lobbyMode', value: modeInput };
+    return {
+      ok: false,
+      field: body?.mode !== undefined ? "mode" : "lobbyMode",
+      value: modeInput,
+    };
   }
 
   return { ok: true, mode: normalizedMode };
@@ -43,31 +73,56 @@ function validateActionPayload(body) {
   const issues = [];
   const roomName = sanitizeRoomName(body?.roomName);
   if (!roomName) {
-    issues.push({ field: 'roomName', message: 'roomName must match ^[a-zA-Z0-9_-]{1,64}$' });
+    issues.push({
+      field: "roomName",
+      message: "roomName must match ^[a-zA-Z0-9_-]{1,64}$",
+    });
   }
 
   if (!validateRequiredString(body?.id)) {
-    issues.push({ field: 'id', message: 'id is required and must be a non-empty string' });
+    issues.push({
+      field: "id",
+      message: "id is required and must be a non-empty string",
+    });
   }
 
   if (!validateRequiredString(body?.token)) {
-    issues.push({ field: 'token', message: 'token is required and must be a non-empty string' });
+    issues.push({
+      field: "token",
+      message: "token is required and must be a non-empty string",
+    });
   }
 
-  if (!body?.action || typeof body.action !== 'object' || Array.isArray(body.action)) {
-    issues.push({ field: 'action', message: 'action is required and must be an object' });
+  if (
+    !body?.action ||
+    typeof body.action !== "object" ||
+    Array.isArray(body.action)
+  ) {
+    issues.push({
+      field: "action",
+      message: "action is required and must be an object",
+    });
   } else if (!ACTION_TYPE_WHITELIST.has(body.action.type)) {
-    issues.push({ field: 'action.type', message: `action.type must be one of: ${[...ACTION_TYPE_WHITELIST].join(', ')}` });
+    issues.push({
+      field: "action.type",
+      message: `action.type must be one of: ${[...ACTION_TYPE_WHITELIST].join(", ")}`,
+    });
   }
 
   const modeSnapshot = getSessionModeSnapshot(roomName || undefined);
-  const modeResolution = resolveRequestedMode(body, modeSnapshot.mode || SESSION_MODES.MULTI_PLAYER);
+  const modeResolution = resolveRequestedMode(
+    body,
+    modeSnapshot.mode || SESSION_MODES.MULTI_PLAYER,
+  );
   if (!modeResolution.ok) {
-    issues.push({ field: modeResolution.field, message: `Unsupported mode value: ${String(modeResolution.value)}` });
+    issues.push({
+      field: modeResolution.field,
+      message: `Unsupported mode value: ${String(modeResolution.value)}`,
+    });
   }
 
   if (issues.length > 0) {
-    return { ok: false, status: 400, error: 'INVALID_ACTION_PAYLOAD', issues };
+    return { ok: false, status: 400, error: "INVALID_ACTION_PAYLOAD", issues };
   }
 
   return {
@@ -80,15 +135,40 @@ function validateActionPayload(body) {
       requestedMode: modeResolution.mode,
       captureSimulationEvent: body?.captureSimulationEvent !== false,
       accountAnchor: body?.accountId || body?.id,
-      incomingTransfer: body?.modeBridgeTransfer && typeof body?.modeBridgeTransfer === 'object' ? body.modeBridgeTransfer : null,
-      incomingState: rehydrateModeBridgeState(body?.modeBridgeState || body?.modeBridgeTransfer?.state),
+      incomingTransfer:
+        body?.modeBridgeTransfer && typeof body?.modeBridgeTransfer === "object"
+          ? body.modeBridgeTransfer
+          : null,
+      incomingState: rehydrateModeBridgeState(
+        body?.modeBridgeState || body?.modeBridgeTransfer?.state,
+      ),
     },
   };
 }
 
-function withModeBridgeTransfer(payload = {}, { roomName, sessionAnchor, accountAnchor, incomingTransfer, incomingState } = {}) {
-  const validation = validateModeBridgeTransfer({ transfer: incomingTransfer, roomName, sessionAnchor, accountAnchor });
-  if (!validation.ok) return { ok: false, status: validation.status, error: validation.error, details: validation.details };
+function withModeBridgeTransfer(
+  payload = {},
+  {
+    roomName,
+    sessionAnchor,
+    accountAnchor,
+    incomingTransfer,
+    incomingState,
+  } = {},
+) {
+  const validation = validateModeBridgeTransfer({
+    transfer: incomingTransfer,
+    roomName,
+    sessionAnchor,
+    accountAnchor,
+  });
+  if (!validation.ok)
+    return {
+      ok: false,
+      status: validation.status,
+      error: validation.error,
+      details: validation.details,
+    };
 
   const modeBridgeTransfer = createModeBridgeTransfer({
     incomingTransfer,
@@ -137,28 +217,61 @@ function withModeState(result = {}, { roomName, mode, source } = {}) {
 }
 
 export async function POST(request) {
-  const body = await request.json().catch(() => null);
-  if (!body || typeof body !== 'object' || Array.isArray(body)) {
-    return NextResponse.json({
-      ok: false,
-      error: 'INVALID_ACTION_PAYLOAD',
-      issues: [{ field: 'body', message: 'Body must be a JSON object' }],
-    }, { status: 400 });
+  const body = await readJsonBounded(request).catch(() => null);
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "INVALID_ACTION_PAYLOAD",
+        issues: [{ field: "body", message: "Body must be a JSON object" }],
+      },
+      { status: 400 },
+    );
   }
 
   const validation = validateActionPayload(body);
   if (!validation.ok) {
-    return NextResponse.json({ ok: false, error: validation.error, issues: validation.issues }, { status: validation.status });
+    return NextResponse.json(
+      { ok: false, error: validation.error, issues: validation.issues },
+      { status: validation.status },
+    );
   }
 
-  const { roomName, id, token, action, requestedMode, captureSimulationEvent, accountAnchor, incomingTransfer, incomingState } = validation.value;
+  const {
+    roomName,
+    id,
+    token,
+    action,
+    requestedMode,
+    captureSimulationEvent,
+    accountAnchor,
+    incomingTransfer,
+    incomingState,
+  } = validation.value;
 
-  if (hasRealtimeServer() || requiresRealtimeServer()) { const result = await realtimeCall('action', {roomName, id, token, action}); return NextResponse.json(result, {status:result.status||200, headers:{'Cache-Control':'private, no-store'}}); }
+  if (hasRealtimeServer() || requiresRealtimeServer()) {
+    const result = await realtimeCall("action", {
+      roomName,
+      id,
+      token,
+      action,
+    });
+    return NextResponse.json(result, {
+      status: result.status || 200,
+      headers: { "Cache-Control": "private, no-store" },
+    });
+  }
 
-  const preflight = hasDurableMultiplayer() ? await getDurableState({roomName,id,token}) : getAuthoritativeState({roomName,id,token});
+  const preflight = hasDurableMultiplayer()
+    ? await getDurableState({ roomName, id, token })
+    : getAuthoritativeState({ roomName, id, token });
   if (preflight.ok) {
     const access = banDenial(await moderation().access([id]), id);
-    if (!access.ok) return NextResponse.json(access,{status:access.status,headers:{'Cache-Control':'private, no-store'}});
+    if (!access.ok)
+      return NextResponse.json(access, {
+        status: access.status,
+        headers: { "Cache-Control": "private, no-store" },
+      });
   }
 
   // Cosmetic pulse fire does not award progression or accept client-claimed hits.
@@ -172,13 +285,16 @@ export async function POST(request) {
       action,
       captureSimulationEvent,
     });
-    const payload = withModeState({ ...result, progressionDelta: progression?.delta || null }, { roomName, mode: requestedMode, source: 'action' });
+    const payload = withModeState(
+      { ...result, progressionDelta: progression?.delta || null },
+      { roomName, mode: requestedMode, source: "action" },
+    );
     const payloadWithContinuity = await attachRing1Continuity(payload, {
       roomName,
       playerId: id,
       sessionToken: token,
       requestedMode,
-      source: 'multiplayer:action',
+      source: "multiplayer:action",
       actionType: action?.type,
       runReconciliation: runRing1Reconciliation,
     });
@@ -190,10 +306,22 @@ export async function POST(request) {
       incomingState,
     });
     if (!bridgePayload.ok) {
-      return NextResponse.json({ ok: false, error: bridgePayload.error, details: bridgePayload.details || null }, { status: bridgePayload.status || 409 });
+      return NextResponse.json(
+        {
+          ok: false,
+          error: bridgePayload.error,
+          details: bridgePayload.details || null,
+        },
+        { status: bridgePayload.status || 409 },
+      );
     }
-    await trackServerEvent('api_multiplayer_action', { durable: true, status: result.status || 200 });
-    return NextResponse.json(bridgePayload.payload, { status: result.status || 200 });
+    await trackServerEvent("api_multiplayer_action", {
+      durable: true,
+      status: result.status || 200,
+    });
+    return NextResponse.json(bridgePayload.payload, {
+      status: result.status || 200,
+    });
   }
 
   pruneAuthoritativeRooms();
@@ -203,13 +331,16 @@ export async function POST(request) {
     token,
     action,
   });
-  const payload = withModeState({ ...result, durable: false, progressionDelta: progression?.delta || null }, { roomName, mode: requestedMode, source: 'action' });
+  const payload = withModeState(
+    { ...result, durable: false, progressionDelta: progression?.delta || null },
+    { roomName, mode: requestedMode, source: "action" },
+  );
   const payloadWithContinuity = await attachRing1Continuity(payload, {
     roomName,
     playerId: id,
     sessionToken: token,
     requestedMode,
-    source: 'multiplayer:action',
+    source: "multiplayer:action",
     actionType: action?.type,
     runReconciliation: runRing1Reconciliation,
   });
@@ -221,8 +352,20 @@ export async function POST(request) {
     incomingState,
   });
   if (!bridgePayload.ok) {
-    return NextResponse.json({ ok: false, error: bridgePayload.error, details: bridgePayload.details || null }, { status: bridgePayload.status || 409 });
+    return NextResponse.json(
+      {
+        ok: false,
+        error: bridgePayload.error,
+        details: bridgePayload.details || null,
+      },
+      { status: bridgePayload.status || 409 },
+    );
   }
-  await trackServerEvent('api_multiplayer_action', { durable: false, status: result.status || 200 });
-  return NextResponse.json(bridgePayload.payload, { status: result.status || 200 });
+  await trackServerEvent("api_multiplayer_action", {
+    durable: false,
+    status: result.status || 200,
+  });
+  return NextResponse.json(bridgePayload.payload, {
+    status: result.status || 200,
+  });
 }

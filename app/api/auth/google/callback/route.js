@@ -1,21 +1,49 @@
-import { defaultGoogleUsername } from '@/lib/server/usernameDefaults';
-export const dynamic = 'force-dynamic';
-import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
-import { encryptJson } from '@/lib/security';
-import { getGoogleAuthBaseUrl, shouldUseSecureGoogleCookie } from '@/lib/googleAuthUrl';
-import { ensurePlayerAccountForLogin } from '@/lib/serverPersistence';
+import { defaultGoogleUsername } from "@/lib/server/usernameDefaults";
+export const dynamic = "force-dynamic";
+import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
+import { encryptSession } from "@/lib/security";
+import {
+  getGoogleAuthBaseUrl,
+  shouldUseSecureGoogleCookie,
+} from "@/lib/googleAuthUrl";
+import { ensurePlayerAccountForLogin } from "@/lib/serverPersistence";
 
 function normalizeRedirectPath(value) {
-  const raw = String(value || '').trim();
-  if (!raw.startsWith('/')) return '/';
-  if (raw.startsWith('//') || /[\\\x00-\x1f\x7f]/.test(raw)) return '/';
+  const raw = String(value || "").trim();
+  if (!raw.startsWith("/")) return "/";
+  if (raw.startsWith("//") || /[\\\x00-\x1f\x7f]/.test(raw)) return "/";
   return raw;
 }
 
 function clearTransientCookies(response, secure) {
-  response.cookies.set({ name: 'google_auth_state', value: '', httpOnly: true, secure, sameSite: 'lax', path: '/', maxAge: 0 });
-  response.cookies.set({ name: 'google_auth_return_to', value: '', httpOnly: true, secure, sameSite: 'lax', path: '/', maxAge: 0 });
+  response.cookies.set({
+    name: "google_auth_verifier",
+    value: "",
+    httpOnly: true,
+    secure,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
+  response.cookies.set({
+    name: "google_auth_state",
+    value: "",
+    httpOnly: true,
+    secure,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
+  response.cookies.set({
+    name: "google_auth_return_to",
+    value: "",
+    httpOnly: true,
+    secure,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
 }
 
 export async function GET(request) {
@@ -23,43 +51,59 @@ export async function GET(request) {
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) {
-    return NextResponse.json({ error: 'GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are required.' }, { status: 500 });
+    return NextResponse.json(
+      { error: "GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are required." },
+      { status: 500 },
+    );
   }
 
   const baseUrl = getGoogleAuthBaseUrl();
   const secure = shouldUseSecureGoogleCookie(baseUrl);
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const url = new URL(request.url);
-  const code = url.searchParams.get('code');
-  const state = url.searchParams.get('state');
-  const stateCookie = cookieStore.get('google_auth_state')?.value;
+  const code = url.searchParams.get("code");
+  const state = url.searchParams.get("state");
+  const stateCookie = cookieStore.get("google_auth_state")?.value;
+  const verifier = cookieStore.get("google_auth_verifier")?.value;
 
-  const returnPath = normalizeRedirectPath(cookieStore.get('google_auth_return_to')?.value);
+  const returnPath = normalizeRedirectPath(
+    cookieStore.get("google_auth_return_to")?.value,
+  );
   const redirectUrl = new URL(returnPath, baseUrl);
 
-  if (!code || !state || !stateCookie || state !== stateCookie) {
-    redirectUrl.searchParams.set('google', 'invalid_state');
+  if (
+    !code ||
+    code.length > 4096 ||
+    !state ||
+    !stateCookie ||
+    state !== stateCookie ||
+    !verifier ||
+    !/^[A-Za-z0-9_-]{43}$/.test(verifier)
+  ) {
+    redirectUrl.searchParams.set("google", "invalid_state");
     const response = NextResponse.redirect(redirectUrl);
     clearTransientCookies(response, secure);
     return response;
   }
 
   try {
-    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         code,
+        code_verifier: verifier,
         client_id: clientId,
         client_secret: clientSecret,
         redirect_uri: `${baseUrl}/api/auth/google/callback`,
-        grant_type: 'authorization_code',
+        grant_type: "authorization_code",
       }).toString(),
-      cache: 'no-store', signal: AbortSignal.timeout(10000),
+      cache: "no-store",
+      signal: AbortSignal.timeout(10000),
     });
 
     if (!tokenRes.ok) {
-      redirectUrl.searchParams.set('google', 'token_error');
+      redirectUrl.searchParams.set("google", "token_error");
       const response = NextResponse.redirect(redirectUrl);
       clearTransientCookies(response, secure);
       return response;
@@ -68,26 +112,31 @@ export async function GET(request) {
     const tokenData = await tokenRes.json();
     const accessToken = tokenData?.access_token;
     if (!accessToken) {
-      redirectUrl.searchParams.set('google', 'token_missing');
+      redirectUrl.searchParams.set("google", "token_missing");
       const response = NextResponse.redirect(redirectUrl);
       clearTransientCookies(response, secure);
       return response;
     }
 
-    const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      cache: 'no-store', signal: AbortSignal.timeout(10000),
-    });
+    const userRes = await fetch(
+      "https://www.googleapis.com/oauth2/v3/userinfo",
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
+        signal: AbortSignal.timeout(10000),
+      },
+    );
 
     if (!userRes.ok) {
-      redirectUrl.searchParams.set('google', 'profile_error');
+      redirectUrl.searchParams.set("google", "profile_error");
       const response = NextResponse.redirect(redirectUrl);
       clearTransientCookies(response, secure);
       return response;
     }
 
     const profile = await userRes.json();
-    if (typeof profile.sub !== 'string' || !profile.sub) throw new Error('Invalid Google identity');
+    if (typeof profile.sub !== "string" || !profile.sub)
+      throw new Error("Invalid Google identity");
     const user = {
       sub: profile.sub,
       name: profile.name,
@@ -98,11 +147,11 @@ export async function GET(request) {
 
     try {
       await ensurePlayerAccountForLogin({
-        provider: 'google',
+        provider: "google",
         accountId: user.sub,
         displayName: defaultGoogleUsername(user.sub),
         metadata: {
-          source: 'google_oauth_callback',
+          source: "google_oauth_callback",
           email: user.email || null,
           picture: user.picture || null,
           emailVerified: user.email_verified,
@@ -112,22 +161,30 @@ export async function GET(request) {
       // Login should still complete if account bootstrap telemetry/storage is temporarily unavailable.
     }
 
-    redirectUrl.searchParams.set('google', 'linked');
+    redirectUrl.searchParams.set("google", "linked");
     const response = NextResponse.redirect(redirectUrl);
     response.cookies.set({
-      name: 'google_session',
-      value: encryptJson(user),
+      name: "google_session",
+      value: encryptSession(user, "google"),
       httpOnly: true,
       secure,
-      sameSite: 'lax',
-      path: '/',
+      sameSite: "lax",
+      path: "/",
       maxAge: 60 * 60 * 24 * 7,
     });
-    response.cookies.set({ name: 'steam_session', value: '', httpOnly: true, secure, sameSite: 'lax', path: '/', maxAge: 0 });
+    response.cookies.set({
+      name: "steam_session",
+      value: "",
+      httpOnly: true,
+      secure,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 0,
+    });
     clearTransientCookies(response, secure);
     return response;
   } catch {
-    redirectUrl.searchParams.set('google', 'oauth_error');
+    redirectUrl.searchParams.set("google", "oauth_error");
     const response = NextResponse.redirect(redirectUrl);
     clearTransientCookies(response, secure);
     return response;

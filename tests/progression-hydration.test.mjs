@@ -8,9 +8,10 @@ test('progression persistence is guarded until account hydration completes', () 
 
   assert.match(stableWorld, /const \[progressHydrated, setProgressHydrated\] = useState\(false\)/);
   assert.match(stableWorld, /setProgressHydrated\(false\)/);
+  assert.equal((stableWorld.match(/if \(!identity\.authenticated\)/g) || []).length, 2, 'guest training remains local for both hydration and saves');
   assert.match(stableWorld, /\.finally\(\(\) => \{\s*if \(!active\) return;\s*setHydratedProgressIdentityKey\(progressIdentityKey\);\s*setProgressHydrated\(true\);\s*\}\)/s);
   assert.match(stableWorld, /if \(!progressHydrated \|\| hydratedProgressIdentityKey !== progressIdentityKey\) return;/);
-  assert.match(stableWorld, /body: JSON\.stringify\(\{ identity, progress, savedAt: snapshot\.savedAt \}\)/);
+  assert.match(stableWorld, /body: JSON\.stringify\(\{ progress: \{ visitedNodes: progress\.visitedNodes \} \}\)/);
 });
 
 test('older progression snapshots are rejected by savedAt ordering', () => {

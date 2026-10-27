@@ -7,3 +7,16 @@ dist/
 data/account-prayer-seeds.json*
 
 data/ship-economy.json*
+
+# Local credentials and private development records must never enter Git.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+data/contact-submissions.json*
+data/player-reports.json*
+data/player-accounts.json*
+data/player-account-ledger.json*
+data/player-progression.json*
+data/launch-records.json*

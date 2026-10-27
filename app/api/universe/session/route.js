@@ -1,60 +1,70 @@
-import { resolveAccountUsername } from '@/lib/server/accountUsernameStore';
-import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
-import { summarizeCsisDysonState } from '@/lib/csisDysonSphereEngine';
-import { summarizeEpochRelativity } from '@/lib/epochDysonEngine';
-import { computeRegisteredDysonStates } from '@/lib/dysonSphereRegistry';
-import { toPublicDysonAssetCollection } from '@/lib/dysonAssetResponses';
-import { WORLD_LAYOUT } from '@/lib/worldLayout';
-import { createPrivacySummary } from '@/lib/universePrivacyEngine';
-import { getPrayerSeedStore } from '@/lib/server/prayerSeedStore';
-import { readDonationLedger, summarizeDonationLedger } from '@/lib/donationLedger';
-import { resolveGameAuthContext } from '@/lib/auth/resolveGameAuthContext';
-import { trackServerEvent } from '@/lib/server/vercelTelemetry';
-import { continuityHealthService } from '@/lib/continuity/continuityHealthService';
-import { readLatestContinuityDrillReport } from '@/lib/continuity/continuityDrillService';
+import { resolveAccountUsername } from "@/lib/server/accountUsernameStore";
+import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
+import { summarizeCsisDysonState } from "@/lib/csisDysonSphereEngine";
+import { summarizeEpochRelativity } from "@/lib/epochDysonEngine";
+import { computeRegisteredDysonStates } from "@/lib/dysonSphereRegistry";
+import { toPublicDysonAssetCollection } from "@/lib/dysonAssetResponses";
+import { WORLD_LAYOUT } from "@/lib/worldLayout";
+import { createPrivacySummary } from "@/lib/universePrivacyEngine";
+import { getPrayerSeedStore } from "@/lib/server/prayerSeedStore";
+import {
+  readDonationLedger,
+  summarizeDonationLedger,
+} from "@/lib/donationLedger";
+import { resolveGameAuthContext } from "@/lib/auth/resolveGameAuthContext";
+import { trackServerEvent } from "@/lib/server/vercelTelemetry";
+import { continuityHealthService } from "@/lib/continuity/continuityHealthService";
+import { readLatestContinuityDrillReport } from "@/lib/continuity/continuityDrillService";
 import {
   getDysonRingIntegrityStatus,
   startDysonRingIntegrityService,
   upsertDysonRingContinuitySnapshot,
-} from '@/lib/dysonContinuity';
-import { runLaunchGenesisPipeline } from '@/lib/launch/launchGenesisPipeline';
-import { persistLaunchRecord } from '@/lib/serverPersistence';
+} from "@/lib/dysonContinuity";
+import { runLaunchGenesisPipeline } from "@/lib/launch/launchGenesisPipeline";
+import { persistLaunchRecord } from "@/lib/serverPersistence";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 function resolveLobbyMode(value) {
-  return value === 'private' ? 'private' : 'hub';
+  return value === "private" ? "private" : "hub";
 }
 
 export async function GET(request) {
   startDysonRingIntegrityService();
 
-  const cookieStore = cookies();
-  const authContext = await resolveAccountUsername(resolveGameAuthContext(cookieStore));
+  const cookieStore = await cookies();
+  const authContext = await resolveAccountUsername(
+    resolveGameAuthContext(cookieStore),
+  );
 
   const { searchParams } = new URL(request.url);
-  const lobbyMode = resolveLobbyMode(searchParams.get('lobbyMode'));
-  const playableAt = searchParams.get('playableAt') || searchParams.get('day') || Date.now();
+  const lobbyMode = resolveLobbyMode(searchParams.get("lobbyMode"));
+  const playableAt =
+    searchParams.get("playableAt") || searchParams.get("day") || Date.now();
 
   const continuityRuntime = continuityHealthService.start();
-  const launchGenesis = runLaunchGenesisPipeline({ authContext, lobbyMode, playableAt });
+  const launchGenesis = runLaunchGenesisPipeline({
+    authContext,
+    lobbyMode,
+    playableAt,
+  });
   const continuityDrill = await readLatestContinuityDrillReport();
 
   if (!launchGenesis.ok) {
-    await trackServerEvent('api_universe_launch_prereq_blocked', {
+    await trackServerEvent("api_universe_launch_prereq_blocked", {
       lobbyMode,
-      accountId: authContext.accountId || 'guest-server',
-      failedStage: launchGenesis.failedStage || 'unknown',
-      reason: launchGenesis.reason || 'PREREQUISITE_FAILED',
+      accountId: authContext.accountId || "guest-server",
+      failedStage: launchGenesis.failedStage || "unknown",
+      reason: launchGenesis.reason || "PREREQUISITE_FAILED",
     });
 
     return NextResponse.json(
       {
         ok: false,
         blocked: true,
-        reason: launchGenesis.reason || 'LAUNCH_PREREQUISITE_FAILED',
-        failedStage: launchGenesis.failedStage || 'unknown',
+        reason: launchGenesis.reason || "LAUNCH_PREREQUISITE_FAILED",
+        failedStage: launchGenesis.failedStage || "unknown",
       },
       { status: 412 },
     );
@@ -64,9 +74,9 @@ export async function GET(request) {
 
   const privacy = createPrivacySummary({ authContext, lobbyMode });
   const epochAnchor = launchGenesis.epoch;
-  const sessionMode = lobbyMode === 'hub' ? 'multiplayer' : 'singleplayer';
+  const sessionMode = lobbyMode === "hub" ? "multiplayer" : "singleplayer";
   const dysonStates = computeRegisteredDysonStates({
-    sphereIds: ['dyson.csis', 'dyson.synaptics'],
+    sphereIds: ["dyson.csis", "dyson.synaptics"],
     input: {
       epoch: epochAnchor,
       authContext: {
@@ -78,61 +88,73 @@ export async function GET(request) {
       telemetry: {
         meterTick: epochAnchor.unix,
         previousMeterTick: epochAnchor.unix - 30,
-        discrepancyDelta: Math.abs((epochAnchor.dysonAlignment || 0) - (epochAnchor.siderealDrift || 0)),
+        discrepancyDelta: Math.abs(
+          (epochAnchor.dysonAlignment || 0) - (epochAnchor.siderealDrift || 0),
+        ),
         styleSignal: epochAnchor.phase || 0,
       },
     },
   });
 
-  const csisDysonState = dysonStates['dyson.csis'] || {};
+  const csisDysonState = dysonStates["dyson.csis"] || {};
   const dysonRings = summarizeCsisDysonState(csisDysonState);
-  const publicDysonAssets = toPublicDysonAssetCollection(WORLD_LAYOUT.filter((node) => node.kind === 'dyson'));
+  const publicDysonAssets = toPublicDysonAssetCollection(
+    WORLD_LAYOUT.filter((node) => node.kind === "dyson"),
+  );
   const dysonRingIntegrity = upsertDysonRingContinuitySnapshot(dysonRings);
-  const donations = summarizeDonationLedger(readDonationLedger());
+  const donations = summarizeDonationLedger(await readDonationLedger());
   // Publish only the owner's count here. Written seeds never enter presence or room snapshots.
   let prayerSeeds = { total: 0 };
   if (authContext.authenticated) {
-    try { prayerSeeds = { total: (await getPrayerSeedStore().load(authContext)).total }; }
-    catch { prayerSeeds = { total: 0, unavailable: true }; }
+    try {
+      prayerSeeds = {
+        total: (await getPrayerSeedStore().load(authContext)).total,
+      };
+    } catch {
+      prayerSeeds = { total: 0, unavailable: true };
+    }
   }
 
-  await trackServerEvent('api_universe_session', {
+  await trackServerEvent("api_universe_session", {
     lobbyMode,
     authenticated: authContext.authenticated,
-    provider: authContext.provider || 'guest',
-    launchPersistence: persistence.storage || 'none',
+    provider: authContext.provider || "guest",
+    launchPersistence: persistence.storage || "none",
   });
 
-  return NextResponse.json({
-    ok: true,
-    authenticated: authContext.authenticated,
-    authContext: {
+  return NextResponse.json(
+    {
+      ok: true,
       authenticated: authContext.authenticated,
-      provider: authContext.provider,
-      accountId: authContext.accountId,
-      displayName: authContext.displayName,
-      identityKind: authContext.identityKind,
+      authContext: {
+        authenticated: authContext.authenticated,
+        provider: authContext.provider,
+        accountId: authContext.accountId,
+        displayName: authContext.displayName,
+        identityKind: authContext.identityKind,
+      },
+      lobbyMode,
+      privacy,
+      epoch: summarizeEpochRelativity(epochAnchor),
+      dysonAssets: publicDysonAssets,
+      dysonRingIntegrity: {
+        ...getDysonRingIntegrityStatus(),
+        ...dysonRingIntegrity,
+      },
+      dysonSpheres: publicDysonAssets,
+      prayerSeeds,
+      donations,
+      continuityHealth: continuityRuntime.snapshot,
+      continuityDrill,
+      launchGate: {
+        authoritative: "runtime",
+        ciGateScript: "scripts/check-dyson-continuity.mjs",
+        status: continuityRuntime.snapshot?.gateStatus || "blocked",
+      },
+      launchRecord: launchGenesis.launchRecord,
+      launchPersistence: persistence,
+      generatedAt: new Date().toISOString(),
     },
-    lobbyMode,
-    privacy,
-    epoch: summarizeEpochRelativity(epochAnchor),
-    dysonAssets: publicDysonAssets,
-    dysonRingIntegrity: {
-      ...getDysonRingIntegrityStatus(),
-      ...dysonRingIntegrity,
-    },
-    dysonSpheres: publicDysonAssets,
-    prayerSeeds,
-    donations,
-    continuityHealth: continuityRuntime.snapshot,
-    continuityDrill,
-    launchGate: {
-      authoritative: 'runtime',
-      ciGateScript: 'scripts/check-dyson-continuity.mjs',
-      status: continuityRuntime.snapshot?.gateStatus || 'blocked',
-    },
-    launchRecord: launchGenesis.launchRecord,
-    launchPersistence: persistence,
-    generatedAt: new Date().toISOString(),
-  }, { headers: { 'Cache-Control': 'private, no-store', Vary: 'Cookie' } });
+    { headers: { "Cache-Control": "private, no-store", Vary: "Cookie" } },
+  );
 }

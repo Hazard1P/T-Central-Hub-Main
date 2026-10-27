@@ -1,26 +1,40 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import SystemLauncher from '@/components/SystemLauncher';
-import SystemErrorBoundary from '@/components/SystemErrorBoundary';
-import StableSystemWorld from '@/components/StableSystemWorld';
-import { MultiplayerSessionProvider } from '@/components/MultiplayerSessionProvider';
-import { useSteamSession } from '@/components/SteamSessionProvider';
-import { gameEngine } from '@/lib/gameEngine';
-import { resolveSolarBody } from '@/lib/solarSystem';
+import { useEffect, useState } from "react";
+import SystemLauncher from "@/components/SystemLauncher";
+import SystemErrorBoundary from "@/components/SystemErrorBoundary";
+import dynamic from "next/dynamic";
+const StableSystemWorld = dynamic(
+  () => import("@/components/StableSystemWorld"),
+  {
+    ssr: false,
+    loading: () => (
+      <p className="exploration-notice" role="status">
+        Loading the universe…
+      </p>
+    ),
+  },
+);
+import { MultiplayerSessionProvider } from "@/components/MultiplayerSessionProvider";
+import { useSteamSession } from "@/components/SteamSessionProvider";
+import { gameEngine } from "@/lib/gameEngine";
+import { resolveSolarBody } from "@/lib/solarSystem";
 
 function canUseWebGL() {
-  if (typeof window === 'undefined') return false;
+  if (typeof window === "undefined") return false;
 
   try {
-    const canvas = window.document?.createElement?.('canvas');
+    const canvas = window.document?.createElement?.("canvas");
     if (!canvas) return false;
 
-    const context = canvas.getContext('webgl2') || canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-    context?.getExtension('WEBGL_lose_context')?.loseContext();
+    const context =
+      canvas.getContext("webgl2") ||
+      canvas.getContext("webgl") ||
+      canvas.getContext("experimental-webgl");
+    context?.getExtension("WEBGL_lose_context")?.loseContext();
     return Boolean(context);
   } catch (error) {
-    console.warn('System WebGL preflight failed.', error);
+    console.warn("System WebGL preflight failed.", error);
     return false;
   }
 }
@@ -29,28 +43,35 @@ export default function SystemEntryClient() {
   const [hudVisible, setHudVisible] = useState(true);
   useEffect(() => {
     const onHudToggle = (event) => setHudVisible(Boolean(event.detail));
-    window.addEventListener('hudToggle', onHudToggle);
-    return () => window.removeEventListener('hudToggle', onHudToggle);
+    window.addEventListener("hudToggle", onHudToggle);
+    return () => window.removeEventListener("hudToggle", onHudToggle);
   }, []);
-  const [launchPhase, setLaunchPhase] = useState('idle');
-  const [launchError, setLaunchError] = useState('');
+  const [launchPhase, setLaunchPhase] = useState("idle");
+  const [launchError, setLaunchError] = useState("");
   const [initialSolarBody, setInitialSolarBody] = useState(null);
-  const { steamUser, lobbyMode, setLobbyMode, loading, sessionError } = useSteamSession();
+  const { steamUser, lobbyMode, setLobbyMode, loading, sessionError } =
+    useSteamSession();
   useEffect(() => {
-    if (loading || sessionError || launchPhase !== 'idle') return;
+    if (loading || sessionError || launchPhase !== "idle") return;
     const params = new URLSearchParams(window.location.search);
-    const destination = params.get('destination');
-    if (destination?.startsWith('solar-') || params.get('region') === 'solar') handleEnter({ mode:'hub', solarBody:resolveSolarBody(destination?.slice(6) || params.get('body')) || 'earth' });
+    const destination = params.get("destination");
+    if (destination?.startsWith("solar-") || params.get("region") === "solar")
+      handleEnter({
+        mode: "hub",
+        solarBody:
+          resolveSolarBody(destination?.slice(6) || params.get("body")) ||
+          "earth",
+      });
   }, [loading, sessionError, launchPhase]);
 
   useEffect(() => {
-    if (launchPhase !== 'launching') return undefined;
+    if (launchPhase !== "launching") return undefined;
 
     let cancelled = false;
 
     try {
       const transitionTimer = window.setTimeout(() => {
-        if (!cancelled) setLaunchPhase('in_sim');
+        if (!cancelled) setLaunchPhase("in_sim");
       }, 120);
 
       return () => {
@@ -58,21 +79,24 @@ export default function SystemEntryClient() {
         window.clearTimeout(transitionTimer);
       };
     } catch (error) {
-      console.error('System launch transition failed before 3D mount.', error);
-      setLaunchPhase('error');
+      console.error("System launch transition failed before 3D mount.", error);
+      setLaunchPhase("error");
     }
 
     return undefined;
   }, [launchPhase]);
 
   useEffect(() => {
-    if (launchPhase !== 'in_sim' || typeof window === 'undefined') return;
+    if (launchPhase !== "in_sim" || typeof window === "undefined") return;
 
     try {
       gameEngine.init();
     } catch (error) {
-      console.error('Game engine initialization failed during simulation handoff.', error);
-      setLaunchPhase('error');
+      console.error(
+        "Game engine initialization failed during simulation handoff.",
+        error,
+      );
+      setLaunchPhase("error");
     }
     return () => gameEngine.destroy();
   }, [launchPhase]);
@@ -80,38 +104,50 @@ export default function SystemEntryClient() {
   const handleEnter = (options = {}) => {
     if (options.mode) setLobbyMode(options.mode);
     setInitialSolarBody(resolveSolarBody(options.solarBody));
-    setLaunchError('');
+    setLaunchError("");
 
     if (!canUseWebGL()) {
-      setLaunchError('Your browser could not start a WebGL context. Enable hardware acceleration or try another browser/device.');
-      setLaunchPhase('error');
+      setLaunchError(
+        "Your browser could not start a WebGL context. Enable hardware acceleration or try another browser/device.",
+      );
+      setLaunchPhase("error");
       return;
     }
 
-    setLaunchPhase('launching');
+    setLaunchPhase("launching");
   };
 
   const resetLauncher = () => {
-    setLaunchError('');
-    setLaunchPhase('idle');
+    setLaunchError("");
+    setLaunchPhase("idle");
   };
 
   return (
-    <div className={`system-entry-screen phase-${launchPhase}${hudVisible ? '' : ' hud-hidden'}`}>
-      {launchPhase === 'in_sim' ? (
+    <div
+      className={`system-entry-screen phase-${launchPhase}${hudVisible ? "" : " hud-hidden"}`}
+    >
+      {launchPhase === "in_sim" ? (
         <SystemErrorBoundary onReset={resetLauncher}>
           <MultiplayerSessionProvider>
-            <StableSystemWorld lobbyMode={lobbyMode} steamUser={steamUser} onModeChange={setLobbyMode} initialSolarBody={initialSolarBody} />
+            <StableSystemWorld
+              lobbyMode={lobbyMode}
+              steamUser={steamUser}
+              onModeChange={setLobbyMode}
+              initialSolarBody={initialSolarBody}
+            />
           </MultiplayerSessionProvider>
         </SystemErrorBoundary>
       ) : (
         <>
           <SystemLauncher onEnter={handleEnter} />
-          {launchPhase === 'error' ? (
+          {launchPhase === "error" ? (
             <div className="content-card observer" role="alert">
               <p className="eyebrow">Initialization issue</p>
               <h3>3D layer failed before simulation handoff.</h3>
-              <p className="muted">{launchError || 'Please try launching again. If this persists, refresh the page.'}</p>
+              <p className="muted">
+                {launchError ||
+                  "Please try launching again. If this persists, refresh the page."}
+              </p>
               <button className="button primary" onClick={resetLauncher}>
                 Reset launcher
               </button>

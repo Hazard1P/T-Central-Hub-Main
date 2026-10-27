@@ -1,25 +1,32 @@
-import { accountPayments } from '@/lib/server/accountPaymentStore';
-import { reconcileAccountPaymentEvent } from '@/lib/server/paymentWebhook';
-import { NextResponse } from 'next/server';
-import { getPayPalSubscriptionDetails, getPayPalOrderDetails, getPayPalCaptureDetails, isPayPalConfigured, verifyPayPalWebhook } from '@/lib/paypal';
+import { readTextBounded } from "@/lib/server/requestSecurity";
+import { accountPayments } from "@/lib/server/accountPaymentStore";
+import { reconcileAccountPaymentEvent } from "@/lib/server/paymentWebhook";
+import { NextResponse } from "next/server";
+import {
+  getPayPalSubscriptionDetails,
+  getPayPalOrderDetails,
+  getPayPalCaptureDetails,
+  isPayPalConfigured,
+  verifyPayPalWebhook,
+} from "@/lib/paypal";
 import {
   hasProcessedPayPalWebhookEvent,
   markPayPalWebhookEventProcessed,
   reconcilePayPalWebhookRecord,
-} from '@/lib/paypalWebhookStore';
-import { upsertSupportLedgerRecord } from '@/lib/server/supportLedgerStore';
-import { trackServerEvent } from '@/lib/server/vercelTelemetry';
+} from "@/lib/paypalWebhookStore";
+import { upsertSupportLedgerRecord } from "@/lib/server/supportLedgerStore";
+import { trackServerEvent } from "@/lib/server/vercelTelemetry";
 
 const SUPPORTED_WEBHOOK_EVENTS = new Set([
-  'CHECKOUT.ORDER.APPROVED',
-  'PAYMENT.CAPTURE.COMPLETED',
-  'BILLING.SUBSCRIPTION.CREATED',
-  'BILLING.SUBSCRIPTION.ACTIVATED',
-  'BILLING.SUBSCRIPTION.UPDATED',
-  'BILLING.SUBSCRIPTION.SUSPENDED',
-  'BILLING.SUBSCRIPTION.CANCELLED',
-  'BILLING.SUBSCRIPTION.EXPIRED',
-  'BILLING.SUBSCRIPTION.PAYMENT.FAILED',
+  "CHECKOUT.ORDER.APPROVED",
+  "PAYMENT.CAPTURE.COMPLETED",
+  "BILLING.SUBSCRIPTION.CREATED",
+  "BILLING.SUBSCRIPTION.ACTIVATED",
+  "BILLING.SUBSCRIPTION.UPDATED",
+  "BILLING.SUBSCRIPTION.SUSPENDED",
+  "BILLING.SUBSCRIPTION.CANCELLED",
+  "BILLING.SUBSCRIPTION.EXPIRED",
+  "BILLING.SUBSCRIPTION.PAYMENT.FAILED",
 ]);
 
 function readResourceCustomId(resource = {}) {
@@ -35,43 +42,46 @@ function readResourceCustomId(resource = {}) {
 }
 
 function parseWebhookRecord(event = {}) {
-  const eventType = String(event?.event_type || '').trim().toUpperCase();
+  const eventType = String(event?.event_type || "")
+    .trim()
+    .toUpperCase();
   const resource = event?.resource || {};
 
-  if (eventType === 'CHECKOUT.ORDER.APPROVED') {
+  if (eventType === "CHECKOUT.ORDER.APPROVED") {
     return {
       eventType,
       orderId: resource?.id || null,
       captureId: null,
       subscriptionId: null,
-      status: resource?.status || 'APPROVED',
+      status: resource?.status || "APPROVED",
       steamid: readResourceCustomId(resource),
       amount: resource?.purchase_units?.[0]?.amount?.value || null,
       currency: resource?.purchase_units?.[0]?.amount?.currency_code || null,
     };
   }
 
-  if (eventType === 'PAYMENT.CAPTURE.COMPLETED') {
+  if (eventType === "PAYMENT.CAPTURE.COMPLETED") {
     const supplementary = resource?.supplementary_data?.related_ids || {};
     return {
       eventType,
       orderId: supplementary?.order_id || null,
       captureId: resource?.id || null,
       subscriptionId: supplementary?.subscription_id || null,
-      status: resource?.status || 'COMPLETED',
+      status: resource?.status || "COMPLETED",
       steamid: readResourceCustomId(resource),
       amount: resource?.amount?.value || null,
       currency: resource?.amount?.currency_code || null,
     };
   }
 
-  if (eventType.startsWith('BILLING.SUBSCRIPTION.')) {
+  if (eventType.startsWith("BILLING.SUBSCRIPTION.")) {
     return {
       eventType,
       orderId: null,
       captureId: null,
       subscriptionId: resource?.id || null,
-      status: resource?.status || eventType.replace('BILLING.SUBSCRIPTION.', ''),
+      status:
+        resource?.status || eventType.replace("BILLING.SUBSCRIPTION.", ""),
       steamid: readResourceCustomId(resource),
       amount: null,
       currency: null,
@@ -83,7 +93,7 @@ function parseWebhookRecord(event = {}) {
     orderId: null,
     captureId: null,
     subscriptionId: null,
-    status: event?.summary || 'RECEIVED',
+    status: event?.summary || "RECEIVED",
     steamid: null,
     amount: null,
     currency: null,
@@ -92,11 +102,11 @@ function parseWebhookRecord(event = {}) {
 
 function hasVerificationHeaders(request) {
   const required = [
-    'paypal-auth-algo',
-    'paypal-cert-url',
-    'paypal-transmission-id',
-    'paypal-transmission-sig',
-    'paypal-transmission-time',
+    "paypal-auth-algo",
+    "paypal-cert-url",
+    "paypal-transmission-id",
+    "paypal-transmission-sig",
+    "paypal-transmission-time",
   ];
 
   return required.every((name) => Boolean(request.headers.get(name)));
@@ -104,28 +114,51 @@ function hasVerificationHeaders(request) {
 
 export async function POST(request) {
   if (!isPayPalConfigured()) {
-    return NextResponse.json({ ok: false, error: 'PayPal is not configured' }, { status: 503 });
+    return NextResponse.json(
+      { ok: false, error: "PayPal is not configured" },
+      { status: 503 },
+    );
   }
 
   if (!hasVerificationHeaders(request)) {
-    return NextResponse.json({ ok: false, error: 'Missing required PayPal signature headers' }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "Missing required PayPal signature headers" },
+      { status: 400 },
+    );
   }
 
-  const bodyText = await request.text();
+  let bodyText;
+  try {
+    bodyText = await readTextBounded(request, 262144);
+  } catch (error) {
+    return NextResponse.json(
+      { ok: false, error: "Invalid or oversized webhook body." },
+      { status: error.status || 400 },
+    );
+  }
   if (!bodyText) {
-    return NextResponse.json({ ok: false, error: 'Missing webhook body' }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "Missing webhook body" },
+      { status: 400 },
+    );
   }
 
   let event;
   try {
     event = JSON.parse(bodyText);
   } catch {
-    return NextResponse.json({ ok: false, error: 'Invalid JSON webhook body' }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "Invalid JSON webhook body" },
+      { status: 400 },
+    );
   }
 
-  const eventId = String(event?.id || '').trim();
+  const eventId = String(event?.id || "").trim();
   if (!eventId) {
-    return NextResponse.json({ ok: false, error: 'Missing webhook event ID' }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "Missing webhook event ID" },
+      { status: 400 },
+    );
   }
 
   let signatureValid = false;
@@ -133,42 +166,77 @@ export async function POST(request) {
     signatureValid = await verifyPayPalWebhook({ request, bodyText });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error.message : 'Unable to verify PayPal webhook signature' },
-      { status: 400 }
+      {
+        ok: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unable to verify PayPal webhook signature",
+      },
+      { status: 400 },
     );
   }
 
   if (!signatureValid) {
-    return NextResponse.json({ ok: false, error: 'PayPal signature verification failed' }, { status: 401 });
+    return NextResponse.json(
+      { ok: false, error: "PayPal signature verification failed" },
+      { status: 401 },
+    );
   }
 
   // Durable transaction/refund keys protect analytics across restarts and workers.
   // Reconcile before the legacy in-memory compatibility cache is consulted.
   try {
-    const financial = await reconcileAccountPaymentEvent(event, { store: accountPayments(), getOrder: getPayPalOrderDetails, getCapture: getPayPalCaptureDetails, getSubscription: getPayPalSubscriptionDetails });
-    if (financial.handled) return NextResponse.json({ ok: true, eventId, recorded: true });
+    const financial = await reconcileAccountPaymentEvent(event, {
+      store: accountPayments(),
+      getOrder: getPayPalOrderDetails,
+      getCapture: getPayPalCaptureDetails,
+      getSubscription: getPayPalSubscriptionDetails,
+    });
+    if (financial.handled)
+      return NextResponse.json({ ok: true, eventId, recorded: true });
   } catch {
-    await accountPayments().event(eventId, String(event.event_type || ''), String(event.resource?.id || ''), 'unmatched').catch(() => {});
-    return NextResponse.json({ ok: false, error: 'Payment reconciliation is pending; retry this event.' }, { status: 503 });
+    await accountPayments()
+      .event(
+        eventId,
+        String(event.event_type || ""),
+        String(event.resource?.id || ""),
+        "unmatched",
+      )
+      .catch(() => {});
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "Payment reconciliation is pending; retry this event.",
+      },
+      { status: 503 },
+    );
   }
 
   if (hasProcessedPayPalWebhookEvent(eventId)) {
-    await trackServerEvent('api_paypal_webhook', { outcome: 'duplicate' });
+    await trackServerEvent("api_paypal_webhook", { outcome: "duplicate" });
     return NextResponse.json({ ok: true, duplicate: true, eventId });
   }
 
-  const eventType = String(event?.event_type || '').trim().toUpperCase();
+  const eventType = String(event?.event_type || "")
+    .trim()
+    .toUpperCase();
   const supported = SUPPORTED_WEBHOOK_EVENTS.has(eventType);
 
   if (!supported) {
     markPayPalWebhookEventProcessed(eventId);
-    await trackServerEvent('api_paypal_webhook', { outcome: 'ignored', eventType });
+    await trackServerEvent("api_paypal_webhook", {
+      outcome: "ignored",
+      eventType,
+    });
     return NextResponse.json({ ok: true, ignored: true, eventId, eventType });
   }
 
   const parsed = parseWebhookRecord(event);
   if (parsed.subscriptionId && !parsed.steamid) {
-    const subscription = await getPayPalSubscriptionDetails(parsed.subscriptionId).catch(() => null);
+    const subscription = await getPayPalSubscriptionDetails(
+      parsed.subscriptionId,
+    ).catch(() => null);
     parsed.steamid = readResourceCustomId(subscription);
   }
 
@@ -186,8 +254,9 @@ export async function POST(request) {
 
   if (record.identifier && record.steamid) {
     await upsertSupportLedgerRecord({
-      provider: 'paypal',
-      identifierType: record.identifierType || record.verification?.identifierType,
+      provider: "paypal",
+      identifierType:
+        record.identifierType || record.verification?.identifierType,
       identifier: record.identifier,
       orderId: record.orderId,
       captureId: record.captureId,
@@ -203,7 +272,10 @@ export async function POST(request) {
   }
 
   markPayPalWebhookEventProcessed(eventId);
-  await trackServerEvent('api_paypal_webhook', { outcome: 'processed', eventType });
+  await trackServerEvent("api_paypal_webhook", {
+    outcome: "processed",
+    eventType,
+  });
 
   return NextResponse.json({
     ok: true,

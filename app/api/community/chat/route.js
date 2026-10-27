@@ -19,7 +19,7 @@ export async function POST(request) {
     return reply({ ok: false, error: "Same-origin requests required." }, 403);
   if (!hasRealtimeServer())
     return reply({ ok: false, error: "Live chat is being configured." }, 503);
-  const cookieStore = cookies(),
+  const cookieStore = await cookies(),
     auth = await resolveAccountUsername(resolveGameAuthContext(cookieStore));
   const guest = auth.authenticated
     ? null

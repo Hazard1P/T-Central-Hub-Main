@@ -1056,14 +1056,12 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       }
     } catch {}
 
-    const params = new URLSearchParams({
-      id: identity.id,
-      displayName: identity.displayName,
-      kind: identity.kind,
-      authenticated: String(Boolean(identity.authenticated)),
-    });
-
-    fetch(`/api/player/progression?${params.toString()}`, { cache: 'no-store' })
+    if (!identity.authenticated) {
+      setHydratedProgressIdentityKey(progressIdentityKey);
+      setProgressHydrated(true);
+      return;
+    }
+    fetch('/api/player/progression', { cache: 'no-store' })
       .then((response) => response.json())
       .then((data) => {
         if (!active || !data?.snapshot) return;
@@ -1094,11 +1092,12 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
       window.localStorage.setItem(storageKey, JSON.stringify(snapshot));
     } catch {}
 
+    if (!identity.authenticated) return;
     const controller = new AbortController();
     fetch('/api/player/progression', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ identity, progress, savedAt: snapshot.savedAt }),
+      body: JSON.stringify({ progress: { visitedNodes: progress.visitedNodes } }),
       signal: controller.signal,
     }).catch(() => {});
 

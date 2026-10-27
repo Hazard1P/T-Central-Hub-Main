@@ -52,7 +52,7 @@ Contact JSON persistence is available for local development only and is intentio
 
 
 ## Supported Node versions
-- **Required by Next.js 14.2.35**: Node.js `>=18.17`.
+- **Required by Next.js 15.5.28**: Node.js `>=18.18`.
 - **Repository policy (contributors + local CI)**: use active/maintenance LTS lines `20.x`, `22.x`, or `24.x`.
 - **Vercel deployments**: supported Node majors are `20.x`, `22.x`, and `24.x`; this repository defaults to `24.x` unless explicitly pinned in project settings.
 
@@ -131,3 +131,7 @@ Google players can choose an account gamertag in Profile and change it after a m
 ### Flight plan, forum and live chat
 
 `/our-flight-plan` explains the project's direction and is linked from the main navigation, footer and About page. The community board offers four sections and 13 subsections, with server-filtered feeds, persisted headings/subheadings and cross-tab refresh. Apply `20261027_forum_sections.sql` after the existing hub-post migrations. Live chat uses the persistent game worker, the chat/moderation migrations and a separate `/chat` WebSocket upgrade route; see [moderation and chat setup](docs/PLAYER-MODERATION.md).
+
+### Security baseline and deployment
+
+Read [the security baseline](docs/SECURITY-BASELINE.md) and [review findings](docs/SECURITY-REVIEW.md). The website now uses patched Next.js 15, React 19 and matching Three renderer packages. V3 session encryption requires a fresh sign-in after deployment; private seed encryption needs its separate data keys and additive schema migration. Apply the private-table permission migration with the service-role configuration. Existing plaintext seeds are preserved until explicitly migrated. Run `npm run security:scan` and `npm run security:audit` with release checks. These changes do not configure production hosting or establish that the site is intrusion-proof.

@@ -1,3 +1,4 @@
+import { readJsonBounded } from "@/lib/server/requestSecurity";
 import { NextResponse } from "next/server";
 import { resolveModerationAdmin } from "@/lib/auth/resolveModerationAdmin";
 import { moderation } from "@/lib/server/moderationStore";
@@ -17,7 +18,7 @@ function denied(context) {
   );
 }
 export async function GET(request) {
-  const context = resolveModerationAdmin();
+  const context = await resolveModerationAdmin();
   if (!context.authorized) return denied(context);
   try {
     return reply(
@@ -32,9 +33,9 @@ export async function GET(request) {
 export async function POST(request) {
   if (!isSameOriginPaymentRequest(request))
     return reply({ ok: false, error: "Same-origin requests required." }, 403);
-  const context = resolveModerationAdmin();
+  const context = await resolveModerationAdmin();
   if (!context.authorized) return denied(context);
-  const body = await request.json().catch(() => null);
+  const body = await readJsonBounded(request).catch(() => null);
   // A report's existing target takes precedence in SQL; protect it as well as the requested target.
   try {
     const overview = body?.reference

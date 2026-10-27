@@ -1,3 +1,4 @@
+import { readJsonBounded } from "@/lib/server/requestSecurity";
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
@@ -14,7 +15,9 @@ const reply = (body, status = 200) =>
     headers: { "Cache-Control": "private, no-store" },
   });
 export async function GET() {
-  const auth = await resolveAccountUsername(resolveGameAuthContext(cookies()));
+  const auth = await resolveAccountUsername(
+    resolveGameAuthContext(await cookies()),
+  );
   return reply({
     ok: true,
     reporterName: auth.displayName || "Guest reporter",
@@ -33,8 +36,10 @@ export async function GET() {
 export async function POST(request) {
   if (!isSameOriginPaymentRequest(request))
     return reply({ ok: false, error: "Same-origin requests required." }, 403);
-  const body = await request.json().catch(() => null);
-  const auth = await resolveAccountUsername(resolveGameAuthContext(cookies()));
+  const body = await readJsonBounded(request).catch(() => null);
+  const auth = await resolveAccountUsername(
+    resolveGameAuthContext(await cookies()),
+  );
   const reporter = auth.authenticated
     ? {
         accountKey: `${auth.provider}:${auth.accountId}`,

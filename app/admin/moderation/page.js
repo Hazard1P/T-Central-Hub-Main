@@ -7,8 +7,8 @@ export const metadata = {
   title: "Player moderation",
   robots: { index: false, follow: false },
 };
-export default function ModerationPage() {
-  const { authorized, auth } = resolveModerationAdmin();
+export default async function ModerationPage() {
+  const { authorized, auth } = await resolveModerationAdmin();
   return (
     <PageShell
       eyebrow="Community administration"

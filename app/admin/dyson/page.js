@@ -1,14 +1,20 @@
-import { cookies } from 'next/headers';
-import AdminDysonAssetEditor from '@/components/AdminDysonAssetEditor';
-import PageShell from '@/components/PageShell';
-import { resolveAdminContext } from '@/lib/auth/resolveAdminContext';
+import { cookies } from "next/headers";
+import AdminDysonAssetEditor from "@/components/AdminDysonAssetEditor";
+import PageShell from "@/components/PageShell";
+import { resolveAdminContext } from "@/lib/auth/resolveAdminContext";
 
-export const dynamic = 'force-dynamic';
-export const metadata = { title: 'Dyson Admin' };
+export const dynamic = "force-dynamic";
+export const metadata = { title: "Dyson Admin" };
 
 const loginRoutes = [
-  { href: '/api/auth/steam/login?redirectTo=/admin/dyson', label: 'Sign in with Steam' },
-  { href: '/api/auth/google/login?redirectTo=/admin/dyson', label: 'Sign in with Google' },
+  {
+    href: "/api/auth/steam/login?redirectTo=/admin/dyson",
+    label: "Sign in with Steam",
+  },
+  {
+    href: "/api/auth/google/login?redirectTo=/admin/dyson",
+    label: "Sign in with Google",
+  },
 ];
 
 function AdminPanel({ eyebrow, title, text, children }) {
@@ -42,9 +48,10 @@ function LoginRequiredPanel() {
 }
 
 function AccessDeniedPanel({ adminContext }) {
-  const reason = adminContext.reason === 'ADMIN_NOT_CONFIGURED'
-    ? 'No admin account is configured for this deployment.'
-    : 'Your signed-in account is not the configured admin account.';
+  const reason =
+    adminContext.reason === "ADMIN_NOT_CONFIGURED"
+      ? "No admin account is configured for this deployment."
+      : "Your signed-in account is not the configured admin account.";
 
   return (
     <AdminPanel
@@ -53,8 +60,13 @@ function AccessDeniedPanel({ adminContext }) {
       text={`${reason} The editor is intentionally not mounted for this request.`}
     >
       <ul className="arma-list">
-        <li>Provider: {adminContext.authContext.provider || 'unknown'}</li>
-        <li>Account: {adminContext.authContext.displayName || adminContext.authContext.accountId || 'unknown'}</li>
+        <li>Provider: {adminContext.authContext.provider || "unknown"}</li>
+        <li>
+          Account:{" "}
+          {adminContext.authContext.displayName ||
+            adminContext.authContext.accountId ||
+            "unknown"}
+        </li>
       </ul>
     </AdminPanel>
   );
@@ -71,10 +83,11 @@ function getEditorAdminContext(adminContext) {
   };
 }
 
-export default function AdminDysonPage() {
-  const cookieStore = cookies();
-  const adminContext = resolveAdminContext(cookieStore);
-  const editorAdminContext = adminContext.ok === true ? getEditorAdminContext(adminContext) : null;
+export default async function AdminDysonPage() {
+  const cookieStore = await cookies();
+  const adminContext = await resolveAdminContext(cookieStore);
+  const editorAdminContext =
+    adminContext.ok === true ? getEditorAdminContext(adminContext) : null;
 
   return (
     <PageShell
@@ -83,8 +96,12 @@ export default function AdminDysonPage() {
       text="Server-side account resolution protects the Dyson editor before any client component is allowed to mount."
     >
       {!adminContext.authenticated ? <LoginRequiredPanel /> : null}
-      {adminContext.authenticated && !adminContext.ok ? <AccessDeniedPanel adminContext={adminContext} /> : null}
-      {adminContext.ok === true ? <AdminDysonAssetEditor adminContext={editorAdminContext} /> : null}
+      {adminContext.authenticated && !adminContext.ok ? (
+        <AccessDeniedPanel adminContext={adminContext} />
+      ) : null}
+      {adminContext.ok === true ? (
+        <AdminDysonAssetEditor adminContext={editorAdminContext} />
+      ) : null}
     </PageShell>
   );
 }

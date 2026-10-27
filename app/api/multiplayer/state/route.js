@@ -1,54 +1,101 @@
-import { moderation } from '@/lib/server/moderationStore';
-import { banDenial } from '@/lib/moderation';
-import { hasRealtimeServer, realtimeCall, requiresRealtimeServer } from '@/lib/server/realtimeBridge';
-export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
-import { getAuthoritativeState, updateAuthoritativePlayer, pruneAuthoritativeRooms } from '@/lib/authoritativeMultiplayerStore';
-import { getDurableState, hasDurableMultiplayer, updateDurablePlayer } from '@/lib/durableMultiplayerStore';
-import { SESSION_MODES, buildRingAdjustmentOutputs, getSessionModeSnapshot, normalizeSessionMode, transitionSessionMode } from '@/lib/sessionModeEngine';
-import { createModeBridgeTransfer, rehydrateModeBridgeState, validateModeBridgeTransfer } from '@/lib/persistence/modeBridgeState';
-import { trackServerEvent } from '@/lib/server/vercelTelemetry';
-import { attachRing1Continuity } from '@/lib/ring1Continuity';
-import { runRing1Reconciliation } from '@/lib/integrations/synapticsSecondsMeterAdapter';
+import { readJsonBounded } from "@/lib/server/requestSecurity";
+import { moderation } from "@/lib/server/moderationStore";
+import { banDenial } from "@/lib/moderation";
+import {
+  hasRealtimeServer,
+  realtimeCall,
+  requiresRealtimeServer,
+} from "@/lib/server/realtimeBridge";
+export const dynamic = "force-dynamic";
+import { NextResponse } from "next/server";
+import {
+  getAuthoritativeState,
+  updateAuthoritativePlayer,
+  pruneAuthoritativeRooms,
+} from "@/lib/authoritativeMultiplayerStore";
+import {
+  getDurableState,
+  hasDurableMultiplayer,
+  updateDurablePlayer,
+} from "@/lib/durableMultiplayerStore";
+import {
+  SESSION_MODES,
+  buildRingAdjustmentOutputs,
+  getSessionModeSnapshot,
+  normalizeSessionMode,
+  transitionSessionMode,
+} from "@/lib/sessionModeEngine";
+import {
+  createModeBridgeTransfer,
+  rehydrateModeBridgeState,
+  validateModeBridgeTransfer,
+} from "@/lib/persistence/modeBridgeState";
+import { trackServerEvent } from "@/lib/server/vercelTelemetry";
+import { attachRing1Continuity } from "@/lib/ring1Continuity";
+import { runRing1Reconciliation } from "@/lib/integrations/synapticsSecondsMeterAdapter";
 
-const QUERY_TOKEN_DEPRECATION_END_AT = Date.parse('2026-05-15T00:00:00.000Z');
-const TOKEN_HEADER_CANDIDATES = ['x-multiplayer-token', 'x-session-token'];
+const QUERY_TOKEN_DEPRECATION_END_AT = Date.parse("2026-05-15T00:00:00.000Z");
+const TOKEN_HEADER_CANDIDATES = ["x-multiplayer-token", "x-session-token"];
 
-function resolveRequestedMode(input = {}, fallback = SESSION_MODES.MULTI_PLAYER) {
+function resolveRequestedMode(
+  input = {},
+  fallback = SESSION_MODES.MULTI_PLAYER,
+) {
   return normalizeSessionMode(input?.mode || input?.lobbyMode, fallback);
 }
 
-function getBearerTokenFromAuthorizationHeader(authorization = '') {
-  if (typeof authorization !== 'string') return undefined;
+function getBearerTokenFromAuthorizationHeader(authorization = "") {
+  if (typeof authorization !== "string") return undefined;
   const match = authorization.match(/^Bearer\s+(.+)$/i);
   return match?.[1]?.trim() || undefined;
 }
 
 function resolveRequestToken(request, searchParams) {
-  const bearerToken = getBearerTokenFromAuthorizationHeader(request.headers.get('authorization'));
-  if (bearerToken) return { token: bearerToken, source: 'authorization' };
+  const bearerToken = getBearerTokenFromAuthorizationHeader(
+    request.headers.get("authorization"),
+  );
+  if (bearerToken) return { token: bearerToken, source: "authorization" };
 
   for (const headerName of TOKEN_HEADER_CANDIDATES) {
     const headerToken = request.headers.get(headerName)?.trim();
     if (headerToken) return { token: headerToken, source: headerName };
   }
 
-  const queryToken = searchParams.get('token') || undefined;
-  if (!queryToken) return { token: undefined, source: 'missing' };
-  if (Date.now() < QUERY_TOKEN_DEPRECATION_END_AT) return { token: queryToken, source: 'query_compat' };
-  return { token: undefined, source: 'query_blocked' };
+  const queryToken = searchParams.get("token") || undefined;
+  if (!queryToken) return { token: undefined, source: "missing" };
+  if (Date.now() < QUERY_TOKEN_DEPRECATION_END_AT)
+    return { token: queryToken, source: "query_compat" };
+  return { token: undefined, source: "query_blocked" };
 }
 
-
-
 function extractIncomingTransfer(value) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   return value;
 }
 
-function withModeBridgeTransfer(payload = {}, { roomName, sessionAnchor, accountAnchor, incomingTransfer, incomingState } = {}) {
-  const validation = validateModeBridgeTransfer({ transfer: incomingTransfer, roomName, sessionAnchor, accountAnchor });
-  if (!validation.ok) return { ok: false, status: validation.status, error: validation.error, details: validation.details };
+function withModeBridgeTransfer(
+  payload = {},
+  {
+    roomName,
+    sessionAnchor,
+    accountAnchor,
+    incomingTransfer,
+    incomingState,
+  } = {},
+) {
+  const validation = validateModeBridgeTransfer({
+    transfer: incomingTransfer,
+    roomName,
+    sessionAnchor,
+    accountAnchor,
+  });
+  if (!validation.ok)
+    return {
+      ok: false,
+      status: validation.status,
+      error: validation.error,
+      details: validation.details,
+    };
 
   const modeBridgeTransfer = createModeBridgeTransfer({
     incomingTransfer,
@@ -98,58 +145,116 @@ function withModeState(result = {}, { roomName, mode, source } = {}) {
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
-  const roomName = searchParams.get('roomName') || undefined;
+  const roomName = searchParams.get("roomName") || undefined;
   const tokenResolution = resolveRequestToken(request, searchParams);
-  if (hasRealtimeServer() || requiresRealtimeServer()) { const result = await realtimeCall('state', {roomName, id:searchParams.get('id'), token:tokenResolution.token}); return NextResponse.json(result, {status:result.status||200, headers:{'Cache-Control':'private, no-store'}}); }
-  const preflight = hasDurableMultiplayer() ? await getDurableState({roomName,id:searchParams.get('id'),token:tokenResolution.token}) : getAuthoritativeState({roomName,id:searchParams.get('id'),token:tokenResolution.token});
+  if (hasRealtimeServer() || requiresRealtimeServer()) {
+    const result = await realtimeCall("state", {
+      roomName,
+      id: searchParams.get("id"),
+      token: tokenResolution.token,
+    });
+    return NextResponse.json(result, {
+      status: result.status || 200,
+      headers: { "Cache-Control": "private, no-store" },
+    });
+  }
+  const preflight = hasDurableMultiplayer()
+    ? await getDurableState({
+        roomName,
+        id: searchParams.get("id"),
+        token: tokenResolution.token,
+      })
+    : getAuthoritativeState({
+        roomName,
+        id: searchParams.get("id"),
+        token: tokenResolution.token,
+      });
   if (preflight.ok) {
-    const access = banDenial(await moderation().access([searchParams.get('id')]), searchParams.get('id'));
-    if (!access.ok) return NextResponse.json(access,{status:access.status,headers:{'Cache-Control':'private, no-store'}});
+    const access = banDenial(
+      await moderation().access([searchParams.get("id")]),
+      searchParams.get("id"),
+    );
+    if (!access.ok)
+      return NextResponse.json(access, {
+        status: access.status,
+        headers: { "Cache-Control": "private, no-store" },
+      });
   }
   const requestedMode = resolveRequestedMode(
-    { mode: searchParams.get('mode'), lobbyMode: searchParams.get('lobbyMode') },
-    getSessionModeSnapshot(roomName).mode || SESSION_MODES.MULTI_PLAYER
+    {
+      mode: searchParams.get("mode"),
+      lobbyMode: searchParams.get("lobbyMode"),
+    },
+    getSessionModeSnapshot(roomName).mode || SESSION_MODES.MULTI_PLAYER,
   );
   const incomingTransfer = extractIncomingTransfer(null);
   const incomingState = rehydrateModeBridgeState(undefined);
 
-  if (tokenResolution.source === 'query_compat') {
-    await trackServerEvent('api_multiplayer_state_token_deprecation', {
-      method: 'GET',
+  if (tokenResolution.source === "query_compat") {
+    await trackServerEvent("api_multiplayer_state_token_deprecation", {
+      method: "GET",
       roomName,
-      fallback: 'query_param',
+      fallback: "query_param",
       deprecatedUntil: new Date(QUERY_TOKEN_DEPRECATION_END_AT).toISOString(),
     });
-  } else if (tokenResolution.source === 'query_blocked') {
-    await trackServerEvent('api_multiplayer_state_token_rejected', {
-      method: 'GET',
+  } else if (tokenResolution.source === "query_blocked") {
+    await trackServerEvent("api_multiplayer_state_token_rejected", {
+      method: "GET",
       roomName,
-      reason: 'query_param_after_deprecation_window',
+      reason: "query_param_after_deprecation_window",
     });
   }
 
   if (hasDurableMultiplayer()) {
     const result = await getDurableState({
       roomName,
-      id: searchParams.get('id') || undefined,
+      id: searchParams.get("id") || undefined,
       token: tokenResolution.token,
     });
-    const payload = withModeState(result, { roomName, mode: requestedMode, source: 'state:get' });
+    const payload = withModeState(result, {
+      roomName,
+      mode: requestedMode,
+      source: "state:get",
+    });
     const bridgePayload = withModeBridgeTransfer(payload, {
       roomName,
-      sessionAnchor: searchParams.get('id') || result?.state?.selfId || 'guest-session',
-      accountAnchor: searchParams.get('accountId') || searchParams.get('id') || result?.state?.selfId || 'guest-account',
+      sessionAnchor:
+        searchParams.get("id") || result?.state?.selfId || "guest-session",
+      accountAnchor:
+        searchParams.get("accountId") ||
+        searchParams.get("id") ||
+        result?.state?.selfId ||
+        "guest-account",
       incomingTransfer,
       incomingState,
     });
     if (!bridgePayload.ok) {
-      return NextResponse.json({ ok: false, error: bridgePayload.error, details: bridgePayload.details || null }, { status: bridgePayload.status || 409 });
+      return NextResponse.json(
+        {
+          ok: false,
+          error: bridgePayload.error,
+          details: bridgePayload.details || null,
+        },
+        { status: bridgePayload.status || 409 },
+      );
     }
-    await trackServerEvent('api_multiplayer_state', { method: 'GET', durable: true, status: result.status || 200 });
-    const response = NextResponse.json(bridgePayload.payload, { status: result.status || 200 });
-    if (tokenResolution.source === 'query_compat') {
-      response.headers.set('Warning', '299 - "Query token is deprecated; use Authorization Bearer or x-multiplayer-token."');
-      response.headers.set('X-Token-Deprecation', new Date(QUERY_TOKEN_DEPRECATION_END_AT).toISOString());
+    await trackServerEvent("api_multiplayer_state", {
+      method: "GET",
+      durable: true,
+      status: result.status || 200,
+    });
+    const response = NextResponse.json(bridgePayload.payload, {
+      status: result.status || 200,
+    });
+    if (tokenResolution.source === "query_compat") {
+      response.headers.set(
+        "Warning",
+        '299 - "Query token is deprecated; use Authorization Bearer or x-multiplayer-token."',
+      );
+      response.headers.set(
+        "X-Token-Deprecation",
+        new Date(QUERY_TOKEN_DEPRECATION_END_AT).toISOString(),
+      );
     }
     return response;
   }
@@ -157,41 +262,89 @@ export async function GET(request) {
   pruneAuthoritativeRooms();
   const result = getAuthoritativeState({
     roomName,
-    id: searchParams.get('id') || undefined,
+    id: searchParams.get("id") || undefined,
     token: tokenResolution.token,
   });
-  const payload = withModeState({ ...result, durable: false }, { roomName, mode: requestedMode, source: 'state:get' });
+  const payload = withModeState(
+    { ...result, durable: false },
+    { roomName, mode: requestedMode, source: "state:get" },
+  );
   const bridgePayload = withModeBridgeTransfer(payload, {
     roomName,
-    sessionAnchor: searchParams.get('id') || result?.state?.selfId || 'guest-session',
-    accountAnchor: searchParams.get('accountId') || searchParams.get('id') || result?.state?.selfId || 'guest-account',
+    sessionAnchor:
+      searchParams.get("id") || result?.state?.selfId || "guest-session",
+    accountAnchor:
+      searchParams.get("accountId") ||
+      searchParams.get("id") ||
+      result?.state?.selfId ||
+      "guest-account",
     incomingTransfer,
     incomingState,
   });
   if (!bridgePayload.ok) {
-    return NextResponse.json({ ok: false, error: bridgePayload.error, details: bridgePayload.details || null }, { status: bridgePayload.status || 409 });
+    return NextResponse.json(
+      {
+        ok: false,
+        error: bridgePayload.error,
+        details: bridgePayload.details || null,
+      },
+      { status: bridgePayload.status || 409 },
+    );
   }
-  await trackServerEvent('api_multiplayer_state', { method: 'GET', durable: false, status: result.status || 200 });
-  const response = NextResponse.json(bridgePayload.payload, { status: result.status || 200 });
-  if (tokenResolution.source === 'query_compat') {
-    response.headers.set('Warning', '299 - "Query token is deprecated; use Authorization Bearer or x-multiplayer-token."');
-    response.headers.set('X-Token-Deprecation', new Date(QUERY_TOKEN_DEPRECATION_END_AT).toISOString());
+  await trackServerEvent("api_multiplayer_state", {
+    method: "GET",
+    durable: false,
+    status: result.status || 200,
+  });
+  const response = NextResponse.json(bridgePayload.payload, {
+    status: result.status || 200,
+  });
+  if (tokenResolution.source === "query_compat") {
+    response.headers.set(
+      "Warning",
+      '299 - "Query token is deprecated; use Authorization Bearer or x-multiplayer-token."',
+    );
+    response.headers.set(
+      "X-Token-Deprecation",
+      new Date(QUERY_TOKEN_DEPRECATION_END_AT).toISOString(),
+    );
   }
   return response;
 }
 
 export async function POST(request) {
-  const body = await request.json().catch(() => ({}));
+  const body = await readJsonBounded(request).catch(() => ({}));
   const roomName = body?.roomName;
-  if (hasRealtimeServer() || requiresRealtimeServer()) { const result = await realtimeCall('state', {roomName, id:body?.id, token:body?.token}); return NextResponse.json(result, {status:result.status||200, headers:{'Cache-Control':'private, no-store'}}); }
-  const preflight = hasDurableMultiplayer() ? await getDurableState({roomName,id:body?.id,token:body?.token}) : getAuthoritativeState({roomName,id:body?.id,token:body?.token});
+  if (hasRealtimeServer() || requiresRealtimeServer()) {
+    const result = await realtimeCall("state", {
+      roomName,
+      id: body?.id,
+      token: body?.token,
+    });
+    return NextResponse.json(result, {
+      status: result.status || 200,
+      headers: { "Cache-Control": "private, no-store" },
+    });
+  }
+  const preflight = hasDurableMultiplayer()
+    ? await getDurableState({ roomName, id: body?.id, token: body?.token })
+    : getAuthoritativeState({ roomName, id: body?.id, token: body?.token });
   if (preflight.ok) {
     const access = banDenial(await moderation().access([body?.id]), body?.id);
-    if (!access.ok) return NextResponse.json(access,{status:access.status,headers:{'Cache-Control':'private, no-store'}});
+    if (!access.ok)
+      return NextResponse.json(access, {
+        status: access.status,
+        headers: { "Cache-Control": "private, no-store" },
+      });
   }
-  const requestedMode = resolveRequestedMode(body, getSessionModeSnapshot(roomName).mode || SESSION_MODES.MULTI_PLAYER);
+  const requestedMode = resolveRequestedMode(
+    body,
+    getSessionModeSnapshot(roomName).mode || SESSION_MODES.MULTI_PLAYER,
+  );
   const incomingTransfer = extractIncomingTransfer(body?.modeBridgeTransfer);
-  const incomingState = rehydrateModeBridgeState(body?.modeBridgeState || incomingTransfer?.state);
+  const incomingState = rehydrateModeBridgeState(
+    body?.modeBridgeState || incomingTransfer?.state,
+  );
 
   if (hasDurableMultiplayer()) {
     const result = await updateDurablePlayer({
@@ -201,13 +354,17 @@ export async function POST(request) {
       snapshot: body?.snapshot,
       captureSimulationEvent: body?.captureSimulationEvent !== false,
     });
-    const payload = withModeState(result, { roomName, mode: requestedMode, source: 'state:post' });
+    const payload = withModeState(result, {
+      roomName,
+      mode: requestedMode,
+      source: "state:post",
+    });
     const payloadWithContinuity = await attachRing1Continuity(payload, {
       roomName,
       playerId: body?.id,
       sessionToken: body?.token,
       requestedMode,
-      source: 'multiplayer:state:post',
+      source: "multiplayer:state:post",
       runReconciliation: runRing1Reconciliation,
     });
     const bridgePayload = withModeBridgeTransfer(payloadWithContinuity, {
@@ -218,10 +375,23 @@ export async function POST(request) {
       incomingState,
     });
     if (!bridgePayload.ok) {
-      return NextResponse.json({ ok: false, error: bridgePayload.error, details: bridgePayload.details || null }, { status: bridgePayload.status || 409 });
+      return NextResponse.json(
+        {
+          ok: false,
+          error: bridgePayload.error,
+          details: bridgePayload.details || null,
+        },
+        { status: bridgePayload.status || 409 },
+      );
     }
-    await trackServerEvent('api_multiplayer_state', { method: 'POST', durable: true, status: result.status || 200 });
-    return NextResponse.json(bridgePayload.payload, { status: result.status || 200 });
+    await trackServerEvent("api_multiplayer_state", {
+      method: "POST",
+      durable: true,
+      status: result.status || 200,
+    });
+    return NextResponse.json(bridgePayload.payload, {
+      status: result.status || 200,
+    });
   }
 
   pruneAuthoritativeRooms();
@@ -231,13 +401,16 @@ export async function POST(request) {
     token: body?.token,
     snapshot: body?.snapshot,
   });
-  const payload = withModeState({ ...result, durable: false }, { roomName, mode: requestedMode, source: 'state:post' });
+  const payload = withModeState(
+    { ...result, durable: false },
+    { roomName, mode: requestedMode, source: "state:post" },
+  );
   const payloadWithContinuity = await attachRing1Continuity(payload, {
     roomName,
     playerId: body?.id,
     sessionToken: body?.token,
     requestedMode,
-    source: 'multiplayer:state:post',
+    source: "multiplayer:state:post",
     runReconciliation: runRing1Reconciliation,
   });
   const bridgePayload = withModeBridgeTransfer(payloadWithContinuity, {
@@ -248,8 +421,21 @@ export async function POST(request) {
     incomingState,
   });
   if (!bridgePayload.ok) {
-    return NextResponse.json({ ok: false, error: bridgePayload.error, details: bridgePayload.details || null }, { status: bridgePayload.status || 409 });
+    return NextResponse.json(
+      {
+        ok: false,
+        error: bridgePayload.error,
+        details: bridgePayload.details || null,
+      },
+      { status: bridgePayload.status || 409 },
+    );
   }
-  await trackServerEvent('api_multiplayer_state', { method: 'POST', durable: false, status: result.status || 200 });
-  return NextResponse.json(bridgePayload.payload, { status: result.status || 200 });
+  await trackServerEvent("api_multiplayer_state", {
+    method: "POST",
+    durable: false,
+    status: result.status || 200,
+  });
+  return NextResponse.json(bridgePayload.payload, {
+    status: result.status || 200,
+  });
 }

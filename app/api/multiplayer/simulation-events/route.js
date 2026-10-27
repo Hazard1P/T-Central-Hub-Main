@@ -1,28 +1,48 @@
-export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
-import { hasDurableMultiplayer, listSimulationEvents } from '@/lib/durableMultiplayerStore';
-import { awardMultiplayerProgressionEvent } from '@/lib/multiplayerProgression';
+import { resolveOperationsAdmin } from "@/lib/auth/resolveOperationsAdmin";
+import { readJsonBounded } from "@/lib/server/requestSecurity";
+export const dynamic = "force-dynamic";
+import { NextResponse } from "next/server";
+import {
+  hasDurableMultiplayer,
+  listSimulationEvents,
+} from "@/lib/durableMultiplayerStore";
+import { awardMultiplayerProgressionEvent } from "@/lib/multiplayerProgression";
 
 export async function GET(request) {
+  const access = await resolveOperationsAdmin(request);
+  if (!access.authorized)
+    return NextResponse.json(
+      { ok: false, error: access.error },
+      { status: access.status },
+    );
   if (!hasDurableMultiplayer()) {
-    return NextResponse.json({ ok: false, error: 'DURABLE_MULTIPLAYER_UNAVAILABLE' }, { status: 503 });
+    return NextResponse.json(
+      { ok: false, error: "DURABLE_MULTIPLAYER_UNAVAILABLE" },
+      { status: 503 },
+    );
   }
 
   const { searchParams } = new URL(request.url);
   const result = await listSimulationEvents({
-    roomName: searchParams.get('roomName') || undefined,
-    playerId: searchParams.get('playerId') || undefined,
-    sessionId: searchParams.get('sessionId') || undefined,
-    fromTimestamp: searchParams.get('from') || undefined,
-    toTimestamp: searchParams.get('to') || undefined,
-    limit: searchParams.get('limit') || undefined,
+    roomName: searchParams.get("roomName") || undefined,
+    playerId: searchParams.get("playerId") || undefined,
+    sessionId: searchParams.get("sessionId") || undefined,
+    fromTimestamp: searchParams.get("from") || undefined,
+    toTimestamp: searchParams.get("to") || undefined,
+    limit: searchParams.get("limit") || undefined,
   });
 
   return NextResponse.json(result, { status: result.status || 200 });
 }
 
 export async function POST(request) {
-  const body = await request.json().catch(() => ({}));
+  const access = await resolveOperationsAdmin(request);
+  if (!access.authorized)
+    return NextResponse.json(
+      { ok: false, error: access.error },
+      { status: access.status },
+    );
+  const body = await readJsonBounded(request).catch(() => ({}));
   const trigger = body?.trigger;
   const result = await awardMultiplayerProgressionEvent({
     playerId: body?.playerId,
@@ -33,12 +53,15 @@ export async function POST(request) {
     displayName: body?.displayName,
   });
 
-  return NextResponse.json({
-    ok: result.ok,
-    progressionDelta: result.delta,
-    progressionSnapshot: result.snapshot,
-    storage: result.storage || 'none',
-    warning: result.warning || null,
-    error: result.error || null,
-  }, { status: result.status || (result.ok ? 200 : 422) });
+  return NextResponse.json(
+    {
+      ok: result.ok,
+      progressionDelta: result.delta,
+      progressionSnapshot: result.snapshot,
+      storage: result.storage || "none",
+      warning: result.warning || null,
+      error: result.error || null,
+    },
+    { status: result.status || (result.ok ? 200 : 422) },
+  );
 }
