@@ -51,6 +51,10 @@ import ProjectedCelestial from '@/components/ProjectedCelestial';
 import { celestialMetrics, stellarCoreRadius } from '@/lib/celestialScale';
 import WeaponEffects from '@/components/WeaponEffects';
 import EarthSafeZone from '@/components/EarthSafeZone';
+import EarthSurface from '@/components/EarthSurface';
+import EarthLandingHud from '@/components/EarthLandingHud';
+import useEarthLanding from '@/components/useEarthLanding';
+import { getEarthLandingDestinations, getEarthLandingPad, getEarthSurfaceStatus } from '@/lib/earthLanding';
 import { isInEarthSafeZone } from '@/lib/earthSafeZone';
 
 const SIM_RENDERER_OPTIONS = { antialias: true, powerPreference: 'high-performance', toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.0 };
@@ -512,6 +516,11 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
 
   const firing = useShipControls({ gl, yaw, pitch, keys, blocked: flightConfig?.inputBlocked, onManualControl, onSimulationFrame });
   const lastShot = useRef(-1);
+  const surfaceActive = useRef(false);
+  useEffect(() => {
+    if (!flightConfig?.landedAt) return;
+    yaw.current=0;pitch.current=.04;roll.current=0;keys.current={};
+  }, [flightConfig?.landedAt]);
 
   useEffect(() => {
     keys.current = {};
@@ -566,18 +575,25 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
       (keys.current.Space || keys.current.KeyR ? 1 : 0) - (keys.current.ShiftLeft || keys.current.ShiftRight || keys.current.KeyF ? 1 : 0) + (touchInput.y || 0),
       (keys.current.KeyW || keys.current.ArrowUp ? 1 : 0) - (keys.current.KeyS || keys.current.ArrowDown ? 1 : 0) + (touchInput.z || 0),
     );
-    if (flightConfig?.inputBlocked) rawMove.set(0, 0, 0);
+    const landedPad = flightConfig?.landedAt ? getEarthLandingPad(flightConfig.landedAt, getPhysicsTime()) : null;
+    const surface = getEarthSurfaceStatus(groupRef.current.position.toArray(), velocity.current.toArray(), getPhysicsTime());
+    const surfaceQuat = landedPad ? new THREE.Quaternion(...landedPad.orientation) : surface.active ? new THREE.Quaternion(...surface.orientation) : new THREE.Quaternion();
+    if (surfaceActive.current !== surface.active) {
+      const localDirection = SHIP_MODEL_FORWARD.clone().applyQuaternion(groupRef.current.quaternion).applyQuaternion(surfaceQuat.clone().invert());
+      yaw.current = Math.atan2(localDirection.x,localDirection.z);pitch.current = -Math.asin(Math.max(-1,Math.min(1,localDirection.y)));surfaceActive.current = surface.active;
+    }
+    if (flightConfig?.inputBlocked || landedPad) rawMove.set(0, 0, 0);
 
     const boostActive = Boolean(keys.current.ControlLeft || keys.current.ControlRight || (touchInput.boost || 0) > 0.5);
-    const fireActive = !flightConfig?.inputBlocked && Boolean(firing.current || keys.current.KeyV || touchInput.fire);
+    const fireActive = !flightConfig?.inputBlocked && !landedPad && Boolean(firing.current || keys.current.KeyV || touchInput.fire);
     const thrustScale = (flightConfig?.thrustScale || 1) * (boostActive ? FLIGHT_TUNING.maxControl : 1);
     const targetRoll = (keys.current.KeyA || keys.current.ArrowLeft ? 0.32 : 0) + (keys.current.KeyD || keys.current.ArrowRight ? -0.32 : 0);
     roll.current += (targetRoll - roll.current) * 0.08;
-    const lookQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch.current, yaw.current, roll.current, 'YXZ'));
+    const lookQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch.current, yaw.current, roll.current, 'YXZ')).premultiply(surfaceQuat);
     const orientedMove = rawMove.clone();
     if (flightConfig?.sixAxis || flightConfig?.mouseLook) orientedMove.applyQuaternion(lookQuat);
     let dt = 0, controlVector = [0, 0, 0], stepped = lastPhysicsStep.current || { gravityMagnitude: Math.hypot(...lastGravity.current), gravity: lastGravity.current };
-    for (dt of flightSubsteps(delta)) {
+    for (dt of (landedPad ? [] : flightSubsteps(delta))) {
       // Keep local prediction within the acknowledgement window on slow links.
       // Dropping old unacknowledged controls makes the server follow stale steering.
       if (multiplayerMode && pendingInputsRef?.current.reduce((sum, frame) => sum + frame.dt, 0) + dt > .3) break;
@@ -586,13 +602,13 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
       controlVector = [orientedMove.x * thrustScale, orientedMove.y * thrustScale, orientedMove.z * thrustScale];
       const position = groupRef.current.position.toArray();
       if (!flightConfig?.inputBlocked && cruising && cruiseTarget.current) {
-        const movingTarget = destination?.solarBody || destination?.key === 'solar-geo' || destination?.key === 'earth-mining-field' || destination?.kind === 'mining asteroid';
+        const movingTarget = destination?.solarBody || destination?.key === 'solar-geo' || destination?.key === 'earth-mining-field' || destination?.kind === 'mining asteroid' || destination?.kind === 'landing zone';
         if (movingTarget) cruiseTarget.current = getApproachPoint(position, destination);
         controlVector = getCruiseControl({ position, velocity: velocity.current.toArray(), target: cruiseTarget.current, gravity: lastGravity.current, obstacles: privateObstacles, utcMs });
-        const direction = new THREE.Vector3(...(destination || navigationCommand.destination).position).sub(groupRef.current.position).normalize();
+        const direction = new THREE.Vector3(...(destination || navigationCommand.destination).position).sub(groupRef.current.position).normalize().applyQuaternion(surfaceQuat.clone().invert());
         yaw.current = Math.atan2(direction.x, direction.z);
         pitch.current = -Math.asin(Math.max(-1, Math.min(1, direction.y)));
-        lookQuat.setFromEuler(new THREE.Euler(pitch.current, yaw.current, roll.current, 'YXZ'));
+        lookQuat.setFromEuler(new THREE.Euler(pitch.current, yaw.current, roll.current, 'YXZ')).premultiply(surfaceQuat);
         if (distanceBetween(position, cruiseTarget.current) < (movingTarget ? 5 : .8) && velocity.current.length() < (movingTarget ? 8 : .7)) onArrival?.(destination || navigationCommand.destination);
       } else if (flightConfig?.inputBlocked || keys.current.KeyX || touchInput.brake || (flightConfig?.inertialDampers && rawMove.lengthSq() === 0)) {
         controlVector = getCruiseControl({ position, velocity: velocity.current.toArray(), target: position, gravity: lastGravity.current, braking: true, obstacles: privateObstacles, utcMs });
@@ -638,10 +654,14 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
       correctionTargetRef.current = null;
     }
 
+    if (landedPad) {
+      groupRef.current.position.set(...landedPad.position);velocity.current.set(0,0,0);keys.current={};
+      groupRef.current.quaternion.set(...landedPad.orientation);controlVector=[0,0,0];
+    }
     const speed = velocity.current.length();
     const direction = flightConfig?.mouseLook || speed <= 0.08 ? SHIP_MODEL_FORWARD.clone().applyQuaternion(lookQuat) : velocity.current.clone().normalize();
     const targetQuat = flightConfig?.mouseLook ? lookQuat : new THREE.Quaternion().setFromUnitVectors(SHIP_MODEL_FORWARD, direction);
-    groupRef.current.quaternion.slerp(targetQuat, 0.1);
+    if (!landedPad) groupRef.current.quaternion.slerp(targetQuat, 0.1);
 
     const gravityMagnitude = Number(stepped.gravityMagnitude || 0);
     lastGravity.current = stepped.gravity || lastGravity.current;
@@ -666,6 +686,7 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
     [engineCoreRef, enginePortRef, engineStarboardRef].forEach((ref, index) => {
       if (!ref.current) return;
       const pulse = 0.9 + Math.sin(state.clock.elapsedTime * (20 + index * 3)) * 0.08;
+      ref.current.visible = !landedPad;
       ref.current.scale.set(1, flameScale * pulse, 1);
     });
 
@@ -681,6 +702,7 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
     else camera.position.lerp(cameraTarget, 1 - Math.exp(-6 * Math.min(delta, .1)));
     const lookAhead = groupRef.current.position.clone().add(SHIP_MODEL_FORWARD.clone().multiplyScalar(100).applyQuaternion(lookQuat));
     lookAhead.sub(worldOrigin.current);
+    camera.up.lerp(new THREE.Vector3(...(landedPad?.up || (surface.active ? surface.up : [0,1,0]))),.15).normalize();
     camera.lookAt((flightConfig?.mouseLook || flightConfig?.sixAxis) ? lookAhead : groupRef.current.position.clone().add(new THREE.Vector3(0, 0.4, 1.1)).sub(worldOrigin.current));
     camera.updateMatrixWorld();
 
@@ -706,6 +728,8 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
       epoch: epochSummary,
       boosting: boostActive,
       firing: fireActive && !isInEarthSafeZone(groupRef.current.position.toArray(), getPhysicsTime()),
+      surfaceAltitude: surface.altitude,
+      landedAt: landedPad?.id || null,
       safeZone: isInEarthSafeZone(groupRef.current.position.toArray(), getPhysicsTime()),
       orientation: groupRef.current.quaternion.toArray(),
       frameIndex: frameCounter.current,
@@ -740,7 +764,7 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
 
   return (
     <group ref={groupRef} position={initialSpawn}>
-      <InterceptorHull />
+      <InterceptorHull landed={Boolean(flightConfig?.landedAt)} />
       <pointLight position={[0, 1, 1]} color="#b8dcff" intensity={4} distance={7} />
       <mesh ref={engineCoreRef} position={[0, -.06, -2.1]} rotation={[-Math.PI / 2, 0, 0]}>
         <coneGeometry args={[0.12, 1.05, 16]} />
@@ -778,7 +802,7 @@ function RemotePilot({ pilot, isSelf = false }) {
 
   return (
     <group ref={groupRef} position={pilot?.position || [0, 0, 0]}>
-      <InterceptorHull />
+      <InterceptorHull landed={Boolean(pilot.landedAt)} />
       {pilot.showLabel !== false ? <Html style={{ pointerEvents: 'none' }} zIndexRange={[30, 0]} position={[0, 0.68, 0]} center>
         <div className="pilot-tag anchored-label-panel small">
           <strong>{pilot?.displayName || 'Pilot'}</strong>
@@ -804,6 +828,7 @@ function StableSceneContent({ simRuntimeClient, graph, displayNodes, onSelect, s
     <>
       <UnifiedSolarSystem clock={solarClock} profile={graphicsProfile} onSelect={(id) => onSelect(getSolarDestinations(solarClock.getTime()).find(body => body.key === 'solar-' + id))} />
       <EarthSafeZone getPhysicsTime={solarClock.getTime} />
+      <EarthSurface getPhysicsTime={solarClock.getTime} onSelect={onSelect} players={[...remotePilots,...(flightConfig?.landedAt?[{landedAt:flightConfig.landedAt}]:[])]} />
       <DeepSpaceScenery profile={graphicsProfile} weaponBus={weaponBus} />
       <DestinationBearing destination={destination} />
       <UniverseSky><Stars radius={220} depth={120} count={graphicsProfile.stars} factor={3.2} saturation={.3} fade speed={graphicsProfile.animate ? .15 : 0} /></UniverseSky>
@@ -910,7 +935,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   const privateWorldAsset = useMemo(() => createPrivateWorldAsset({ steamUser, lobbyMode, identity }), [steamUser?.steamid, lobbyMode, identity]);
   const graph = useMemo(() => buildUniverseGraph(Date.now(), { lobbyMode, roomName, extraNodes: privateWorldAsset?.nodes || [], extraRouteLinks: privateWorldAsset?.routeLinks || [] }), [privateWorldAsset, lobbyMode, roomName]);
   const displayNodes = useMemo(() => graph.nodes.filter((node) => ['blackhole', 'dyson', 'solar', 'node'].includes(node.kind)), [graph]);
-  const destinations = useMemo(() => [...getExplorationDestinations(displayNodes).filter(node=>node.key!=='solar_system'), ...getSolarDestinations(solarClock.utcMs || Date.now()), miningGeometry(solarClock.utcMs || Date.now()).destination], [displayNodes, solarClock.utcMs]);
+  const destinations = useMemo(() => [...getExplorationDestinations(displayNodes).filter(node=>node.key!=='solar_system'), ...getSolarDestinations(solarClock.utcMs || Date.now()), ...getEarthLandingDestinations(solarClock.utcMs || Date.now()), miningGeometry(solarClock.utcMs || Date.now()).destination], [displayNodes, solarClock.utcMs]);
   const selectedRock = miningGeometry(solarClock.utcMs || Date.now()).rocks.find(rock => rock.id === selected?.key);
   const rockDestination = selectedRock ? { ...selectedRock, key: selectedRock.id, kind: 'mining asteroid', approachRadius: selectedRock.radius + 40, color: '#f4cc87', description: 'Brake near this asteroid, then fire or use Mine asteroid in Shipyard.' } : null;
   const destination = destinations.find(node=>node.key===selected?.key) || rockDestination || selected || destinations.find(node=>node.key==='solar-earth');
@@ -1004,6 +1029,8 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
     if (rock) flyTo({ ...rock, key: rock.id, kind: 'mining asteroid', approachRadius: rock.radius + 40 });
   };
   const cancelCruise = useCallback(() => { setCruising(false); }, []);
+  const stopForLanding = useCallback(() => { setCruising(false); setNavigationCommand(null); }, []);
+  const landing = useEarthLanding({session:serverSession,shared:lobbyMode==='hub',self:combatSelf,players:authoritativeState.players,telemetry,utcMs:solarClock.utcMs,getPhysicsTime:solarClock.getTime,roomName:activeRoom,spawnTick,onStop:stopForLanding,onTakeoff:setCorrectionState,enabled:!prayerOpen&&!panelOpen&&(lobbyMode!=='hub'||serverStatus.connected)});
   const arrive = useCallback((node) => {
     markVisited(node.key);
     setCruising(false);
@@ -1134,6 +1161,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           onRecenter={() => setFlightResetTick((tick) => tick + 1)} notice={notice} onPanelChange={setPanelOpen} seedCount={universe?.prayerSeeds?.total || 0} />
       </div> : <button type="button" className="stable-show-hud-button" onClick={() => gameEngine.setHUDVisible(true)}>Show HUD · H</button>}
 
+      {hudVisible && !prayerOpen && !panelOpen ? <EarthLandingHud landing={landing} onApproach={siteId => flyTo(destinations.find(node=>node.key==='earth-port-'+siteId))} /> : null}
       {serverStatus.connected && combatSelf?.alive === false ? <aside className="flight-connection-gate combat-respawn" role="status"><p className="eyebrow">Ship destroyed</p><h2>Returning to Earth…</h2><p>Respawn in {Math.max(0, Math.ceil((combatSelf.respawnAt - Date.now()) / 1000))}s. Carried ore is lost. Saved credits and upgrades remain.</p></aside> : null}
       {lobbyMode === 'hub' && !serverStatus.connected ? <aside className="flight-connection-gate" role="status"><p className="eyebrow">Shared universe</p><h2>{serverStatus.label === 'Connecting' ? 'Joining your crew…' : serverStatus.label}</h2><p>{serverStatus.message || 'Waiting for the shared server before flight controls become active.'}</p>{serverStatus.population ? <p>{serverStatus.population.playerCount} / {serverStatus.population.capacity} pilots</p> : null}<div className="exploration-actions"><button onClick={() => setSpawnTick(tick=>tick+1)}>Retry now</button><a href="/">Back to hub</a></div></aside> : null}
       <div className="stable-world-canvas polished-canvas cinematic-polished-canvas sim-zone-center-canvas" aria-label="Explorable universe" inert={prayerOpen ? '' : undefined}>
@@ -1144,7 +1172,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           <PrayerSeedRelic telemetryRef={telemetryRef} animate={graphicsProfile.animate} />
           <StableSceneContent simRuntimeClient={simRuntimeClient} graph={graph} displayNodes={displayNodes} onSelect={handleSelect}
             selectedKey={destination?.key} onTelemetryChange={handleTelemetry} touchInput={touchInput} deviceTier={deviceTier}
-            graphicsProfile={graphicsProfile} authenticated={Boolean(identity.authenticated)} flightConfig={{ ...flightConfig, inputBlocked: prayerOpen || panelOpen || combatSelf?.alive === false || (lobbyMode === 'hub' && !serverStatus.connected) }} remotePilots={remotePilots}
+            graphicsProfile={graphicsProfile} authenticated={Boolean(identity.authenticated)} flightConfig={{ ...flightConfig, landedAt:landing.landedAt, inputBlocked: prayerOpen || panelOpen || combatSelf?.alive === false || (lobbyMode === 'hub' && !serverStatus.connected) }} remotePilots={remotePilots}
             presentationMode multiplayerMode={lobbyMode === 'hub'} simulationSeed={activeRoom} simulationGravitySources={simulationGravitySources}
             resetTick={flightResetTick} spawnTick={spawnTick} onSimulationFrame={handleSimulationFrame} correctionState={correctionState}
             sessionMode={lobbyMode === 'hub' ? SESSION_MODES.MULTI_PLAYER : SESSION_MODES.SINGLE_PLAYER} ringAdjustments={authoritativeState.ringAdjustments}

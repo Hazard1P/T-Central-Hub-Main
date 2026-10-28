@@ -57,6 +57,8 @@ export default function useSharedFlight({
       revision = 0;
     let roster = new Map();
     let acknowledgedFrame = 0;
+    const landingRequests=new Map();let landingSequence=0;
+    function clearLandingRequests(){for(const pending of landingRequests.values()){window.clearTimeout(pending.timer);pending.reject(Error('Flight connection interrupted.'));}landingRequests.clear();}
     let predictionFrame = null,
       pendingPrediction = null;
     const controller = new AbortController();
@@ -131,7 +133,8 @@ export default function useSharedFlight({
         : inputsRef.current
             .filter((frame) => frame.frameIndex > self.frameIndex)
             .slice(-120);
-      if (snap || self.alive === false) {
+      if (snap || self.alive === false || self.landedAt) {
+        if(self.landedAt)inputsRef.current=[];
         onCorrection({
           position: self.position,
           velocity: self.velocity,
@@ -197,6 +200,12 @@ export default function useSharedFlight({
         if (stopped || socket !== connection) return;
         try {
           const packet = JSON.parse(event.data);
+          if(packet.type==='landing_result'){
+            const pending=landingRequests.get(packet.requestId);if(!pending)return;
+            window.clearTimeout(pending.timer);landingRequests.delete(packet.requestId);
+            if(packet.ok)pending.resolve(packet);else pending.reject(Error(packet.error||'Landing could not be completed.'));
+            return;
+          }
           const version =
             packet.type === "state"
               ? packet.state?.physicsVersion
@@ -231,6 +240,13 @@ export default function useSharedFlight({
               displayName: packet.player.displayName,
               transport: "websocket",
               fire: (direction, pose = {}) => send({ type: "fire", direction, orientation: pose.orientation, cannonIndex: pose.cannonIndex, revision }),
+              requestLanding: (action,padId) => new Promise((resolve,reject)=>{
+                if(connection.readyState!==WebSocket.OPEN){reject(Error('Reconnect to shared flight first.'));return;}
+                const requestId='landing-'+(++landingSequence);
+                const timer=window.setTimeout(()=>{landingRequests.delete(requestId);reject(Error('Landing timed out. Please retry.'));},5000);
+                landingRequests.set(requestId,{resolve,reject,timer});
+                send({type:'landing',action,padId,requestId,revision});
+              }),
             };
             setSession(session);
             reconcile(packet.player, true);
@@ -282,6 +298,7 @@ export default function useSharedFlight({
         }
       };
       connection.onclose = (event) => {
+        clearLandingRequests();
         window.clearTimeout(joinTimer);
         window.clearInterval(inputTimer);
         if (stopped || socket !== connection) return;
@@ -436,6 +453,7 @@ export default function useSharedFlight({
     window.addEventListener("pagehide", unload);
     return () => {
       stopped = true;
+      clearLandingRequests();
       controller.abort();
       window.clearTimeout(timer);
       window.clearTimeout(joinTimer);

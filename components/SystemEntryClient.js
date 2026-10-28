@@ -126,35 +126,41 @@ export default function SystemEntryClient() {
     <div
       className={`system-entry-screen phase-${launchPhase}${hudVisible ? "" : " hud-hidden"}`}
     >
+      <div
+        className="system-launcher-layer"
+        hidden={launchPhase === "in_sim"}
+        inert={launchPhase === "in_sim" ? true : undefined}
+        aria-hidden={launchPhase === "in_sim" ? true : undefined}
+      >
+        <SystemLauncher
+          onEnter={handleEnter}
+          enabled={launchPhase !== "in_sim"}
+          errorMessage={
+            launchPhase === "error"
+              ? launchError ||
+                "The universe could not start. Try launching again."
+              : ""
+          }
+          onReset={resetLauncher}
+        />
+      </div>
       {launchPhase === "in_sim" ? (
-        <SystemErrorBoundary onReset={resetLauncher}>
-          <MultiplayerSessionProvider>
-            <StableSystemWorld
-              lobbyMode={lobbyMode}
-              steamUser={steamUser}
-              onModeChange={setLobbyMode}
-              initialSolarBody={initialSolarBody}
-            />
-          </MultiplayerSessionProvider>
-        </SystemErrorBoundary>
-      ) : (
-        <>
-          <SystemLauncher onEnter={handleEnter} />
-          {launchPhase === "error" ? (
-            <div className="content-card observer" role="alert">
-              <p className="eyebrow">Initialization issue</p>
-              <h3>3D layer failed before simulation handoff.</h3>
-              <p className="muted">
-                {launchError ||
-                  "Please try launching again. If this persists, refresh the page."}
-              </p>
-              <button className="button primary" onClick={resetLauncher}>
-                Reset launcher
-              </button>
-            </div>
-          ) : null}
-        </>
-      )}
+        <main
+          className="system-game-layer"
+          aria-label="Space and Time simulation"
+        >
+          <SystemErrorBoundary onReset={resetLauncher}>
+            <MultiplayerSessionProvider>
+              <StableSystemWorld
+                lobbyMode={lobbyMode}
+                steamUser={steamUser}
+                onModeChange={setLobbyMode}
+                initialSolarBody={initialSolarBody}
+              />
+            </MultiplayerSessionProvider>
+          </SystemErrorBoundary>
+        </main>
+      ) : null}
     </div>
   );
 }

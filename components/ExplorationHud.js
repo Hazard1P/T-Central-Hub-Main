@@ -71,7 +71,7 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
           <div className="exploration-panel-heading"><div><p className="eyebrow">Flight tools</p><h2 id="exploration-panel-title">{panel === 'explore' ? 'Find your next horizon.' : panel === 'crew' ? 'Explore together.' : panel === 'shipyard' ? 'Your ship & cargo' : panel === 'chat' ? 'Community chat' : 'Your flight setup.'}</h2></div><button type="button" aria-label="Close flight panel" onClick={() => setPanel(null)}>×</button></div>
           {panel === 'chat' ? <LiveCommunityChat compact /> : null}
           {panel === 'explore' ? <>
-            <p className="exploration-help">Earth’s green boundary marks protected space: weapons are locked inside, and player combat begins outside. Every destination is in this universe. Cruise flies continuously, building speed in open space and braking ahead of arrival; steering returns control to you.</p>
+            <p className="exploration-help">Descend toward an Earth spaceport to explore its 3D terrain and land on a free pad. Earth’s green boundary marks protected space: weapons are locked inside, and player combat begins outside. Every destination is in this universe. Cruise flies continuously, building speed in open space and braking ahead of arrival; steering returns control to you.</p>
             <label className="exploration-search">Find a destination<input type="search" value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Planet, station, blackhole…" /></label>
             <div className="exploration-destinations">
               {visibleDestinations.map((node) => <button key={node.key} className={node.key === destination?.key ? 'selected' : ''} onClick={() => onSelect(node)} aria-pressed={node.key === destination?.key}>
@@ -84,7 +84,7 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
             {destination ? <div className="exploration-selection"><h3>{destination.label}</h3><p>{destination.description}</p><div className="exploration-actions"><button className="button primary" onClick={() => { onNavigate(); setPanel(null); }}>Cruise to destination</button><button className="button secondary" onClick={() => { onFace(); setPanel(null); }}>Face destination</button></div></div> : null}
           </> : null}
           {panel === 'crew' ? <>
-            <p className="exploration-help">Shared flight includes live ship combat and exploration. Invite friends into the same room. Spawn shields last five seconds and end when you fire; destroyed ships return to Earth after five seconds.</p>
+            <p className="exploration-help">Shared flight includes live ship combat and exploration. Invite friends into the same room. Earth’s safe zone blocks weapons and incoming player fire. Leave its green boundary for combat. Destroyed ships return to Earth after five seconds.</p>
             <div className="exploration-actions"><button aria-pressed={lobbyMode === 'hub'} onClick={() => onModeChange('hub')}>Shared universe</button><button aria-pressed={lobbyMode === 'private'} onClick={() => onModeChange('private')}>Solo universe</button></div>
             {lobbyMode === 'hub' ? <>
               {serverStatus.connected && serverStatus.transport === 'websocket' ? <p className="exploration-help">The server controls flight, pulse hits, shields and respawns. Opening another flight with this account resumes it there.</p> : null}

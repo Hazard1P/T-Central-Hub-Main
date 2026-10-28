@@ -3,6 +3,7 @@ import { SHIP_HEALTH, SHIP_SHIELD } from "@/lib/shipSystems";
 
 export function recoveryMessage(ship, now = Date.now()) {
   if (!ship?.alive) return "Ship disabled · awaiting respawn";
+  if (ship.landedAt) return "Landed · Earth safe zone";
   if (ship.safeZone) return "Earth safe zone · weapons locked";
   if (ship.invulnerableUntil > now)
     return "Spawn shield · firing ends protection";

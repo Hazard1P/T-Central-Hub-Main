@@ -135,7 +135,7 @@ export function createRealtimeServer({
         result =
           url.pathname === "/state"
             ? state
-            : world.requestFire(roomName, id, token, body.action?.direction);
+            : world.requestFire(roomName, id, token, body.action?.direction, Date.now(), {orientation:body.action?.orientation,cannonIndex:body.action?.cannonIndex ?? 0});
       } else if (url.pathname === "/identity") {
         result = world.updateIdentity(id, body.displayName);
         if (result.ok) chat.updateIdentity(id, body.displayName);
@@ -146,7 +146,7 @@ export function createRealtimeServer({
             if (socket.pilot?.room === roomName && socket.pilot.id === id)
               socket.close(1000, "Flight ended");
       } else if (url.pathname === "/action")
-        result = world.requestFire(roomName, id, token, body.action?.direction);
+        result = world.requestFire(roomName, id, token, body.action?.direction, Date.now(), {orientation:body.action?.orientation,cannonIndex:body.action?.cannonIndex ?? 0});
       else result = { ok: false, status: 404 };
       reply(result.status || 200, result);
     } catch {
@@ -265,6 +265,10 @@ export function createRealtimeServer({
         }
         if (message.revision !== p.revision) return;
         if (message.type === "input") world.input(room, id, p.token, message);
+        if(message.type==='landing') {
+          if(typeof message.requestId!=='string'||!/^[A-Za-z0-9_-]{1,64}$/.test(message.requestId))throw Error('Invalid landing request');
+          send(socket,{type:'landing_result',requestId:message.requestId,...world.requestLanding(room,id,p.token,message.action,message.padId)});
+        }
         if (message.type === "fire")
           world.requestFire(room, id, p.token, message.direction, Date.now(), { orientation: message.orientation, cannonIndex: message.cannonIndex ?? 0 });
       } catch {

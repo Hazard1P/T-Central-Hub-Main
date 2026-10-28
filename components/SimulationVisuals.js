@@ -225,8 +225,9 @@ function HullPlate({ points, depth = .16, color = '#9aafbd', ...props }) {
   </mesh>;
 }
 
-export const InterceptorHull = memo(function InterceptorHull() {
+export const InterceptorHull = memo(function InterceptorHull({landed=false}) {
   return <group>
+    {landed ? [-1,1].flatMap(x=>[-1,1].map(z=><group key={x+':'+z} position={[x*.65,-.5,z]}><mesh><cylinderGeometry args={[.055,.08,.6,6]} /><meshStandardMaterial color="#879ca7" metalness={.8} /></mesh><mesh position={[0,-.3,0]}><boxGeometry args={[.36,.08,.5]} /><meshStandardMaterial color="#283b47" /></mesh></group>)) : null}
     <HullPlate points={[[0,3.05],[.62,1.2],[.7,-1.65],[-.7,-1.65],[-.62,1.2]]} depth={.42} position={[0,.16,0]} color="#b8c8d1" />
     <HullPlate points={[[.54,1.25],[2.65,-1.55],[2.4,-2.05],[.62,-1.22]]} position={[0,-.02,0]} />
     <HullPlate points={[[-.54,1.25],[-2.65,-1.55],[-2.4,-2.05],[-.62,-1.22]]} position={[0,-.02,0]} />

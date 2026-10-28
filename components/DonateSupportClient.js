@@ -5,6 +5,7 @@ import { useSteamSession } from "@/components/SteamSessionProvider";
 import ContributionHistory from "@/components/ContributionHistory";
 import { SupportLinkIcon, SupportNoteIcon } from "@/components/SupportIcons";
 import { loadPayPalSdk } from "@/lib/paypalSdk";
+import { createRequestId } from '@/lib/requestId';
 import {
   SUPPORT_FOCUS,
   moneyToMinor,

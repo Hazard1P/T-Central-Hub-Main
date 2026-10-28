@@ -7789,3 +7789,46 @@ body:has(.system-entry-screen.phase-in_sim) { overscroll-behavior: none; }
 .flight-plan-priorities h3 { font-size: 1.25rem; }
 .flight-plan-invitation { border-color: rgba(182,230,151,.35); }
 @media (max-width: 700px) { .flight-plan-intro { grid-template-columns: minmax(0,1fr); gap: 1rem; } .flight-plan-orbit svg { max-width: 260px; } }
+
+.earth-port-label { padding:6px 10px; border:1px solid #8bedd166; border-radius:8px; background:#071822e8; color:#d4f8e9; white-space:nowrap; font-size:11px; cursor:pointer; }
+.earth-port-label small { display:block; margin-top:2px; font-size:9px; color:#a6bfc6; }
+.earth-landing-hud { position:absolute; z-index:57; top:130px; right:20px; width:min(310px,calc(100% - 40px)); padding:10px 12px; border:1px solid #8bedd155; border-radius:12px; background:#071822e8; color:#d9edf0; font-size:12px; }
+.earth-landing-hud strong,.earth-landing-hud small { display:block; }
+.earth-landing-hud small { margin-top:3px; color:#aec7cb; font-size:10px; }
+.earth-landing-hud p { margin:7px 0 0; font-size:10px; line-height:1.4; color:#b6d2c9; }
+.earth-landing-actions { display:flex; gap:6px; margin-top:8px; }
+.earth-landing-actions button { min-height:44px; padding:7px 12px; border:1px solid #8bedd155; border-radius:8px; background:#15303b; color:#e5f6ef; font:inherit; cursor:pointer; }
+.earth-landing-actions button:disabled { opacity:.45; cursor:default; }
+.earth-landing-actions kbd { margin-left:9px; color:#a9c9bd; font-size:10px; }
+@media(max-width:600px) { .earth-landing-hud { top:calc(220px + env(safe-area-inset-top)); right:12px; width:calc(100% - 24px); padding:8px 10px; } .earth-landing-actions { margin-top:6px; } .earth-landing-actions button { flex:1; } .earth-landing-actions kbd { display:none; } }
+@media(orientation:landscape) and (max-height:600px) and (pointer:coarse) { .earth-landing-hud { top:75px; right:12px; width:245px; } }
+
+/* The launch card stays beneath the active game and cannot capture its input. */
+.system-launcher-layer { position:relative; z-index:0; }
+.system-launcher-layer[hidden] { display:none !important; pointer-events:none; }
+.system-game-layer { position:fixed; inset:0; z-index:100; isolation:isolate; background:#02070d; }
+.compact-launcher { min-height:100dvh; display:grid; place-items:center; padding:20px; }
+.system-entry-screen .compact-launcher .system-launcher-shell { width:min(570px,100%); padding:22px; margin:0; border:1px solid #baf5df2b; border-radius:18px; background:#08151ce8; box-shadow:0 22px 70px #0005; }
+.compact-launcher .launch-topbar { padding-bottom:14px; font-size:12px; }
+.compact-launcher .launch-intro { padding-top:18px; }
+.compact-launcher .launch-intro .eyebrow { margin:0; font-size:10px; }
+.compact-launcher .system-launcher-shell h1 { margin:7px 0 8px; font-size:30px; line-height:1.15; }
+.compact-launcher .launch-description { margin:0; font-size:14px; line-height:1.5; }
+.compact-launcher .launch-facts { display:block; margin:10px 0 16px; font-size:10px; line-height:1.5; }
+.compact-launcher .launch-actions { display:grid; grid-template-columns:1.4fr 1fr; gap:9px; }
+.compact-launcher .launch-actions .button { min-height:44px; padding:10px 12px; justify-content:center; gap:10px; }
+.compact-launcher .launch-caption { margin:9px 0 0; font-size:11px; line-height:1.5; }
+.compact-launcher .launch-account { margin-top:16px; padding:14px 0 0; border:0; border-top:1px solid #baf5df25; border-radius:0; background:none; }
+.compact-launcher .launch-account p { display:flex; flex-wrap:wrap; gap:4px 12px; margin:0; font-size:12px; line-height:1.5; }
+.compact-launcher .launch-account p span { color:#9cb5ab; }
+.compact-launcher .launch-account-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin:10px 0 0; font-size:12px; }
+.compact-launcher .launch-account-actions .button { min-height:44px; padding:10px 15px; font-size:12px; }
+.launch-briefing { margin-top:15px; border-top:1px solid #baf5df25; padding-top:11px; font-size:12px; }
+.launch-briefing summary { cursor:pointer; color:#d5e5dd; min-height:30px; }
+.launch-briefing p { margin:6px 0 10px; color:#adc1b7; font-size:12px; line-height:1.65; }
+.launch-legal { margin:8px 0 0; font-size:10px; color:#91aaa0; }
+.launch-error { margin:12px 0 0; padding:10px; border:1px solid #edb28a66; border-radius:8px; font-size:12px; line-height:1.5; }
+.launch-error p { margin:0 0 8px; }
+.launch-error .button { min-height:44px; padding:8px 12px; font-size:12px; }
+@media(max-width:600px) { .compact-launcher { padding:12px; } .system-entry-screen .compact-launcher .system-launcher-shell { padding:18px; } .compact-launcher .system-launcher-shell h1 { font-size:27px; } }
+@media(max-width:359px) { .compact-launcher .launch-actions { grid-template-columns:1fr; } .compact-launcher .launch-account-actions .button { flex:1; } }
