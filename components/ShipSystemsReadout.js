@@ -3,6 +3,7 @@ import { SHIP_HEALTH, SHIP_SHIELD } from "@/lib/shipSystems";
 
 export function recoveryMessage(ship, now = Date.now()) {
   if (!ship?.alive) return "Ship disabled · awaiting respawn";
+  if (ship.safeZone) return "Earth safe zone · weapons locked";
   if (ship.invulnerableUntil > now)
     return "Spawn shield · firing ends protection";
   if (ship.repairState === "repairing") return "Earth repairs · +8 hull/s";
@@ -58,7 +59,7 @@ export default function ShipSystemsReadout({ ship, detailed = false }) {
           Shields absorb hits before hull damage. Both recover after five
           seconds without firing or taking damage. Hull repairs are free at
           Earth: stay outside the surface, within 4.2 Earth radii, below 8 u/s.
-          Repairing offers no combat protection.
+          Earth’s safe zone blocks weapons and incoming player fire. Leave its boundary to engage in combat.
         </p>
       ) : (
         <small>

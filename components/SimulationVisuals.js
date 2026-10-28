@@ -5,6 +5,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Environment, Lightformer } from '@react-three/drei';
 import * as THREE from 'three';
 import ProjectedCelestial from '@/components/ProjectedCelestial';
+import { SHIP_CANNON_MUZZLES } from '@/lib/shipWeapons';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
@@ -238,8 +239,8 @@ export const InterceptorHull = memo(function InterceptorHull() {
     <mesh position={[0,.2,-.5]}><boxGeometry args={[.08,.055,1.8]} /><meshStandardMaterial color="#24374a" metalness={.8} roughness={.3} /></mesh>
     <mesh position={[0,.12,2]}><boxGeometry args={[.07,.035,1.2]} /><meshBasicMaterial color="#68e7ff" toneMapped={false} /></mesh>
     {[-1,1].map(side=><group key={side}>
-      <mesh position={[side*1.4,.05,.6]} rotation={[Math.PI/2,0,0]}><cylinderGeometry args={[.075,.11,1.55,12]} /><meshStandardMaterial color="#384d60" metalness={.85} roughness={.25} /></mesh>
-      <mesh position={[side*1.4,.05,1.4]}><torusGeometry args={[.08,.025,6,12]} /><meshBasicMaterial color="#87eaff" toneMapped={false} /></mesh>
+      <mesh position={[side*1.4,.05,SHIP_CANNON_MUZZLES[0][2] - .8]} rotation={[Math.PI/2,0,0]}><cylinderGeometry args={[.075,.11,1.55,12]} /><meshStandardMaterial color="#384d60" metalness={.85} roughness={.25} /></mesh>
+      <mesh position={SHIP_CANNON_MUZZLES[side < 0 ? 0 : 1]}><torusGeometry args={[.08,.025,6,12]} /><meshBasicMaterial color="#87eaff" toneMapped={false} /></mesh>
       <mesh position={[side*.69,.22,-1.1]} rotation={[Math.PI/2,0,0]}>
         <cylinderGeometry args={[.24,.32,1.2,16]} /><meshStandardMaterial color="#28394c" metalness={.8} roughness={.3} />
       </mesh>

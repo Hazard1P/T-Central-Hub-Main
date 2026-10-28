@@ -72,7 +72,9 @@ test("durable ban checks reject already-issued tickets, kick live pilots, clear 
   const joined = await wait;
   const p = app.world.rooms.get("shared").players.get(id),
     room = app.world.rooms.get("shared");
-  app.world.requestFire("shared", id, joined.token, [0, 0, 1]);
+  p.position = [0, 0, 18];
+  assert(app.world.requestFire("shared", id, joined.token, [0, 0, 1]).ok);
+  assert(room.shots.some(s => s.ownerId === id));
   app.world.updateIdentity(id, "After rename");
   const rejected = packet(first.socket, "rejected");
   const closed = once(first.socket, "close");

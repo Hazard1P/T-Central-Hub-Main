@@ -230,7 +230,7 @@ export default function useSharedFlight({
               token: packet.token,
               displayName: packet.player.displayName,
               transport: "websocket",
-              fire: (direction) => send({ type: "fire", direction, revision }),
+              fire: (direction, pose = {}) => send({ type: "fire", direction, orientation: pose.orientation, cannonIndex: pose.cannonIndex, revision }),
             };
             setSession(session);
             reconcile(packet.player, true);
@@ -243,6 +243,7 @@ export default function useSharedFlight({
                 frameIndex: latest?.frameIndex ?? acknowledgedFrame,
                 controlVector: latest?.controlVector || [0, 0, 0],
                 direction: telemetryRef.current.direction || [0, 0, 1],
+                orientation: telemetryRef.current.orientation,
               });
             }, 50);
           }

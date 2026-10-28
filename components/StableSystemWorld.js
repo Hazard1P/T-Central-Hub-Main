@@ -50,6 +50,8 @@ import { getSolarDestinations, getUniverseSolarState } from '@/lib/universeFligh
 import ProjectedCelestial from '@/components/ProjectedCelestial';
 import { celestialMetrics, stellarCoreRadius } from '@/lib/celestialScale';
 import WeaponEffects from '@/components/WeaponEffects';
+import EarthSafeZone from '@/components/EarthSafeZone';
+import { isInEarthSafeZone } from '@/lib/earthSafeZone';
 
 const SIM_RENDERER_OPTIONS = { antialias: true, powerPreference: 'high-performance', toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.0 };
 const SHIP_MODEL_FORWARD = new THREE.Vector3(0, 0, 1);
@@ -684,9 +686,8 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
 
     if (fireActive && state.clock.elapsedTime - lastShot.current >= .2) {
       lastShot.current = state.clock.elapsedTime;
-      const origin = groupRef.current.position.clone().add(new THREE.Vector3(0, .05, 1.8).applyQuaternion(lookQuat));
-      const aim = camera.position.clone().add(worldOrigin.current).add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(160)).sub(origin).normalize();
-      onCombatAction?.({ position: groupRef.current.position.toArray(), direction: aim.toArray(), inheritedVelocity: velocity.current.toArray() });
+      const aim = SHIP_MODEL_FORWARD.clone().applyQuaternion(groupRef.current.quaternion).normalize();
+      onCombatAction?.({ position: groupRef.current.position.toArray(), direction: aim.toArray(), orientation: groupRef.current.quaternion.toArray(), inheritedVelocity: velocity.current.toArray(), utcMs: getPhysicsTime() });
     }
 
     onTelemetryChange?.({
@@ -704,7 +705,9 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
       quantum: summarizeQuantumState(quantumRef.current),
       epoch: epochSummary,
       boosting: boostActive,
-      firing: fireActive,
+      firing: fireActive && !isInEarthSafeZone(groupRef.current.position.toArray(), getPhysicsTime()),
+      safeZone: isInEarthSafeZone(groupRef.current.position.toArray(), getPhysicsTime()),
+      orientation: groupRef.current.quaternion.toArray(),
       frameIndex: frameCounter.current,
       tick: Date.now(),
       position: [
@@ -768,14 +771,14 @@ function RemotePilot({ pilot, isSelf = false }) {
     else groupRef.current.position.lerp(target, Math.min(1, delta * 4.5));
     const dir = new THREE.Vector3(...(pilot.direction || [0, 0, -1]));
     if (dir.lengthSq() > 0.001) {
-      const targetQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir.normalize());
+      const targetQuat = pilot.orientation ? new THREE.Quaternion(...pilot.orientation) : new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir.normalize());
       groupRef.current.quaternion.slerp(targetQuat, Math.min(1, delta * 3.2));
     }
   });
 
   return (
     <group ref={groupRef} position={pilot?.position || [0, 0, 0]}>
-      <group scale={.55}><InterceptorHull /></group>
+      <InterceptorHull />
       {pilot.showLabel !== false ? <Html style={{ pointerEvents: 'none' }} zIndexRange={[30, 0]} position={[0, 0.68, 0]} center>
         <div className="pilot-tag anchored-label-panel small">
           <strong>{pilot?.displayName || 'Pilot'}</strong>
@@ -800,6 +803,7 @@ function StableSceneContent({ simRuntimeClient, graph, displayNodes, onSelect, s
   return (
     <>
       <UnifiedSolarSystem clock={solarClock} profile={graphicsProfile} onSelect={(id) => onSelect(getSolarDestinations(solarClock.getTime()).find(body => body.key === 'solar-' + id))} />
+      <EarthSafeZone getPhysicsTime={solarClock.getTime} />
       <DeepSpaceScenery profile={graphicsProfile} weaponBus={weaponBus} />
       <DestinationBearing destination={destination} />
       <UniverseSky><Stars radius={220} depth={120} count={graphicsProfile.stars} factor={3.2} saturation={.3} fade speed={graphicsProfile.animate ? .15 : 0} /></UniverseSky>
@@ -1149,7 +1153,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
           </UniverseFrame>
         </Canvas>
       </div>
-      {hudVisible && !prayerOpen && !panelOpen ? <div className="ship-reticle" aria-hidden="true"><i /><span>Pulse cannons</span></div> : null}
+      {hudVisible && !prayerOpen && !panelOpen ? <div className="ship-reticle" aria-hidden="true"><i /><span>{(combatSelf?.safeZone ?? telemetry.safeZone) ? 'Earth safe zone · weapons locked' : 'Pulse cannons · combat space'}</span></div> : null}
       <PrayerSeedEncounter key={identity.id} telemetry={telemetry} authenticated={Boolean(identity.authenticated)} onOpenChange={handlePrayerOpen} onBound={refresh} enabled={hudVisible && !panelOpen} />
       {hudVisible && (lobbyMode !== 'hub' || serverStatus.connected) && deviceTier.isMobile && !panelOpen && !prayerOpen ? <TouchFlightPad onInputChange={setTouchInput} /> : null}
     </div>

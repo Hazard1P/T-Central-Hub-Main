@@ -28,7 +28,7 @@ function fixture(t, capacity = 128) {
   const room = world.rooms.get("shared"),
     shooter = room.players.get(a.player.id),
     target = room.players.get(b.player.id);
-  shooter.position = getSolarSpawn("pair");
+  shooter.position = [...getEarthMiningField(Date.now()).center];
   target.position = shooter.position.map((v, i) => v + (i === 0 ? 35 : 0));
   function advance(ms) {
     for (let elapsed = 0; elapsed < ms; elapsed += 50) {
@@ -127,6 +127,7 @@ test("the fixed server clock advances flight and ignores client position, elapse
 });
 test("live server repairs at Earth, interrupts recovery on fire, and reports shield versus hull hits", (t) => {
   const { world, a, room, shooter, target, advance } = fixture(t);
+  shooter.position = getSolarSpawn("repair-test");
   shooter.health = 40;
   shooter.shield = 0;
   shooter.invulnerableUntil = 0;
@@ -138,7 +139,10 @@ test("live server repairs at Earth, interrupts recovery on fire, and reports shi
   assert(shooter.health > 40);
   assert(shooter.shield > 0);
   const repaired = shooter.health;
+  assert.equal(world.requestFire("shared", a.player.id, a.token, [-1, 0, 0]).error, "EARTH_SAFE_ZONE");
+  shooter.position = [...getEarthMiningField(Date.now()).center];
   assert(world.requestFire("shared", a.player.id, a.token, [-1, 0, 0]).ok);
+  shooter.position = getSolarSpawn("repair-test");
   advance(1000);
   assert.equal(shooter.health, repaired);
   assert.equal(
@@ -147,6 +151,7 @@ test("live server repairs at Earth, interrupts recovery on fire, and reports shi
       .state.players.find((p) => p.id === a.player.id).repairState,
     "combat-lock",
   );
+  shooter.position = [...getEarthMiningField(Date.now()).center];
   target.shield = 10;
   world.damage(room, target, shooter, Date.now());
   const hit = room.events.at(-1);
@@ -155,6 +160,7 @@ test("live server repairs at Earth, interrupts recovery on fire, and reports shi
   assert.equal(hit.shieldBroken, true);
   assert.equal(target.health, 90);
   assert.equal(target.shield, 0);
+  target.position = getSolarSpawn("repair-target");
   advance(4950);
   assert.equal(target.health, 90);
   advance(100);
@@ -289,6 +295,14 @@ test("real WebSocket clients share authoritative snapshots; admission, origins, 
   assert.equal(full.state.tickRate, 20);
   assert.equal(full.state.players.length, 2);
   assert(!JSON.stringify(full.state).includes(pa.token));
+  // A modified client cannot bypass the local lock by claiming a remote muzzle
+  // or a false safe-zone flag in a raw WebSocket packet.
+  const protectedPlayer = full.state.players.find(p => p.id === 'a');
+  assert.equal(protectedPlayer.safeZone, true);
+  a.send(JSON.stringify({type:'fire',revision:0,direction:[0,0,1],origin:[0,0,0],safeZone:false,cannonIndex:1,orientation:[0,0,0,1]}));
+  const protectedState = await nextPacket(a, p => p.type === 'state' && p.state.tick > full.state.tick);
+  assert.equal(protectedState.state.projectiles.length, 0);
+  assert.equal(protectedState.state.players.find(p => p.id === 'a').invulnerableUntil, protectedPlayer.invulnerableUntil);
   const overflow = await openClient(address, "c");
   assert.equal(overflow.joined.error, "ROOM_FULL");
   overflow.socket.terminate();
@@ -400,7 +414,7 @@ test("authoritative ship contacts stop high-speed crossing with mass-weighted im
 test("pulse sweeps hit a moving ship even when it crosses entirely between server snapshots", (t) => {
   const { world, a, shooter, target, advance } = fixture(t);
   shooter.position = [0, 0, 18];
-  target.position = [20, -450, 18];
+  target.position = [15.8, -450, 18];
   shooter.velocity = [0, 0, 0];
   target.velocity = [0, 2000, 0];
   shooter.lastInput = target.lastInput = Date.now();
@@ -488,6 +502,7 @@ test("physics mismatch rejects old clients and signed old website tickets before
   for (const options of [
     { physicsVersion: undefined },
     { physicsVersion: "universe-physics-1" },
+    { physicsVersion: "universe-physics-3" },
     { ticket: oldTicket },
   ]) {
     const rejected = await openClient(address, "versioned", options);

@@ -266,7 +266,7 @@ export function createRealtimeServer({
         if (message.revision !== p.revision) return;
         if (message.type === "input") world.input(room, id, p.token, message);
         if (message.type === "fire")
-          world.requestFire(room, id, p.token, message.direction);
+          world.requestFire(room, id, p.token, message.direction, Date.now(), { orientation: message.orientation, cannonIndex: message.cannonIndex ?? 0 });
       } catch {
         socket.close(1008, "Invalid flight message");
       }

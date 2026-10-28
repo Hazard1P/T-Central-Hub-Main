@@ -59,7 +59,7 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
       {confirmedHit ? <span className="combat-hit-confirm" aria-label="Hit confirmed">✛</span> : null}
       <header className="exploration-toolbar">
         <Link href="/" className="exploration-home" aria-label="Leave simulation for homepage">T<span> / </span>C</Link>
-        <span className="exploration-connection"><i className={serverStatus.connected && lobbyMode === 'hub' ? 'live' : ''} />{modeLabel}<small>{lobbyMode === 'hub' && serverStatus.connected ? populationLabel + (serverStatus.transport === 'websocket' ? ' · real-time' : '') : lobbyMode === 'hub' ? 'Waiting for shared server' : 'Free flight'}</small></span>
+        <span className="exploration-connection"><i className={serverStatus.connected && lobbyMode === 'hub' ? 'live' : ''} />{modeLabel}<small>{(combatSelf?.safeZone ?? telemetry.safeZone) ? 'Earth safe zone · weapons locked' : lobbyMode === 'hub' && serverStatus.connected ? 'Combat space · ' + populationLabel + (serverStatus.transport === 'websocket' ? ' · real-time' : '') : lobbyMode === 'hub' ? 'Waiting for shared server' : 'Combat space · Free flight'}</small></span>
         <nav aria-label="Flight tools">
           {[['explore', 'Explore'], ['shipyard', 'Shipyard'], ['crew', 'Pilots'], ['chat', 'Chat'], ['settings', 'Settings']].map(([key, label]) => <button key={key} type="button" aria-expanded={panel === key} aria-controls="exploration-panel" onClick={() => toggle(key)}>{label}</button>)}
           <button type="button" onClick={() => gameEngine.setHUDVisible(false)} aria-label="Hide HUD">Hide<span className="exploration-key"> H</span></button>
@@ -71,7 +71,7 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
           <div className="exploration-panel-heading"><div><p className="eyebrow">Flight tools</p><h2 id="exploration-panel-title">{panel === 'explore' ? 'Find your next horizon.' : panel === 'crew' ? 'Explore together.' : panel === 'shipyard' ? 'Your ship & cargo' : panel === 'chat' ? 'Community chat' : 'Your flight setup.'}</h2></div><button type="button" aria-label="Close flight panel" onClick={() => setPanel(null)}>×</button></div>
           {panel === 'chat' ? <LiveCommunityChat compact /> : null}
           {panel === 'explore' ? <>
-            <p className="exploration-help">Every destination is in this universe. Cruise flies continuously, building speed in open space and braking ahead of arrival; steering returns control to you.</p>
+            <p className="exploration-help">Earth’s green boundary marks protected space: weapons are locked inside, and player combat begins outside. Every destination is in this universe. Cruise flies continuously, building speed in open space and braking ahead of arrival; steering returns control to you.</p>
             <label className="exploration-search">Find a destination<input type="search" value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Planet, station, blackhole…" /></label>
             <div className="exploration-destinations">
               {visibleDestinations.map((node) => <button key={node.key} className={node.key === destination?.key ? 'selected' : ''} onClick={() => onSelect(node)} aria-pressed={node.key === destination?.key}>
