@@ -188,8 +188,8 @@ export default function SystemLauncher({
           <div>
             <p>{FLIGHT_CONTROL_COPY.launchPrimer}</p>
             <p>
-              Explore sets waypoints. Cruise handles the approach. Descend to an
-              Earth spaceport to land, then use Take off or E to fly again.
+              Explore sets waypoints. Cruise handles the approach. Choose an Earth surface
+              region to descend, explore its terrain and oceans, then rise to return to orbit.
             </p>
             <p>
               Mine nearby asteroids, deliver ore at Earth, and upgrade in

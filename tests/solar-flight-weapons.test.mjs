@@ -1,3 +1,4 @@
+import { getEarthSurfaceStatus } from '../lib/earthSurface.js';
 import { SHIP_CONTACT_RADIUS } from '../lib/physics/mechanics.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -11,10 +12,10 @@ test('physical Solar surfaces constrain the same global flight space while prese
   const utcMs=Date.UTC(2026,9,22),earth=getUniverseSolarState(utcMs).find(body=>body.id==='earth');
   const position=earth.position.map((v,i)=>v+(i===2?-10:0));
   const safe=constrainSolarFlight(position,[3,0,5],utcMs);
-  assert.ok(Math.abs(Math.hypot(...safe.position.map((v,i)=>v-earth.position[i]))-(earth.radius*1.02+2+SHIP_CONTACT_RADIUS))<.0001);
+  assert.ok(Math.abs(getEarthSurfaceStatus(safe.position,[0,0,0],utcMs).altitude-SHIP_CONTACT_RADIUS)<.0001);
   assert.deepEqual(safe.velocity,[3,0,0]);
   const result=stepFrame({utcMs,worldSeed:'same-universe',position,velocity:[0,0,8],dt:.1,controlVector:[0,0,1]});
-  assert.ok(Math.hypot(...result.position.map((v,i)=>v-earth.position[i]))>=earth.radius*1.02+1.999);
+  assert.ok(getEarthSurfaceStatus(result.position,[0,0,0],utcMs).altitude>=SHIP_CONTACT_RADIUS-.0001);
 });
 
 test('pulses validate aim, expire and sweep across a small asteroid between frames', () => {

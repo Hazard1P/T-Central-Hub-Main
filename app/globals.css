@@ -7790,18 +7790,6 @@ body:has(.system-entry-screen.phase-in_sim) { overscroll-behavior: none; }
 .flight-plan-invitation { border-color: rgba(182,230,151,.35); }
 @media (max-width: 700px) { .flight-plan-intro { grid-template-columns: minmax(0,1fr); gap: 1rem; } .flight-plan-orbit svg { max-width: 260px; } }
 
-.earth-port-label { padding:6px 10px; border:1px solid #8bedd166; border-radius:8px; background:#071822e8; color:#d4f8e9; white-space:nowrap; font-size:11px; cursor:pointer; }
-.earth-port-label small { display:block; margin-top:2px; font-size:9px; color:#a6bfc6; }
-.earth-landing-hud { position:absolute; z-index:57; top:130px; right:20px; width:min(310px,calc(100% - 40px)); padding:10px 12px; border:1px solid #8bedd155; border-radius:12px; background:#071822e8; color:#d9edf0; font-size:12px; }
-.earth-landing-hud strong,.earth-landing-hud small { display:block; }
-.earth-landing-hud small { margin-top:3px; color:#aec7cb; font-size:10px; }
-.earth-landing-hud p { margin:7px 0 0; font-size:10px; line-height:1.4; color:#b6d2c9; }
-.earth-landing-actions { display:flex; gap:6px; margin-top:8px; }
-.earth-landing-actions button { min-height:44px; padding:7px 12px; border:1px solid #8bedd155; border-radius:8px; background:#15303b; color:#e5f6ef; font:inherit; cursor:pointer; }
-.earth-landing-actions button:disabled { opacity:.45; cursor:default; }
-.earth-landing-actions kbd { margin-left:9px; color:#a9c9bd; font-size:10px; }
-@media(max-width:600px) { .earth-landing-hud { top:calc(220px + env(safe-area-inset-top)); right:12px; width:calc(100% - 24px); padding:8px 10px; } .earth-landing-actions { margin-top:6px; } .earth-landing-actions button { flex:1; } .earth-landing-actions kbd { display:none; } }
-@media(orientation:landscape) and (max-height:600px) and (pointer:coarse) { .earth-landing-hud { top:75px; right:12px; width:245px; } }
 
 /* The launch card stays beneath the active game and cannot capture its input. */
 .system-launcher-layer { position:relative; z-index:0; }

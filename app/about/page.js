@@ -31,7 +31,7 @@ export default function AboutPage() {
           <h2>Explore the universe</h2>
           <p className="muted">
             Fly through one shared universe, explore the Solar System and land
-            at a 3D Earth spaceport. You can start as a guest.
+            over Earth’s continuous 3D terrain and oceans. You can start as a guest.
           </p>
           <Link className="button secondary" href="/system">
             Launch the system

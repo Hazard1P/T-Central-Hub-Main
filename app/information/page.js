@@ -16,8 +16,8 @@ const guides = [
     label: "Open Play",
   },
   {
-    title: "Land on Earth",
-    text: "Choose Pacific, Atlantic or Southern Spaceport in Explore and cruise toward it. The detailed 3D surface appears as you approach. Brake below 8 u/s near a free pad, then select Land or press E. Take off with the same control to fly over the terrain and return to orbit. Earth’s safe zone blocks weapons and incoming player fire; combat begins outside its green boundary.",
+    title: "Explore Earth’s surface",
+    text: "Choose an Earth surface region in Explore and cruise toward it, or descend anywhere on Earth. Fly across continuous terrain and oceans with the normal ship controls; the camera follows local up. Brake for close passes and rise to return to orbit. On mobile, use the flight pad and vertical controls. Earth’s safe zone blocks weapons and incoming player fire; combat begins outside its green boundary.",
     href: "/system",
     label: "Explore Earth",
   },

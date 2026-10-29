@@ -71,7 +71,7 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
           <div className="exploration-panel-heading"><div><p className="eyebrow">Flight tools</p><h2 id="exploration-panel-title">{panel === 'explore' ? 'Find your next horizon.' : panel === 'crew' ? 'Explore together.' : panel === 'shipyard' ? 'Your ship & cargo' : panel === 'chat' ? 'Community chat' : 'Your flight setup.'}</h2></div><button type="button" aria-label="Close flight panel" onClick={() => setPanel(null)}>×</button></div>
           {panel === 'chat' ? <LiveCommunityChat compact /> : null}
           {panel === 'explore' ? <>
-            <p className="exploration-help">Descend toward an Earth spaceport to explore its 3D terrain and land on a free pad. Earth’s green boundary marks protected space: weapons are locked inside, and player combat begins outside. Every destination is in this universe. Cruise flies continuously, building speed in open space and braking ahead of arrival; steering returns control to you.</p>
+            <p className="exploration-help">Choose an Earth surface region or descend anywhere to fly over continuous terrain and oceans. Rise to return to orbit. Earth’s green boundary marks protected space: weapons are locked inside, and player combat begins outside. Every destination is in this universe. Cruise flies continuously, building speed in open space and braking ahead of arrival; steering returns control to you.</p>
             <label className="exploration-search">Find a destination<input type="search" value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Planet, station, blackhole…" /></label>
             <div className="exploration-destinations">
               {visibleDestinations.map((node) => <button key={node.key} className={node.key === destination?.key ? 'selected' : ''} onClick={() => onSelect(node)} aria-pressed={node.key === destination?.key}>
@@ -121,7 +121,7 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
       ) : null}
 
       <div className="exploration-flight-strip" aria-label="Flight telemetry">
-        <span><small>Speed</small><strong>{formatFlightSpeed(telemetry.speed)} <small>u/s</small></strong><small>{telemetry.travelMode || 'Precision'}</small></span>
+        <span><small>Speed</small><strong>{formatFlightSpeed(telemetry.speed)} <small>u/s</small></strong><small>{telemetry.surfaceAltitude < 120 ? `Earth · ${Math.max(0,telemetry.surfaceAltitude).toFixed(0)} u altitude` : telemetry.travelMode || 'Precision'}</small></span>
         {destination ? <span className="exploration-target"><small>{cruising ? 'Cruising to' : 'Waypoint'}</small><strong>{destination.label}</strong><small>{formatSpaceDistance(distance)} {bearing !== null ? '· ' + bearing + '° off nose' : ''}</small></span> : <span className="exploration-target"><small>Free flight</small><strong>Choose a destination to begin</strong></span>}
         {cruising ? <button type="button" onClick={onCancelCruise}>Cancel cruise</button> : <button type="button" onClick={() => toggle('explore')}>Destinations</button>}
       </div>

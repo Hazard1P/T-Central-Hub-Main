@@ -33,7 +33,7 @@ export default function UnifiedSolarSystem({ clock, profile, onSelect }) {
     if(renderClock.elapsedTime-last.current>.1){last.current=renderClock.elapsedTime;stateRef.current=getSolarSystemState(clock.getTime());}
   },-1);
   return <>
-    {SOLAR_BODIES.map(body=><SolarBody key={body.id} body={body} stateRef={stateRef} segments={Math.max(64, profile.segments)} onSelect={onSelect} />)}
+    {SOLAR_BODIES.map(body=><SolarBody key={body.id} body={body} stateRef={stateRef} getPhysicsTime={clock.getTime} segments={Math.max(64, profile.segments)} onSelect={onSelect} />)}
     <GeoBeacon stateRef={stateRef} clock={clock} />
   </>;
 }
