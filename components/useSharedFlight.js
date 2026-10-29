@@ -1,4 +1,5 @@
 "use client";
+import { MAX_PREDICTION_FRAMES } from "@/lib/simCore/prediction";
 
 import { MULTIPLAYER_POLL_MS } from "@/lib/multiplayerCapacity";
 import { useEffect, useRef } from "react";
@@ -136,7 +137,7 @@ export default function useSharedFlight({
         ? []
         : inputsRef.current
             .filter((frame) => frame.frameIndex > self.frameIndex)
-            .slice(-120);
+            .slice(-MAX_PREDICTION_FRAMES);
       if (snap || self.alive === false) {
         onCorrection({
           position: self.position,
@@ -384,7 +385,7 @@ export default function useSharedFlight({
         const snapshot = {
           ...telemetryRef.current,
           inputs: inputsRef.current
-            .slice(0, 72)
+            .slice(0, MAX_PREDICTION_FRAMES)
             .map(({ frameIndex, dt, controlVector }) => ({
               frameIndex,
               dt,
@@ -422,7 +423,7 @@ export default function useSharedFlight({
         if (self?.position && self?.velocity) {
           inputsRef.current = inputsRef.current
             .filter((frame) => frame.frameIndex > self.frameIndex)
-            .slice(-120);
+            .slice(-MAX_PREDICTION_FRAMES);
           const prediction = simRuntimeClient.replayAuthoritativeState({
             frames: inputsRef.current,
             authoritativePosition: self.position,

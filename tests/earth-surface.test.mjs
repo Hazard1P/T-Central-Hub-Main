@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { Mesh, MeshBasicMaterial, Raycaster, Vector3, Quaternion } from "three";
 import {
   getEarthSurfaceState,
+  earthSurfaceVelocity,
   earthSurfacePoint,
   earthSurfaceHeight,
   earthLandCoverage,
@@ -110,8 +111,13 @@ test("global surface contacts block descent and leave outward and tangential fli
         SHIP_CONTACT_RADIUS - 1e-6,
     );
     assert(
-      Math.abs(contact.velocity.reduce((s, v, i) => s + v * status.up[i], 0)) <
-        1e-6,
+      Math.abs(
+        contact.velocity.reduce(
+          (s, v, i) =>
+            s + (v - earthSurfaceVelocity(point, epoch)[i]) * status.up[i],
+          0,
+        ),
+      ) < 1e-6,
     );
     assert(Math.hypot(...contact.velocity) > 3.99);
     const sky = earthSurfacePoint(lat, lon, 30, epoch),

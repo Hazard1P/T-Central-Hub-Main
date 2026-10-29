@@ -28,6 +28,14 @@ export default function FlightPhysicsReadout({ telemetry }) {
               "Open space"}
           </dd>
         </div>
+        {telemetry.physics.referenceFrame ? (
+          <div>
+            <dt>Body-relative speed</dt>
+            <dd>
+              {telemetry.physics.referenceFrame.relativeSpeed.toFixed(2)} u/s
+            </dd>
+          </div>
+        ) : null}
         <div>
           <dt>Body escape speed</dt>
           <dd>
@@ -39,8 +47,9 @@ export default function FlightPhysicsReadout({ telemetry }) {
         Precision, Transit and Deep space assist blend as clearance changes.
         Acceleration eases near the speed target; approach braking slows the
         ship gradually. With automatic braking off, it coasts within that
-        target. Press X or hold Brake to stop. Planetary gravity uses physical
-        units.
+        target. Press X or hold Brake to reduce speed. Planetary gravity uses physical
+        units. Body-relative speed shows drift against the moving gravity
+        reference.
       </p>
     </details>
   );

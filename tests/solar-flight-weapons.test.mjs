@@ -1,4 +1,4 @@
-import { getEarthSurfaceStatus } from '../lib/earthSurface.js';
+import { getEarthSurfaceStatus, earthSurfaceVelocity } from '../lib/earthSurface.js';
 import { SHIP_CONTACT_RADIUS } from '../lib/physics/mechanics.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -13,7 +13,9 @@ test('physical Solar surfaces constrain the same global flight space while prese
   const position=earth.position.map((v,i)=>v+(i===2?-10:0));
   const safe=constrainSolarFlight(position,[3,0,5],utcMs);
   assert.ok(Math.abs(getEarthSurfaceStatus(safe.position,[0,0,0],utcMs).altitude-SHIP_CONTACT_RADIUS)<.0001);
-  assert.deepEqual(safe.velocity,[3,0,0]);
+  assert.equal(safe.velocity[0],3);assert.equal(safe.velocity[1],0);
+  const up=getEarthSurfaceStatus(safe.position,[0,0,0],utcMs).up,groundVelocity=earthSurfaceVelocity(safe.position,utcMs);
+  assert(Math.abs(safe.velocity.reduce((sum,v,i)=>sum+(v-groundVelocity[i])*up[i],0))<1e-6);
   const result=stepFrame({utcMs,worldSeed:'same-universe',position,velocity:[0,0,8],dt:.1,controlVector:[0,0,1]});
   assert.ok(getEarthSurfaceStatus(result.position,[0,0,0],utcMs).altitude>=SHIP_CONTACT_RADIUS-.0001);
 });

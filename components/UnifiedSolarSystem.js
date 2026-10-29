@@ -7,6 +7,7 @@ import { getSolarSystemState, geostationaryState, SOLAR_BODIES, AU_KM } from '@/
 import { SOLAR_UNITS_PER_AU, SOLAR_WORLD_CENTER } from '@/lib/universeSpace';
 import { SolarBody } from '@/components/SolarSystemScene';
 import { useUniverseFrame } from '@/components/UniverseFrame';
+import { getEarthSurfaceState } from '@/lib/earthSurface';
 
 function GeoBeacon({ stateRef, clock, enabled=true }) {
   const marker = useRef(null), ring = useRef(null), label = useRef(null);
@@ -19,9 +20,9 @@ function GeoBeacon({ stateRef, clock, enabled=true }) {
     const geo=geostationaryState(clock.getTime());
     const position=geo.position.map((v,i)=>SOLAR_WORLD_CENTER[i]+v*SOLAR_UNITS_PER_AU);
     marker.current?.position.set(...position);
-    const earth=stateRef.current.find(b=>b.id==='earth');
+    const earth=getEarthSurfaceState(clock.getTime());
     if(ring.current&&earth){
-      ring.current.position.set(...earth.position.map((v,i)=>SOLAR_WORLD_CENTER[i]+v*SOLAR_UNITS_PER_AU));
+      ring.current.position.set(...earth.position);
       ring.current.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),new THREE.Vector3(...earth.orientation.y));
     }
     if(label.current) label.current.style.display=new THREE.Vector3(...position).sub(origin.current).distanceTo(camera.position)<3000?'block':'none';
@@ -30,10 +31,7 @@ function GeoBeacon({ stateRef, clock, enabled=true }) {
 }
 export default function UnifiedSolarSystem({ clock, profile, onSelect, walking=false }) {
   const [initial]=useState(()=>getSolarSystemState(clock.getTime()));
-  const stateRef=useRef(initial), last=useRef(-1);
-  useFrame(({clock:renderClock})=>{
-    if(renderClock.elapsedTime-last.current>.1){last.current=renderClock.elapsedTime;stateRef.current=getSolarSystemState(clock.getTime());}
-  },-1);
+  const stateRef=useRef(initial);
   return <>
     {SOLAR_BODIES.map(body=><SolarBody key={body.id} body={body} stateRef={stateRef} getPhysicsTime={clock.getTime} surfaceWalking={walking} segments={Math.max(64, profile.segments)} onSelect={onSelect} />)}
     <GeoBeacon stateRef={stateRef} clock={clock} enabled={!walking} />

@@ -16,7 +16,8 @@ import {
   earthWorldVector,
   constrainEarthSurfaceFlight,
 } from "@/lib/earthSurface";
-import { flightSubsteps } from "@/lib/universeSpace";
+import { flightTimeline } from "@/lib/universeSpace";
+import { SIM_RUNTIME_STATUS } from "@/lib/simRuntime/contracts";
 
 export default function EarthWalkingRig({
   flightConfig,
@@ -97,13 +98,14 @@ export default function EarthWalkingRig({
     control.multiplyScalar(sprint ? 1.75 : 1).applyQuaternion(heading);
     if (flightConfig.inputBlocked) control.set(0, 0, 0);
     let walked = pose;
-    for (const dt of flightSubsteps(delta)) {
+    for (const sample of flightTimeline(delta,utcMs)) {
+      const dt=sample.dt;
       walked = stepEarthWalk({
         anchor: anchor.current,
         parkedShip: flightConfig.parkedShip,
         controlVector: control.toArray(),
         dt,
-        utcMs,
+        utcMs:sample.utcMs,
       });
       anchor.current = walked.walkAnchor;
       frame.current++;
@@ -173,7 +175,7 @@ export default function EarthWalkingRig({
       longitude: walked.longitude,
       controlVector: control.toArray(),
       simulationSeed,
-      runtime: { status: "ONLINE" },
+      runtime: { status: SIM_RUNTIME_STATUS.ONLINE },
       firing: false,
     });
     state.invalidate();

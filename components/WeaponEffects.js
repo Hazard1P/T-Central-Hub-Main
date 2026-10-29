@@ -38,12 +38,15 @@ export default function WeaponEffects({
     for (const shot of shots) {
       const position = pulsePosition(shot, now),
         previous = shot.previous || shot.origin;
-      const impact = firstSphereContact(previous, position, colliders)?.point;
+      const impact = firstSphereContact(previous, position, colliders, {
+        dt: Math.max(0, (now - (shot.updatedAt ?? shot.createdAt)) / 1000),
+      })?.point;
       if (impact) {
         shot.hit = true;
         bus.current.impacts.push({ position: impact, createdAt: now });
       }
       shot.previous = position;
+      shot.updatedAt = now;
     }
     bus.current.shots = shots.filter((shot) => !shot.hit);
     bus.current.impacts = bus.current.impacts
@@ -69,11 +72,21 @@ export default function WeaponEffects({
         const direction =
           shot.direction ||
           new THREE.Vector3(...velocity).normalize().toArray();
-        const elapsed = Math.min(0.35, (now - sample.receivedAt) / 1000);
+        const elapsed = Math.max(
+          0,
+          Math.min(
+            0.35,
+            Number.isFinite(shot.physicsUtcMs)
+              ? (getPhysicsTime() - shot.physicsUtcMs) / 1000
+              : (now - sample.receivedAt) / 1000,
+          ),
+        );
         const predicted = shot.position.map(
           (value, axis) => value + velocity[axis] * elapsed,
         );
-        if (!firstSphereContact(shot.position, predicted, solids))
+        if (
+          !firstSphereContact(shot.position, predicted, solids, { dt: elapsed })
+        )
           visible.push({ position: predicted, direction });
         if (
           shot.origin &&

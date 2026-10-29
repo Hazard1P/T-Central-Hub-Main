@@ -8,6 +8,7 @@ import { useUniverseFrame } from '@/components/UniverseFrame';
 import { getEarthSurfaceState, getEarthSurfaceStatus } from '@/lib/earthSurface';
 import { createEarthSurfaceGeometry } from '@/lib/earthSurfaceGeometry';
 import { earthAnchorAt, METRES_PER_UNIT } from '@/lib/earthWalk';
+import { getUniverseSolarState } from '@/lib/universeSolarState';
 
 const surfaceVertex = `varying vec3 nWorld; varying vec3 local; varying vec2 texCoord; varying vec3 toEye;
 void main(){texCoord=uv;local=position;nWorld=normalize(mat3(modelMatrix)*normal);vec4 world=modelMatrix*vec4(position,1.);toEye=cameraPosition-world.xyz;gl_Position=projectionMatrix*viewMatrix*world;}`;
@@ -72,9 +73,9 @@ export function SolarBody({ body, stateRef, onSelect, segments, getPhysicsTime, 
   const x = useMemo(() => new THREE.Vector3(), []), y = useMemo(() => new THREE.Vector3(), []), z = useMemo(() => new THREE.Vector3(), []);
   useFrame(({ camera }) => {
     let state = stateRef.current.find((entry) => entry.id === body.id);
-    if(body.id === 'earth' && getPhysicsTime) {
-      const earth = getEarthSurfaceState(getPhysicsTime());
-      state = {...state, position: earth.position.map((v,i)=>(v-SOLAR_WORLD_CENTER[i])/SOLAR_UNITS_PER_AU),orientation:earth.orientation};
+    if(getPhysicsTime) {
+      const world = getUniverseSolarState(getPhysicsTime()).find(entry=>entry.id===body.id);
+      state = {...world, position:world.position.map((v,i)=>(v-SOLAR_WORLD_CENTER[i])/SOLAR_UNITS_PER_AU)};
     }
     if (!state || !position.current || !axes.current) return;
     const relative = new THREE.Vector3(...state.position.map((v,i)=>SOLAR_WORLD_CENTER[i]+v*SOLAR_UNITS_PER_AU));

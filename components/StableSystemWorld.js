@@ -14,6 +14,7 @@ import { createPrivateWorldAsset } from '@/lib/privateWorldAsset';
 import { summarizeEpochRelativity } from '@/lib/epochDysonEngine';
 import { createGravitySources } from '@/lib/physicsEngine';
 import { buildGravitySourcesFromSeed } from '@/lib/simCore/stepFrame';
+import { MAX_PREDICTION_FRAMES } from '@/lib/simCore/prediction';
 import { createQuantumState, summarizeQuantumState, evolveQuantumState } from '@/lib/quantumFieldEngine';
 import { createSimulationRuntimeClient } from '@/lib/simRuntime/client';
 import { SIM_RUNTIME_STATUS } from '@/lib/simRuntime/contracts';
@@ -45,7 +46,7 @@ import { miningGeometry } from '@/lib/shipEconomy';
 import useSolarClock from '@/components/useSolarClock';
 import UnifiedSolarSystem from '@/components/UnifiedSolarSystem';
 import UniverseFrame, { UniverseSky, useUniverseFrame } from '@/components/UniverseFrame';
-import { RENDER_DISTANCE, flightSubsteps } from '@/lib/universeSpace';
+import { RENDER_DISTANCE, flightTimeline } from '@/lib/universeSpace';
 import { getSolarDestinations, getUniverseSolarState } from '@/lib/universeFlight';
 import ProjectedCelestial from '@/components/ProjectedCelestial';
 import { celestialMetrics, stellarCoreRadius } from '@/lib/celestialScale';
@@ -601,11 +602,12 @@ function FlightRig({ simRuntimeClient, gravitySources, onNearestChange, onTeleme
     const orientedMove = rawMove.clone();
     if (flightConfig?.sixAxis || flightConfig?.mouseLook) orientedMove.applyQuaternion(lookQuat);
     let dt = 0, controlVector = [0, 0, 0], stepped = lastPhysicsStep.current || { gravityMagnitude: Math.hypot(...lastGravity.current), gravity: lastGravity.current };
-    for (dt of flightSubsteps(delta)) {
+    for (const sample of flightTimeline(delta, getPhysicsTime())) {
+      dt=sample.dt;
       // Keep local prediction within the acknowledgement window on slow links.
       // Dropping old unacknowledged controls makes the server follow stale steering.
       if (multiplayerMode && pendingInputsRef?.current.reduce((sum, frame) => sum + frame.dt, 0) + dt > .3) break;
-      const utcMs = getPhysicsTime();
+      const utcMs = sample.utcMs;
       frameCounter.current += 1;
       controlVector = [orientedMove.x * thrustScale, orientedMove.y * thrustScale, orientedMove.z * thrustScale];
       const position = groupRef.current.position.toArray();
@@ -971,7 +973,7 @@ export default function StableSystemWorld({ lobbyMode = 'hub', steamUser = null,
   }, []);
   const handleSimulationFrame = useCallback((frame) => {
     if (Number.isFinite(frame.frameIndex)) {
-      predictionHistoryRef.current = [...predictionHistoryRef.current.slice(-119), { frameIndex: frame.frameIndex, dt: frame.dt, controlVector: frame.controlVector }];
+      predictionHistoryRef.current = [...predictionHistoryRef.current.slice(-(MAX_PREDICTION_FRAMES-1)), { frameIndex: frame.frameIndex, dt: frame.dt, controlVector: frame.controlVector }];
     }
   }, []);
 
