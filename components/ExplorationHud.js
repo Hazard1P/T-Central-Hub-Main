@@ -12,6 +12,7 @@ import { formatSpaceDistance, formatFlightSpeed } from '@/lib/universeSpace';
 import { gameEngine } from '@/lib/gameEngine';
 
 export default function ExplorationHud({ telemetry, destinations, destination, onSelect, onNavigate, onFace, cruising, onCancelCruise, visited, lobbyMode, onModeChange, roomName, onRoomChange, pilots, selfId, serverStatus, graphicsQuality, onGraphicsChange, dampers, onDampersChange, onRecenter, onRespawn, respawning, notice, onPanelChange, seedCount = 0, economy, onMiningWaypoint, onEarthWaypoint, onMiningApproach, combatEvents = [], sound }) {
+  const walking=telemetry.movementMode==='walk';
   const [panel, setPanel] = useState(null);
   const [filter, setFilter] = useState('');
   const [roomDraft, setRoomDraft] = useState(roomName);
@@ -71,7 +72,7 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
           <div className="exploration-panel-heading"><div><p className="eyebrow">Flight tools</p><h2 id="exploration-panel-title">{panel === 'explore' ? 'Find your next horizon.' : panel === 'crew' ? 'Explore together.' : panel === 'shipyard' ? 'Your ship & cargo' : panel === 'chat' ? 'Community chat' : 'Your flight setup.'}</h2></div><button type="button" aria-label="Close flight panel" onClick={() => setPanel(null)}>×</button></div>
           {panel === 'chat' ? <LiveCommunityChat compact /> : null}
           {panel === 'explore' ? <>
-            <p className="exploration-help">Choose an Earth surface region or descend anywhere to fly over continuous terrain and oceans. Rise to return to orbit. Earth’s green boundary marks protected space: weapons are locked inside, and player combat begins outside. Every destination is in this universe. Cruise flies continuously, building speed in open space and braking ahead of arrival; steering returns control to you.</p>
+            <p className="exploration-help">Choose an Earth surface region or descend anywhere to fly over continuous terrain and oceans. Brake close to dry ground, then choose Land & walk or press E. Walk with WASD or touch controls, and board the ship within 30 m to return to flight. Earth’s green boundary marks protected space: weapons are locked inside, and player combat begins outside. Every destination is in this universe. Cruise flies continuously, building speed in open space and braking ahead of arrival; steering returns control to you.</p>
             <label className="exploration-search">Find a destination<input type="search" value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Planet, station, blackhole…" /></label>
             <div className="exploration-destinations">
               {visibleDestinations.map((node) => <button key={node.key} className={node.key === destination?.key ? 'selected' : ''} onClick={() => onSelect(node)} aria-pressed={node.key === destination?.key}>
@@ -81,7 +82,7 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
               </button>)}
               {!visibleDestinations.length ? <p className="exploration-help">No destinations match. Try another name.</p> : null}
             </div>
-            {destination ? <div className="exploration-selection"><h3>{destination.label}</h3><p>{destination.description}</p><div className="exploration-actions"><button className="button primary" onClick={() => { onNavigate(); setPanel(null); }}>Cruise to destination</button><button className="button secondary" onClick={() => { onFace(); setPanel(null); }}>Face destination</button></div></div> : null}
+            {destination ? <div className="exploration-selection"><h3>{destination.label}</h3><p>{destination.description}</p><div className="exploration-actions"><button className="button primary" disabled={walking} onClick={() => { onNavigate(); setPanel(null); }}>Cruise to destination</button><button className="button secondary" disabled={walking} onClick={() => { onFace(); setPanel(null); }}>Face destination</button></div></div> : null}
           </> : null}
           {panel === 'crew' ? <>
             <p className="exploration-help">Shared flight includes live ship combat and exploration. Invite friends into the same room. Earth’s safe zone blocks weapons and incoming player fire. Leave its green boundary for combat. Destroyed ships return to Earth after five seconds.</p>
@@ -94,7 +95,7 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
               <p className="exploration-help" id="room-help">Use letters, numbers, dashes or underscores. Give friends the same room name or invite link.</p>
               <button type="button" className="button secondary" onClick={copyInvite}>Copy invite link</button><p className="exploration-feedback" role="status">{copyStatus}</p>
               <h3>{serverStatus.connected ? populationLabel + ' in this room' : serverStatus.label + '…'}</h3>
-              <ul className="exploration-pilots">{pilots.map((pilot) => <li key={pilot.id}><span>{pilot.displayName}{pilot.id !== selfId ? <Link className="pilot-report-link" href={'/report-player?player=' + encodeURIComponent(pilot.displayName) + (/^(google:|steam:)/.test(pilot.id) ? '&account=' + encodeURIComponent(pilot.id) : '')} target="_blank" rel="noopener noreferrer">Report player</Link> : null}{pilot.id === selfId ? ' (you)' : ''}{serverStatus.transport === 'websocket' ? <small>{pilot.kills || 0} kills · {pilot.deaths || 0} losses{pilot.alive === false ? ' · respawning' : ''}</small> : null}</span>{pilot.id !== selfId ? <button onClick={() => { onSelect({ key: 'pilot:' + pilot.id, label: pilot.displayName, kind: 'pilot waypoint', position: [...pilot.position], approachRadius: 4, description: 'Last shared location of this pilot. Select them again to update the waypoint.' }); setPanel(null); }}>Set waypoint · {distanceBetween(telemetry.position, pilot.position).toFixed(0)} u</button> : <small>Flying</small>}</li>)}</ul>
+              <ul className="exploration-pilots">{pilots.map((pilot) => <li key={pilot.id}><span>{pilot.displayName}{pilot.id !== selfId ? <Link className="pilot-report-link" href={'/report-player?player=' + encodeURIComponent(pilot.displayName) + (/^(google:|steam:)/.test(pilot.id) ? '&account=' + encodeURIComponent(pilot.id) : '')} target="_blank" rel="noopener noreferrer">Report player</Link> : null}{pilot.id === selfId ? ' (you)' : ''}{serverStatus.transport === 'websocket' ? <small>{pilot.kills || 0} kills · {pilot.deaths || 0} losses{pilot.alive === false ? ' · respawning' : ''}</small> : null}</span>{pilot.id !== selfId ? <button onClick={() => { onSelect({ key: 'pilot:' + pilot.id, label: pilot.displayName, kind: 'pilot waypoint', position: [...pilot.position], approachRadius: 4, description: 'Last shared location of this pilot. Select them again to update the waypoint.' }); setPanel(null); }}>Set waypoint · {distanceBetween(telemetry.position, pilot.position).toFixed(0)} u</button> : <small>{pilot.movementMode==='walk'?'On Earth':'Flying'}</small>}</li>)}</ul>
               {!nearby.length ? <p className="exploration-help">The universe is open. Invite a friend to fly alongside you.</p> : null}
             </> : <p className="exploration-help">Your solo session is isolated from shared room traffic. Switch back to rejoin other pilots.</p>}
           </> : null}
@@ -121,11 +122,11 @@ export default function ExplorationHud({ telemetry, destinations, destination, o
       ) : null}
 
       <div className="exploration-flight-strip" aria-label="Flight telemetry">
-        <span><small>Speed</small><strong>{formatFlightSpeed(telemetry.speed)} <small>u/s</small></strong><small>{telemetry.surfaceAltitude < 120 ? `Earth · ${Math.max(0,telemetry.surfaceAltitude).toFixed(0)} u altitude` : telemetry.travelMode || 'Precision'}</small></span>
+        <span><small>{telemetry.movementMode==='walk'?'Walking':'Speed'}</small><strong>{telemetry.movementMode==='walk'?(telemetry.walkSpeedMps||0).toFixed(1):formatFlightSpeed(telemetry.speed)} <small>{telemetry.movementMode==='walk'?'m/s':'u/s'}</small></strong><small>{telemetry.movementMode==='walk' ? 'On Earth · protected' : telemetry.surfaceAltitude < 120 ? `Earth · ${Math.max(0,telemetry.surfaceAltitude).toFixed(0)} u altitude` : telemetry.travelMode || 'Precision'}</small></span>
         {destination ? <span className="exploration-target"><small>{cruising ? 'Cruising to' : 'Waypoint'}</small><strong>{destination.label}</strong><small>{formatSpaceDistance(distance)} {bearing !== null ? '· ' + bearing + '° off nose' : ''}</small></span> : <span className="exploration-target"><small>Free flight</small><strong>Choose a destination to begin</strong></span>}
         {cruising ? <button type="button" onClick={onCancelCruise}>Cancel cruise</button> : <button type="button" onClick={() => toggle('explore')}>Destinations</button>}
       </div>
-      {serverStatus.transport === 'websocket' && combatSelf ? <ShipSystemsReadout ship={combatSelf} /> : null}
+      {!walking && serverStatus.transport === 'websocket' && combatSelf ? <ShipSystemsReadout ship={combatSelf} /> : null}
       {economy?.data ? <button className="ship-cargo-pill" onClick={() => toggle('shipyard')} aria-label="Open shipyard and cargo">{economy.data.wallet.cargo}/{economy.data.stats.capacity} ore <span>·</span> {economy.data.wallet.credits} cr
         {economy.miningFeedback && Date.now() - economy.miningFeedback.at < 3000 ? <small role="status">{economy.miningFeedback.message}</small> : economy.data.location.canMine ? <small>Rock in range · aim and fire</small> : null}
       </button> : null}

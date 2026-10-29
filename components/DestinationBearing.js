@@ -7,14 +7,15 @@ import * as THREE from 'three';
 import { useUniverseFrame } from '@/components/UniverseFrame';
 
 // A single edge-clamped bearing replaces labels over every object in the scene.
-export default function DestinationBearing({ destination }) {
+export default function DestinationBearing({ destination, enabled=true }) {
   const marker = useRef(null), anchor = useRef(null);
   const { origin } = useUniverseFrame();
   const projection = useRef(new THREE.Vector3());
   const direction = useRef(new THREE.Vector3());
   const forward = useRef(new THREE.Vector3());
   useFrame(({ camera, size }) => {
-    if (!marker.current || !destination?.position) return;
+    if(!marker.current)return;marker.current.style.display=enabled?'':'none';
+    if (!enabled || !destination?.position) return;
     projection.current.set(...destination.position).sub(origin.current).project(camera);
     camera.getWorldDirection(forward.current);
     anchor.current?.position.copy(camera.position).add(origin.current).addScaledVector(forward.current, 10);

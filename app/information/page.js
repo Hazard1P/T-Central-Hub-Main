@@ -17,7 +17,7 @@ const guides = [
   },
   {
     title: "Explore Earth’s surface",
-    text: "Choose an Earth surface region in Explore and cruise toward it, or descend anywhere on Earth. Fly across continuous terrain and oceans with the normal ship controls; the camera follows local up. Brake for close passes and rise to return to orbit. On mobile, use the flight pad and vertical controls. Earth’s safe zone blocks weapons and incoming player fire; combat begins outside its green boundary.",
+    text: "Choose an Earth surface region in Explore and cruise toward it, or descend anywhere on Earth. Fly across continuous terrain and oceans with the normal ship controls; the camera follows local up. Brake near dry ground and choose Land & walk, or press E. Walk with WASD and look with the mouse; on phones use the walking pad and drag to look. Stay within 30 metres of the marked ship to board with E or Board ship, then rise to return to orbit. Earth’s safe zone blocks weapons and incoming player fire; combat begins outside its green boundary.",
     href: "/system",
     label: "Explore Earth",
   },

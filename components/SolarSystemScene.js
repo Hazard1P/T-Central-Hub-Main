@@ -5,8 +5,9 @@ import { useFrame, useLoader } from '@react-three/fiber';
 import * as THREE from 'three';
 import { SOLAR_UNITS_PER_AU, SOLAR_WORLD_CENTER } from '@/lib/universeSpace';
 import { useUniverseFrame } from '@/components/UniverseFrame';
-import { getEarthSurfaceState } from '@/lib/earthSurface';
+import { getEarthSurfaceState, getEarthSurfaceStatus } from '@/lib/earthSurface';
 import { createEarthSurfaceGeometry } from '@/lib/earthSurfaceGeometry';
+import { earthAnchorAt, METRES_PER_UNIT } from '@/lib/earthWalk';
 
 const surfaceVertex = `varying vec3 nWorld; varying vec3 local; varying vec2 texCoord; varying vec3 toEye;
 void main(){texCoord=uv;local=position;nWorld=normalize(mat3(modelMatrix)*normal);vec4 world=modelMatrix*vec4(position,1.);toEye=cameraPosition-world.xyz;gl_Position=projectionMatrix*viewMatrix*world;}`;
@@ -15,7 +16,7 @@ float noise3(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(m
 float fbm(vec3 p){float v=0.,a=.5;for(int i=0;i<5;i++){v+=a*noise3(p);p=p*2.03+vec3(7.3,2.8,1.9);a*=.5;}return v;}`;
 const finish = '\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n';
 
-function MappedSurface({ body, uniforms, segments }) {
+function MappedSurface({ body, uniforms, segments, materialRef }) {
   const geometry = useMemo(() => {
     return body.id === 'earth'
       ? createEarthSurfaceGeometry(body.radiusKm / 149597870.7 * SOLAR_UNITS_PER_AU)
@@ -26,9 +27,9 @@ function MappedSurface({ body, uniforms, segments }) {
   const textures = useLoader(THREE.TextureLoader, files.map((name) => '/textures/solar-system/' + name));
   textures[0].colorSpace = THREE.SRGBColorSpace;
   const mapped = useMemo(() => ({ ...uniforms, map: { value: textures[0] }, specularMap: { value: textures[1] }, earth: { value: body.id === 'earth' ? 1 : 0 } }), [uniforms, textures, body.id]);
-  return <mesh geometry={geometry}><shaderMaterial uniforms={mapped} vertexShader={surfaceVertex} fragmentShader={`
-    varying vec3 nWorld;varying vec3 local;varying vec2 texCoord;varying vec3 toEye;uniform vec3 sunDirection;uniform sampler2D map;uniform sampler2D specularMap;uniform float earth;uniform float surfaceDetail;${noise}
-    void main(){vec3 n=normalize(nWorld);float day=max(dot(n,sunDirection),0.);vec3 surface=texture2D(map,texCoord).rgb;
+  return <mesh geometry={geometry}><shaderMaterial ref={materialRef} uniforms={mapped} vertexShader={surfaceVertex} fragmentShader={`
+    varying vec3 nWorld;varying vec3 local;varying vec2 texCoord;varying vec3 toEye;uniform vec3 sunDirection;uniform sampler2D map;uniform sampler2D specularMap;uniform float earth;uniform float surfaceDetail;uniform vec3 patchCenter;uniform float patchAngle;${noise}
+    void main(){if(earth>.5&&patchAngle>0.&&length(normalize(local)-patchCenter)<patchAngle)discard;vec3 n=normalize(nWorld);float day=max(dot(n,sunDirection),0.);vec3 surface=texture2D(map,texCoord).rgb;
       float ocean=texture2D(specularMap,texCoord).r*earth;
       float grain=fbm(normalize(local)*650.);
       surface*=1.+earth*surfaceDetail*(grain-.5)*.24*(1.-ocean);
@@ -63,10 +64,10 @@ function SaturnRings({ sunDirection }) {
   </mesh>;
 }
 
-export function SolarBody({ body, stateRef, onSelect, segments, getPhysicsTime }) {
-  const position = useRef(null), axes = useRef(null);
+export function SolarBody({ body, stateRef, onSelect, segments, getPhysicsTime, surfaceWalking=false }) {
+  const position = useRef(null), axes = useRef(null), mappedMaterial = useRef(null);
   const { origin } = useUniverseFrame();
-  const uniforms = useMemo(() => ({ sunDirection: { value: new THREE.Vector3(1, 0, 0) }, surfaceDetail: {value:0} }), []);
+  const uniforms = useMemo(() => ({ sunDirection: { value: new THREE.Vector3(1, 0, 0) }, surfaceDetail: {value:0}, patchCenter:{value:new THREE.Vector3()},patchAngle:{value:0} }), []);
   const matrix = useMemo(() => new THREE.Matrix4(), []);
   const x = useMemo(() => new THREE.Vector3(), []), y = useMemo(() => new THREE.Vector3(), []), z = useMemo(() => new THREE.Vector3(), []);
   useFrame(({ camera }) => {
@@ -85,7 +86,14 @@ export function SolarBody({ body, stateRef, onSelect, segments, getPhysicsTime }
     position.current.position.copy(relative);
     const radius = state.radiusAu * multiplier;
     position.current.scale.setScalar(radius);
-    uniforms.surfaceDetail.value = Math.max(0,Math.min(1,(180-(distance-radius))/100));
+    const liveUniforms=mappedMaterial.current?.uniforms || uniforms;
+    liveUniforms.patchAngle.value = 0;
+    if(body.id==='earth'&&surfaceWalking&&getPhysicsTime){
+      const utcMs=getPhysicsTime(),ground=earthAnchorAt(worldCamera.toArray(),utcMs),earth=getEarthSurfaceState(utcMs);
+      const height=getEarthSurfaceStatus(worldCamera.toArray(),[0,0,0],utcMs).altitude;
+      if(height<.03){liveUniforms.patchCenter.value.set(...ground);liveUniforms.patchAngle.value=9000/METRES_PER_UNIT/earth.radius;}
+    }
+    liveUniforms.surfaceDetail.value = Math.max(0,Math.min(1,(180-(distance-radius))/100));
     const f = body.id === 'earth' ? 0 : body.flattening || 0, equator = 1 / Math.cbrt(1 - f);
     axes.current.scale.set(equator, equator * (1 - f), equator);
     x.set(...state.orientation.x); y.set(...state.orientation.y); z.set(...state.orientation.z);
@@ -97,7 +105,7 @@ export function SolarBody({ body, stateRef, onSelect, segments, getPhysicsTime }
       {body.id === 'sun' ? <mesh><sphereGeometry args={[1, segments, segments / 2]} /><shaderMaterial vertexShader={surfaceVertex} fragmentShader={`varying vec3 local;varying vec3 nWorld;varying vec3 toEye;${noise}
         void main(){vec3 p=normalize(local);float cells=fbm(p*65.);float zones=fbm(p*12.);float limb=.45+.55*pow(max(dot(normalize(nWorld),normalize(toEye)),0.),.35);
         vec3 color=mix(vec3(1.,.36,.07),vec3(1.8,1.35,.65),cells);float spots=1.-smoothstep(.16,.24,zones);color*=1.-spots*.65;gl_FragColor=vec4(color*limb,1.);${finish}}`} /></mesh> : <Suspense fallback={<mesh><sphereGeometry args={[1, 24, 16]} /><meshBasicMaterial color={body.color} /></mesh>}>
-        {['earth', 'moon'].includes(body.id) ? <MappedSurface body={body} uniforms={uniforms} segments={segments} /> : <ProceduralSurface body={body} uniforms={uniforms} segments={segments} />}
+        {['earth', 'moon'].includes(body.id) ? <MappedSurface materialRef={mappedMaterial} body={body} uniforms={uniforms} segments={segments} /> : <ProceduralSurface body={body} uniforms={uniforms} segments={segments} />}
       </Suspense>}
       {body.rings ? <SaturnRings sunDirection={uniforms.sunDirection} /> : null}
     </group>

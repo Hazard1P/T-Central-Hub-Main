@@ -34,7 +34,7 @@ function FlightButton({ axis, value, label, children, hold, release, active, cla
   );
 }
 
-export default function TouchFlightPad({ onInputChange }) {
+export default function TouchFlightPad({ onInputChange, walking=false }) {
   const held = useRef(new Map());
   const [input, setInput] = useState(() => resolveHeldFlightAxes(held.current));
   const publish = useCallback(() => {
@@ -65,7 +65,7 @@ export default function TouchFlightPad({ onInputChange }) {
       held.current.clear();
       onInputChange(resolveHeldFlightAxes(held.current));
     };
-  }, [onInputChange, publish]);
+  }, [onInputChange, publish, walking]);
 
   const button = (axis, value, label, children, className) => (
     <FlightButton axis={axis} value={value} label={label} hold={hold} release={release}
@@ -74,23 +74,23 @@ export default function TouchFlightPad({ onInputChange }) {
   return (
     <div className="touch-flight-pad" role="group" aria-label="Touch flight controls">
       <div className="touch-flight-cluster">
-        {button('z', 1, 'Fly forward', '↑')}
+        {walking ? button('z', 1, 'Walk forward', '↑') : button('z', 1, 'Fly forward', '↑')}
         <div className="touch-flight-row">
           {button('x', -1, 'Strafe left', '←')}
-          {button('boost', 1, 'Hold to boost', 'Boost', 'touch-flight-boost')}
+          {button('boost', 1, walking ? 'Hold to sprint' : 'Hold to boost', walking ? 'Sprint' : 'Boost', 'touch-flight-boost')}
           {button('x', 1, 'Strafe right', '→')}
         </div>
-        {button('z', -1, 'Fly backward', '↓')}
+        {button('z', -1, walking ? 'Walk backward' : 'Fly backward', '↓')}
       </div>
-      <p className="touch-look-hint">Drag space to look</p>
-      <div className="touch-flight-cluster vertical">
+      <p className="touch-look-hint">{walking ? "Drag to look around" : "Drag space to look"}</p>
+      {!walking ? <div className="touch-flight-cluster vertical">
         <div className="touch-flight-actions">
           {button('fire', 1, 'Hold to fire', 'Fire', 'touch-flight-fire')}
           {button('brake', 1, 'Hold to brake', 'Brake', 'touch-flight-brake')}
         </div>
         {button('y', 1, 'Ascend', 'Ascend')}
         {button('y', -1, 'Descend', 'Descend')}
-      </div>
+      </div> : null}
     </div>
   );
 }

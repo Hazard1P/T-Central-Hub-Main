@@ -189,7 +189,7 @@ export default function SystemLauncher({
             <p>{FLIGHT_CONTROL_COPY.launchPrimer}</p>
             <p>
               Explore sets waypoints. Cruise handles the approach. Choose an Earth surface
-              region to descend, explore its terrain and oceans, then rise to return to orbit.
+              region to descend. Near dry land, choose Land & walk (E); walk with WASD or touch, then board the ship to return to orbit.
             </p>
             <p>
               Mine nearby asteroids, deliver ore at Earth, and upgrade in

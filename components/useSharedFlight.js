@@ -56,7 +56,9 @@ export default function useSharedFlight({
       joinTimer,
       revision = 0;
     let roster = new Map();
-    let acknowledgedFrame = 0;
+    let acknowledgedFrame = 0, movementSequence = 0, surfaceRequestIndex=0;
+    const surfaceRequests=new Map();
+    const clearSurfaceRequests=()=>{for(const request of surfaceRequests.values()){window.clearTimeout(request.timer);request.reject(Error('Exploration connection interrupted.'));}surfaceRequests.clear();};
     let predictionFrame = null,
       pendingPrediction = null;
     const controller = new AbortController();
@@ -126,6 +128,10 @@ export default function useSharedFlight({
     }
     function reconcile(self, snap = false, utcMs = Date.now()) {
       if (!self?.position || !self?.velocity) return;
+      if(self.movementMode==='walk'&&self.walkAnchor){
+        inputsRef.current=inputsRef.current.filter(frame=>frame.frameIndex>self.frameIndex);
+        onCorrection({position:self.position,velocity:self.velocity,walkAnchor:self.walkAnchor,parkedShip:self.parkedShip,movementMode:'walk',frameIndex:self.frameIndex,snap});return;
+      }
       inputsRef.current = snap
         ? []
         : inputsRef.current
@@ -136,6 +142,7 @@ export default function useSharedFlight({
           position: self.position,
           velocity: self.velocity,
           frameIndex: self.frameIndex,
+          direction:self.movementSequence>0&&self.frameIndex>0?self.direction:undefined,orientation:self.orientation,
           snap: true,
         });
         return;
@@ -157,7 +164,7 @@ export default function useSharedFlight({
       if (error > 0.3) onCorrection(prediction);
     }
     function queuePrediction(self, snap, utcMs) {
-      if (snap || self.alive === false) {
+      if (snap || self.alive === false || self.movementMode === 'walk') {
         pendingPrediction = null;
         reconcile(self, snap, utcMs);
         return;
@@ -197,6 +204,17 @@ export default function useSharedFlight({
         if (stopped || socket !== connection) return;
         try {
           const packet = JSON.parse(event.data);
+          if(packet.type==='surface_result'){
+            const pending=surfaceRequests.get(packet.requestId);if(!pending)return;
+            surfaceRequests.delete(packet.requestId);window.clearTimeout(pending.timer);
+            if(packet.ok&&packet.player){
+              movementSequence=packet.player.movementSequence||0;inputsRef.current=[];
+              roster.set(packet.player.id,packet.player);
+              setAuthoritativeState(current=>({...current,players:[...(current.players||[]).filter(p=>p.id!==packet.player.id),packet.player]}));
+              reconcile(packet.player,true);pending.resolve(packet);
+            }else pending.reject(Error(packet.error||'Surface exploration is unavailable.'));
+            return;
+          }
           const version =
             packet.type === "state"
               ? packet.state?.physicsVersion
@@ -222,6 +240,7 @@ export default function useSharedFlight({
           if (packet.type === "joined") {
             window.clearTimeout(joinTimer);
             revision = packet.player.revision;
+            movementSequence=packet.player.movementSequence||0;
             acknowledgedFrame = packet.player.frameIndex;
             roster = new Map([[packet.player.id, packet.player]]);
             session = {
@@ -231,6 +250,12 @@ export default function useSharedFlight({
               displayName: packet.player.displayName,
               transport: "websocket",
               fire: (direction, pose = {}) => send({ type: "fire", direction, orientation: pose.orientation, cannonIndex: pose.cannonIndex, revision }),
+              requestSurface: action=>new Promise((resolve,reject)=>{
+                if(connection.readyState!==WebSocket.OPEN){reject(Error('Reconnect to shared exploration first.'));return;}
+                const requestId='surface-'+(++surfaceRequestIndex);
+                const timer=window.setTimeout(()=>{surfaceRequests.delete(requestId);reject(Error('Surface request timed out. Please retry.'));},6000);
+                surfaceRequests.set(requestId,{resolve,reject,timer});send({type:'surface',action,requestId,revision,movementSequence});
+              }),
             };
             setSession(session);
             reconcile(packet.player, true);
@@ -240,6 +265,7 @@ export default function useSharedFlight({
               send({
                 type: "input",
                 revision,
+                movementSequence,
                 frameIndex: latest?.frameIndex ?? acknowledgedFrame,
                 controlVector: latest?.controlVector || [0, 0, 0],
                 direction: telemetryRef.current.direction || [0, 0, 1],
@@ -253,6 +279,8 @@ export default function useSharedFlight({
             );
             if (!self) return;
             const respawned = self.revision !== revision;
+            const modeChanged=(self.movementSequence||0)!==movementSequence;
+            movementSequence=self.movementSequence||0;if(modeChanged)inputsRef.current=[];
             revision = self.revision;
             acknowledgedFrame = self.frameIndex;
             if (packet.token !== session.token) {
@@ -274,7 +302,7 @@ export default function useSharedFlight({
               population: packet.state.population,
               tick: packet.state.tick,
             });
-            queuePrediction(self, respawned, packet.state.physicsUtcMs);
+            queuePrediction(self, respawned||modeChanged, packet.state.physicsUtcMs);
             if (respawned) onRespawn?.();
           }
         } catch {
@@ -282,6 +310,7 @@ export default function useSharedFlight({
         }
       };
       connection.onclose = (event) => {
+        clearSurfaceRequests();
         window.clearTimeout(joinTimer);
         window.clearInterval(inputTimer);
         if (stopped || socket !== connection) return;
@@ -436,6 +465,7 @@ export default function useSharedFlight({
     window.addEventListener("pagehide", unload);
     return () => {
       stopped = true;
+      clearSurfaceRequests();
       controller.abort();
       window.clearTimeout(timer);
       window.clearTimeout(joinTimer);

@@ -265,6 +265,10 @@ export function createRealtimeServer({
         }
         if (message.revision !== p.revision) return;
         if (message.type === "input") world.input(room, id, p.token, message);
+        if(message.type==='surface') {
+          if(typeof message.requestId!=='string'||!/^[A-Za-z0-9_-]{1,64}$/.test(message.requestId))throw Error('Invalid surface request');
+          send(socket,{type:'surface_result',requestId:message.requestId,...world.requestSurface(room,id,p.token,message.action,message.movementSequence)});
+        }
         if(message.type==='landing') {
           if(typeof message.requestId!=='string'||!/^[A-Za-z0-9_-]{1,64}$/.test(message.requestId))throw Error('Invalid landing request');
           send(socket,{type:'landing_result',requestId:message.requestId,...world.requestLanding(room,id,p.token,message.action,message.padId)});

@@ -7820,3 +7820,14 @@ body:has(.system-entry-screen.phase-in_sim) { overscroll-behavior: none; }
 .launch-error .button { min-height:44px; padding:8px 12px; font-size:12px; }
 @media(max-width:600px) { .compact-launcher { padding:12px; } .system-entry-screen .compact-launcher .system-launcher-shell { padding:18px; } .compact-launcher .system-launcher-shell h1 { font-size:27px; } }
 @media(max-width:359px) { .compact-launcher .launch-actions { grid-template-columns:1fr; } .compact-launcher .launch-account-actions .button { flex:1; } }
+
+.earth-journey-hud { position:absolute; z-index:58; top:120px; right:20px; max-width:310px; padding:10px 12px; border:1px solid #baf5df40; border-radius:12px; background:#071a22e8; color:#dbefea; font-size:12px; display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; }
+.earth-journey-hud strong,.earth-journey-hud small { display:block; }
+.earth-journey-hud small { font-size:10px; color:#afc9c5; margin-top:4px; line-height:1.4; }
+.earth-journey-hud button { min-height:44px; padding:8px 10px; border:1px solid #baf5df55; border-radius:8px; background:#17393f; color:#e5f8f0; font:inherit; cursor:pointer; }
+.earth-journey-hud button:disabled { opacity:.5; cursor:default; }
+.earth-journey-hud kbd { margin-left:7px; font-size:10px; color:#b2d8ca; }
+.earth-journey-hud p { grid-column:1/-1; margin:0; font-size:10px; color:#bdd6d1; line-height:1.4; }
+.surface-ship-marker { padding:4px 8px; border:1px solid #baf5df66; border-radius:6px; background:#071a22dd; color:#d7f7e9; font-size:10px; white-space:nowrap; }
+@media(max-width:600px) { .earth-journey-hud { top:220px; right:12px; left:12px; max-width:none; padding:8px 10px; } .earth-journey-hud kbd { display:none; } }
+@media(orientation:landscape) and (max-height:600px) and (pointer:coarse) { .earth-journey-hud { top:75px; right:12px; left:auto; max-width:285px; padding:7px 10px; } }

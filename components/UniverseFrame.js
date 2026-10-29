@@ -8,8 +8,8 @@ const Frame = createContext({ origin: zero, rebase: () => {} });
 export const useUniverseFrame = () => useContext(Frame);
 export default function UniverseFrame({ children }) {
   const group = useRef(null), origin = useRef(new THREE.Vector3());
-  const value = useMemo(() => ({ origin, rebase(position, camera) {
-    const next = new THREE.Vector3(...floatingOrigin(position));
+  const value = useMemo(() => ({ origin, rebase(position, camera, precise = false) {
+    const next = new THREE.Vector3(...(precise ? position : floatingOrigin(position)));
     camera.position.sub(next.clone().sub(origin.current));
     origin.current.copy(next);
     group.current?.position.copy(next).negate();
